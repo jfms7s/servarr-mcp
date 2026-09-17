@@ -2,17 +2,12 @@
   "name": "servarr-mcp",
   "version": "0.1.0",
   "main": "dist/index.js",
-  "directories": {
-    "doc": "docs"
-  },
   "scripts": {
     "test": "vitest run",
     "build": "tsc",
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": [],
-  "author": "",
   "license": "MIT",
   "description": "MCP server for Sonarr, Radarr and Prowlarr",
   "type": "module",
@@ -35,7 +30,6 @@
     "prettier": "^3.9.7",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.70.0",
-    "vite": "^6.4.3",
-    "vitest": "^5.0.1"
+    "vitest": "^4.1.11"
   }
 }
