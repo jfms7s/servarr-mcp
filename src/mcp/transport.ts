@@ -9,25 +9,42 @@ export async function startStdio(server: McpServer): Promise<void> {
 }
 
 export interface HttpHandle {
+  port: number;
   close(): Promise<void>;
 }
 
 export async function startHttp(
-  server: McpServer,
+  createMcpServer: () => McpServer,
   options: { port: number; token: string },
 ): Promise<HttpHandle> {
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-  await server.connect(transport);
-
   const app = express();
-  app.use(express.json());
-  app.all('/mcp', bearerAuth(options.token), (request, response) => {
-    void transport.handleRequest(request, response, request.body);
+
+  app.all('/mcp', bearerAuth(options.token), express.json(), (request, response) => {
+    void (async () => {
+      const server = createMcpServer();
+      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+      response.on('close', () => {
+        void transport.close();
+        void server.close();
+      });
+      await server.connect(transport);
+      await transport.handleRequest(request, response, request.body);
+    })().catch(() => {
+      if (!response.headersSent) response.status(500).json({ error: 'internal error' });
+    });
   });
 
   const listener = app.listen(options.port);
+  await new Promise<void>((resolve, reject) => {
+    listener.once('listening', resolve);
+    listener.once('error', reject);
+  });
+
+  const addr = listener.address();
+  const port = typeof addr === 'object' && addr !== null ? addr.port : options.port;
 
   return {
+    port,
     close: () =>
       new Promise<void>((resolve, reject) => {
         listener.close((error) => (error ? reject(error) : resolve()));

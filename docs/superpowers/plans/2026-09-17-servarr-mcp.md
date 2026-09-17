@@ -1031,10 +1031,18 @@ git commit -m "feat: add mcp tool definition contract and server registration"
   export async function startStdio(server: McpServer): Promise<void>
   export interface HttpHandle { close(): Promise<void> }
   export async function startHttp(
-    server: McpServer,
+    createMcpServer: () => McpServer,
     options: { port: number; token: string },
   ): Promise<HttpHandle>
   ```
+
+`startHttp` takes a **factory**, not a server instance. The SDK's stateless
+`StreamableHTTPServerTransport` throws `Stateless transport cannot be reused
+across requests` on its second request, and `Server.connect` overwrites the
+server's single `_transport` (clearing it to `undefined` on close), so one
+shared server plus one shared transport serves exactly one request per
+process. Each request gets its own server and transport, both closed when the
+response closes.
 
 `isAuthorized` must compare in constant time via `node:crypto`'s `timingSafeEqual`, guarding against the length mismatch that makes `timingSafeEqual` throw.
 
@@ -1156,19 +1164,31 @@ export interface HttpHandle {
 }
 
 export async function startHttp(
-  server: McpServer,
+  createMcpServer: () => McpServer,
   options: { port: number; token: string },
 ): Promise<HttpHandle> {
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-  await server.connect(transport);
-
   const app = express();
-  app.use(express.json());
-  app.all('/mcp', bearerAuth(options.token), (request, response) => {
-    void transport.handleRequest(request, response, request.body);
+
+  app.all('/mcp', bearerAuth(options.token), express.json(), (request, response) => {
+    void (async () => {
+      const server = createMcpServer();
+      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+      response.on('close', () => {
+        void transport.close();
+        void server.close();
+      });
+      await server.connect(transport);
+      await transport.handleRequest(request, response, request.body);
+    })().catch(() => {
+      if (!response.headersSent) response.status(500).json({ error: 'internal error' });
+    });
   });
 
   const listener = app.listen(options.port);
+  await new Promise<void>((resolve, reject) => {
+    listener.once('listening', resolve);
+    listener.once('error', reject);
+  });
 
   return {
     close: () =>
@@ -3775,7 +3795,6 @@ import { buildTools } from './tools.js';
 async function main(): Promise<void> {
   const config = loadConfig();
   const tools = buildTools(config);
-  const server = createServer(tools);
 
   const enabled = [
     config.sonarr && 'Sonarr',
@@ -3787,12 +3806,15 @@ async function main(): Promise<void> {
   console.error(`servarr-mcp: ${tools.length} tools from ${enabled.join(', ')}`);
 
   if (config.transport === 'http' || config.transport === 'both') {
-    await startHttp(server, { port: config.port, token: config.token as string });
+    await startHttp(() => createServer(tools), {
+      port: config.port,
+      token: config.token as string,
+    });
     console.error(`servarr-mcp: http transport listening on port ${config.port}`);
   }
 
   if (config.transport === 'stdio' || config.transport === 'both') {
-    await startStdio(server);
+    await startStdio(createServer(tools));
   }
 }
 
