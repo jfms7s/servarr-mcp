@@ -152,9 +152,9 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
         monitored: z.boolean().optional().describe('Monitor the series'),
-        qualityProfileId: z.number().int().optional().describe('Quality profile id'),
+        qualityProfileId: z.number().int().optional().describe('From sonarr_list_quality_profiles'),
         seasonFolder: z.boolean().optional().describe('Use season folders'),
-        tags: z.array(z.number().int()).optional().describe('Tag ids'),
+        tags: z.array(z.number().int()).optional().describe('Tag ids from sonarr_list_tags'),
       },
       handler: async ({ seriesId, monitored, qualityProfileId, seasonFolder, tags }) => {
         const current = await client.getSeries(seriesId);
@@ -243,7 +243,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
     defineTool({
       name: 'sonarr_get_history',
       description: 'List history of download, import and grab events.',
-      inputSchema: { ...page, eventType: z.number().int().optional().describe('Filter by event type') },
+      inputSchema: { ...page, eventType: z.number().int().optional().describe('Filter by event type: 1 grabbed, 2 seriesFolderImported, 3 downloadFolderImported, 4 downloadFailed, 5 episodeFileDeleted, 6 episodeFileRenamed, 7 downloadIgnored. Omit for all events.') },
       handler: ({ page: pageNum, pageSize, eventType }) =>
         client.getHistory({ page: pageNum, pageSize, eventType }),
     }),

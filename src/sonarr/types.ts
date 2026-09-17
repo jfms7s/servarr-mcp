@@ -28,6 +28,7 @@ export interface Series {
   imdbId?: string;
   tags: number[];
   seasons: Season[];
+  seasonFolder?: boolean;
   statistics?: { episodeFileCount: number; episodeCount: number; sizeOnDisk: number };
   added?: string;
   ended?: boolean;
