@@ -144,4 +144,37 @@ describe('createArrClient', () => {
     expect(error.status).toBeUndefined();
     expect(error.message).toContain('Cannot reach Sonarr');
   });
+
+  it('gives "server error with no response body" detail for a 500 with empty body', async () => {
+    server.use(
+      http.get('http://sonarr.test:8989/api/v3/health', () => new HttpResponse(null, { status: 500 })),
+    );
+
+    const error = (await client.get('/health').catch((e: unknown) => e)) as ArrApiError;
+    expect(error).toBeInstanceOf(ArrApiError);
+    expect(error.status).toBe(500);
+    expect(error.detail).toBe('server error with no response body');
+  });
+
+  it('gives "no response body" detail for a 400 with empty body', async () => {
+    server.use(
+      http.get('http://sonarr.test:8989/api/v3/health', () => new HttpResponse(null, { status: 400 })),
+    );
+
+    const error = (await client.get('/health').catch((e: unknown) => e)) as ArrApiError;
+    expect(error).toBeInstanceOf(ArrApiError);
+    expect(error.status).toBe(400);
+    expect(error.detail).toBe('no response body');
+  });
+
+  it('rejects a 200 response whose body is not valid JSON', async () => {
+    server.use(
+      http.get('http://sonarr.test:8989/api/v3/health', () => new HttpResponse('not json at all', { status: 200 })),
+    );
+
+    const error = (await client.get('/health').catch((e: unknown) => e)) as ArrApiError;
+    expect(error).toBeInstanceOf(ArrApiError);
+    expect(error.status).toBe(200);
+    expect(error.detail).toMatch(/^response was not valid JSON:/);
+  });
 });
