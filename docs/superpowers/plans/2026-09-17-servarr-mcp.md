@@ -6,7 +6,12 @@
 
 **Architecture:** One npm package. A shared `fetch`-based HTTP client handles auth headers and error mapping for all three products. Each product gets an isolated module (`types.ts`, `client.ts`, `shape.ts`, `tools.ts`) that depends only on the shared HTTP layer. An MCP layer registers whichever products are configured and serves them over stdio, HTTP, or both.
 
-**Tech Stack:** TypeScript 5 (strict, ESM), Node 20+, `@modelcontextprotocol/sdk` ^1.30.0, `zod` ^4.6.5, `vitest` ^5.0.1, `msw` ^2.15.0, ESLint, Prettier.
+**Tech Stack:** TypeScript 5 (strict, ESM), Node 20+, `@modelcontextprotocol/sdk` ^1.30.0, `zod` ^4.6.5, `express` ^5, `vitest` ^4.1.11, `msw` ^2.15.0, ESLint, Prettier.
+
+> vitest is pinned to the 4.x line deliberately: vitest 5 requires Node
+> `^22.12 || ^24 || >=26` and peers on `@types/node` >= 22, both of which
+> conflict with this project's Node 20 floor. vitest 4.1.11 supports
+> `^20 || ^22 || >=24`. Do not install with `--legacy-peer-deps`.
 
 **Spec:** `docs/superpowers/specs/2026-09-17-servarr-mcp-design.md`
 
@@ -63,10 +68,13 @@ npm pkg set scripts.build="tsc"
 npm pkg set scripts.test="vitest run"
 npm pkg set scripts.lint="eslint src test"
 npm pkg set scripts.typecheck="tsc --noEmit"
-npm install @modelcontextprotocol/sdk@^1.30.0 zod@^4.6.5
-npm install -D typescript@^5 vitest@^5 msw@^2.15.0 @types/node@^20 \
+npm install @modelcontextprotocol/sdk@^1.30.0 zod@^4.6.5 express@^5
+npm install -D typescript@^5 vitest@^4.1.11 msw@^2.15.0 @types/node@^20 \
   eslint@^9 typescript-eslint@^8 prettier@^3 @types/express@^5
 ```
+
+Install without `--legacy-peer-deps`; these versions resolve cleanly. Do not
+add `vite` as a direct dependency — vitest pulls it in transitively.
 
 - [ ] **Step 2: Write the config files**
 
