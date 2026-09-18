@@ -8,6 +8,7 @@ import {
   summarizeHistoryRecord,
   summarizeQualityProfile,
   summarizeQueueRecord,
+  summarizeRelease,
   summarizeSeries,
 } from './shape.js';
 
@@ -348,6 +349,90 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       description: 'List disk space on each drive containing series or root folders.',
       inputSchema: {},
       handler: () => client.getDiskSpace(),
+    }),
+
+    defineTool({
+      name: 'sonarr_search_releases',
+      description:
+        'Run a live interactive search across indexers for episode or season releases (can take several seconds). Results are in Sonarr\'s preference order with rank. Rejections are Sonarr\'s verbatim reasons for not choosing a release automatically. Use guid + indexerId with sonarr_grab_release.',
+      inputSchema: {
+        episodeId: z.number().int().optional().describe('Episode id for single-episode search'),
+        seriesId: z.number().int().optional().describe('Series id for season-pack search'),
+        seasonNumber: z.number().int().optional().describe('Season number for season-pack search'),
+        titleContains: z.string().min(1).optional().describe('Case-insensitive substring filter (e.g. "MeGusta")'),
+        approvedOnly: z.boolean().optional().default(false).describe('Show only Sonarr-approved releases'),
+        limit: z.number().int().min(1).max(100).optional().default(20).describe('Maximum results to return'),
+      },
+      handler: async (args) => {
+        // Validation: exactly one mode - episodeId alone OR seriesId + seasonNumber together
+        const hasEpisodeId = args.episodeId !== undefined;
+        const hasSeriesId = args.seriesId !== undefined;
+        const hasSeasonNumber = args.seasonNumber !== undefined;
+
+        if (!hasEpisodeId && !hasSeriesId && !hasSeasonNumber) {
+          throw new Error('Must provide either episodeId alone OR seriesId + seasonNumber together');
+        }
+
+        if (hasEpisodeId && (hasSeriesId || hasSeasonNumber)) {
+          throw new Error('Cannot mix episodeId with seriesId/seasonNumber; use one mode only');
+        }
+
+        if ((hasSeriesId && !hasSeasonNumber) || (hasSeasonNumber && !hasSeriesId)) {
+          throw new Error('seriesId and seasonNumber must be provided together');
+        }
+
+        // Call client with the appropriate parameters
+        const searchParams = hasEpisodeId ? { episodeId: args.episodeId } : { seriesId: args.seriesId, seasonNumber: args.seasonNumber };
+        const allReleases = await client.searchReleases(searchParams);
+
+        // Apply filters in order: titleContains, approvedOnly, then limit
+        let filtered = allReleases;
+
+        if (args.titleContains) {
+          const lowerFilter = args.titleContains.toLowerCase();
+          filtered = filtered.filter((r) => r.title.toLowerCase().includes(lowerFilter));
+        }
+
+        if (args.approvedOnly) {
+          filtered = filtered.filter((r) => r.approved);
+        }
+
+        const matched = filtered.length;
+        const returned = Math.min(args.limit ?? 20, filtered.length);
+        const releases = filtered
+          .slice(0, returned)
+          .map((release, idx) => {
+            // Rank is index in the FULL unfiltered list
+            const originalIndex = allReleases.indexOf(release);
+            return summarizeRelease(release, originalIndex + 1);
+          });
+
+        return {
+          total: allReleases.length,
+          matched,
+          returned,
+          releases,
+        };
+      },
+    }),
+
+    defineTool({
+      name: 'sonarr_grab_release',
+      description:
+        'Download a release via Sonarr. Grab uses cached search results (expire ~30 minutes); if grab fails, run sonarr_search_releases again. Grab overrides Sonarr\'s decision to DOWNLOAD but rejections can still block IMPORT, leaving items stuck in queue. Starts a real download tracked and imported by Sonarr (unlike prowlarr_grab_release, which bypasses Sonarr).',
+      inputSchema: {
+        guid: z.string().min(1).describe('Release guid from sonarr_search_releases'),
+        indexerId: z.number().int().describe('Release indexerId from sonarr_search_releases'),
+      },
+      handler: async ({ guid, indexerId }) => {
+        const grabbed = await client.grabRelease({ guid, indexerId });
+        return {
+          grabbed: true,
+          guid,
+          indexerId,
+          title: grabbed.title,
+        };
+      },
     }),
   ];
 }

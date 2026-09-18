@@ -5,6 +5,7 @@ import type {
   HistoryRecord,
   QualityProfile,
   QueueRecord,
+  Release,
   Series,
 } from './types.js';
 
@@ -208,5 +209,49 @@ export function summarizeBlocklistRecord(record: BlocklistRecord): BlocklistSumm
     date: record.date,
     protocol: record.protocol,
     indexer: record.indexer,
+  };
+}
+
+// A raw search returned 13 releases as ~64 KB (~5 KB each), and rejections are kept
+// verbatim because they are the exact reasons Sonarr declines a release.
+export interface ReleaseSummary {
+  rank: number;
+  guid: string;
+  indexerId: number;
+  title: string;
+  quality?: string;
+  sizeGb: number;
+  ageDays: number;
+  indexer: string;
+  protocol: string;
+  seeders?: number;
+  leechers?: number;
+  releaseGroup?: string;
+  languages: string[];
+  customFormatScore?: number;
+  fullSeason?: boolean;
+  approved: boolean;
+  rejections: string[];
+}
+
+export function summarizeRelease(release: Release, rank: number): ReleaseSummary {
+  return {
+    rank,
+    guid: release.guid,
+    indexerId: release.indexerId,
+    title: release.title,
+    quality: release.quality?.quality.name,
+    sizeGb: toGb(release.size),
+    ageDays: release.age,
+    indexer: release.indexer,
+    protocol: release.protocol,
+    seeders: release.seeders,
+    leechers: release.leechers,
+    releaseGroup: release.releaseGroup,
+    languages: release.languages?.map((lang) => lang.name) ?? [],
+    customFormatScore: release.customFormatScore,
+    fullSeason: release.fullSeason,
+    approved: release.approved,
+    rejections: release.rejections ?? [],
   };
 }

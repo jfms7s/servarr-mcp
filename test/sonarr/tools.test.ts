@@ -14,11 +14,11 @@ function toolsFor(overrides: Partial<SonarrClient>) {
 }
 
 describe('createSonarrTools', () => {
-  it('registers all 26 tools with unique sonarr_ prefixed names', () => {
+  it('registers all 28 tools with unique sonarr_ prefixed names', () => {
     const names = createSonarrTools({} as SonarrClient).map((t) => t.name);
-    expect(names).toHaveLength(26);
+    expect(names).toHaveLength(28);
     expect(names.every((n) => n.startsWith('sonarr_'))).toBe(true);
-    expect(new Set(names).size).toBe(26);
+    expect(new Set(names).size).toBe(28);
   });
 
   it('gives every tool a non-empty description', () => {
@@ -139,5 +139,169 @@ describe('createSonarrTools', () => {
         tags: [1, 2],
       }),
     );
+  });
+
+  it('search_releases requires either episodeId alone or seriesId+seasonNumber together', async () => {
+    const searchReleases = vi.fn().mockResolvedValue([]);
+    const get = toolsFor({ searchReleases });
+    const tool = get('sonarr_search_releases');
+
+    // Valid: episodeId alone
+    await tool.handler({ episodeId: 42, approvedOnly: false, limit: 20 });
+    expect(searchReleases).toHaveBeenCalledWith({ episodeId: 42 });
+
+    searchReleases.mockClear();
+    searchReleases.mockResolvedValue([]);
+
+    // Valid: seriesId and seasonNumber together
+    await tool.handler({ seriesId: 5, seasonNumber: 2, approvedOnly: false, limit: 20 });
+    expect(searchReleases).toHaveBeenCalledWith({ seriesId: 5, seasonNumber: 2 });
+
+    searchReleases.mockClear();
+
+    // Invalid: no params
+    await expect(tool.handler({ approvedOnly: false, limit: 20 })).rejects.toThrow();
+    expect(searchReleases).not.toHaveBeenCalled();
+
+    // Invalid: episodeId with seriesId
+    await expect(tool.handler({ episodeId: 42, seriesId: 5, approvedOnly: false, limit: 20 })).rejects.toThrow();
+    expect(searchReleases).not.toHaveBeenCalled();
+
+    // Invalid: seriesId without seasonNumber
+    await expect(tool.handler({ seriesId: 5, approvedOnly: false, limit: 20 })).rejects.toThrow();
+    expect(searchReleases).not.toHaveBeenCalled();
+
+    // Invalid: seasonNumber without seriesId
+    await expect(tool.handler({ seasonNumber: 2, approvedOnly: false, limit: 20 })).rejects.toThrow();
+    expect(searchReleases).not.toHaveBeenCalled();
+  });
+
+  it('search_releases applies filtering and returns counts', async () => {
+    const searchReleases = vi.fn().mockResolvedValue([
+      {
+        guid: '1',
+        title: 'Release 1',
+        approved: true,
+        indexerId: 1,
+        indexer: 'Site1',
+        size: 1024,
+        age: 1,
+        protocol: 'torrent',
+        rejections: [],
+      },
+      {
+        guid: '2',
+        title: 'Best Release',
+        approved: false,
+        indexerId: 2,
+        indexer: 'Site2',
+        size: 2048,
+        age: 2,
+        protocol: 'torrent',
+        rejections: ['Not an upgrade'],
+      },
+      {
+        guid: '3',
+        title: 'Amazing Release',
+        approved: true,
+        indexerId: 3,
+        indexer: 'Site3',
+        size: 3072,
+        age: 3,
+        protocol: 'torrent',
+        rejections: [],
+      },
+    ]);
+    const get = toolsFor({ searchReleases });
+    const result = (await get('sonarr_search_releases').handler({
+      episodeId: 42,
+      titleContains: 'Best',
+      approvedOnly: false,
+      limit: 20,
+    })) as {
+      total: number;
+      matched: number;
+      returned: number;
+      releases: unknown[];
+    };
+
+    expect(result.total).toBe(3);
+    expect(result.matched).toBe(1); // Only "Best Release" matches titleContains
+    expect(result.returned).toBe(1);
+    expect(result.releases).toHaveLength(1);
+    expect(result.releases[0]).toMatchObject({ guid: '2', rank: 2 });
+  });
+
+  it('search_releases filters by approvedOnly', async () => {
+    const searchReleases = vi.fn().mockResolvedValue([
+      { guid: '1', title: 'Release 1', approved: true, indexerId: 1, indexer: 'Site1', size: 1024, age: 1, protocol: 'torrent', rejections: [] },
+      { guid: '2', title: 'Release 2', approved: false, indexerId: 2, indexer: 'Site2', size: 2048, age: 2, protocol: 'torrent', rejections: [] },
+    ]);
+    const get = toolsFor({ searchReleases });
+    const result = (await get('sonarr_search_releases').handler({
+      episodeId: 42,
+      approvedOnly: true,
+      limit: 20,
+    })) as { returned: number; releases: unknown[] };
+
+    expect(result.returned).toBe(1);
+    expect(result.releases[0]).toMatchObject({ approved: true });
+  });
+
+  it('search_releases defaults to limit 20', async () => {
+    const releases = Array.from({ length: 30 }, (_, i) => ({
+      guid: String(i),
+      title: `Release ${i}`,
+      approved: true,
+      indexerId: 1,
+      indexer: 'Site',
+      size: 1024,
+      age: 1,
+      protocol: 'torrent',
+      rejections: [],
+    }));
+    const searchReleases = vi.fn().mockResolvedValue(releases);
+    const get = toolsFor({ searchReleases });
+    const result = (await get('sonarr_search_releases').handler({
+      episodeId: 42,
+      approvedOnly: false,
+    })) as { returned: number };
+
+    expect(result.returned).toBe(20);
+  });
+
+  it('grab_release sends exactly guid and indexerId to the client', async () => {
+    const grabRelease = vi.fn().mockResolvedValue({ guid: 'abc', title: 'Grabbed', approved: true, indexerId: 1, indexer: 'Site', size: 1024, age: 1, protocol: 'torrent', rejections: [] });
+    const get = toolsFor({ grabRelease });
+    await get('sonarr_grab_release').handler({ guid: 'abc', indexerId: 5 });
+
+    expect(grabRelease).toHaveBeenCalledWith({ guid: 'abc', indexerId: 5 });
+    expect(grabRelease).toHaveBeenCalledTimes(1);
+  });
+
+  it('grab_release returns grabbed status with title from response', async () => {
+    const grabRelease = vi.fn().mockResolvedValue({
+      guid: 'xyz',
+      title: 'Grabbed Release Title',
+      approved: true,
+      indexerId: 3,
+      indexer: 'Site',
+      size: 1024,
+      age: 1,
+      protocol: 'torrent',
+      rejections: [],
+    });
+    const get = toolsFor({ grabRelease });
+    const result = (await get('sonarr_grab_release').handler({ guid: 'xyz', indexerId: 3 })) as {
+      grabbed: boolean;
+      guid: string;
+      indexerId: number;
+      title?: string;
+    };
+
+    expect(result.grabbed).toBe(true);
+    expect(result.guid).toBe('xyz');
+    expect(result.indexerId).toBe(3);
+    expect(result.title).toBe('Grabbed Release Title');
   });
 });
