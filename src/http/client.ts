@@ -95,7 +95,7 @@ export function createArrClient(options: ArrClientOptions): ArrHttpClient {
     } catch (cause) {
       const inner = cause instanceof Error && cause.cause instanceof Error ? cause.cause : cause;
       const detail = inner instanceof Error ? inner.message : String(inner);
-      throw new ArrApiError({ product, method, path: apiPath, detail });
+      throw new ArrApiError({ product, baseUrl, method, path: apiPath, detail });
     }
 
     if (!response.ok) {
