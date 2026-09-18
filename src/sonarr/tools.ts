@@ -385,8 +385,9 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         const searchParams = hasEpisodeId ? { episodeId: args.episodeId } : { seriesId: args.seriesId, seasonNumber: args.seasonNumber };
         const allReleases = await client.searchReleases(searchParams);
 
-        // Apply filters in order: titleContains, approvedOnly, then limit
-        let filtered = allReleases;
+        // Rank over the full list first, so a release keeps Sonarr's rank
+        // after the filters below drop the ones ahead of it.
+        let filtered = allReleases.map((release, index) => summarizeRelease(release, index + 1));
 
         if (args.titleContains) {
           const lowerFilter = args.titleContains.toLowerCase();
@@ -398,14 +399,8 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         }
 
         const matched = filtered.length;
-        const returned = Math.min(args.limit ?? 20, filtered.length);
-        const releases = filtered
-          .slice(0, returned)
-          .map((release, idx) => {
-            // Rank is index in the FULL unfiltered list
-            const originalIndex = allReleases.indexOf(release);
-            return summarizeRelease(release, originalIndex + 1);
-          });
+        const returned = Math.min(args.limit ?? 20, matched);
+        const releases = filtered.slice(0, returned);
 
         return {
           total: allReleases.length,

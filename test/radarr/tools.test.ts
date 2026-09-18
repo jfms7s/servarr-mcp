@@ -173,9 +173,9 @@ describe('createRadarrTools', () => {
     expect(result1.matched).toBe(3);
     expect(result1.returned).toBe(3);
     expect(result1.releases).toHaveLength(3);
-    expect(result1.releases[0].rank).toBe(1);
-    expect(result1.releases[1].rank).toBe(2);
-    expect(result1.releases[2].rank).toBe(3);
+    expect(result1.releases[0]?.rank).toBe(1);
+    expect(result1.releases[1]?.rank).toBe(2);
+    expect(result1.releases[2]?.rank).toBe(3);
 
     // With titleContains filter (case-insensitive)
     const result2 = (await get('radarr_search_releases').handler({
@@ -185,8 +185,8 @@ describe('createRadarrTools', () => {
     expect(result2.total).toBe(3);
     expect(result2.matched).toBe(2);
     expect(result2.returned).toBe(2);
-    expect(result2.releases[0].rank).toBe(1);
-    expect(result2.releases[1].rank).toBe(3);
+    expect(result2.releases[0]?.rank).toBe(1);
+    expect(result2.releases[1]?.rank).toBe(3);
 
     // With approvedOnly filter
     const result3 = (await get('radarr_search_releases').handler({

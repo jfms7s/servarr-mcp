@@ -130,7 +130,7 @@ describe('RadarrClient', () => {
     const releases = await client.searchReleases(12);
     expect(seen).toBe('12');
     expect(releases).toHaveLength(1);
-    expect(releases[0].guid).toBe('abc-123');
+    expect(releases[0]?.guid).toBe('abc-123');
   });
 
   it('grabs a release', async () => {

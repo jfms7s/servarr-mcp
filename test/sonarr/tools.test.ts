@@ -159,6 +159,14 @@ describe('createSonarrTools', () => {
 
     searchReleases.mockClear();
 
+    searchReleases.mockClear();
+
+    // Valid: season 0 is Sonarr's specials season, not a missing value
+    await tool.handler({ seriesId: 5, seasonNumber: 0, approvedOnly: false, limit: 20 });
+    expect(searchReleases).toHaveBeenCalledWith({ seriesId: 5, seasonNumber: 0 });
+
+    searchReleases.mockClear();
+
     // Invalid: no params
     await expect(tool.handler({ approvedOnly: false, limit: 20 })).rejects.toThrow();
     expect(searchReleases).not.toHaveBeenCalled();
