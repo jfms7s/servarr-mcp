@@ -31,6 +31,7 @@ export interface Indexer {
   appProfileId?: number;
   tags?: number[];
   capabilities?: { categories?: Array<{ id: number; name: string }> };
+  fields?: Array<{ name: string; value?: unknown }>;
 }
 
 export interface IndexerStats {

@@ -59,4 +59,21 @@ describe('createProwlarrTools', () => {
     const get = toolsFor({ listIndexers: vi.fn().mockRejectedValue(new Error('down')) });
     await expect(get('prowlarr_list_indexers').handler({})).rejects.toThrow('down');
   });
+
+  it('test_indexer fetches and posts the record verbatim', async () => {
+    const indexerRecord = {
+      id: 3,
+      name: 'nzbgeek',
+      protocol: 'usenet',
+      enable: true,
+      priority: 25,
+      fields: [{ name: 'username', value: '********' }, { name: 'apikey', value: '********' }],
+    };
+    const getIndexer = vi.fn().mockResolvedValue(indexerRecord);
+    const testIndexer = vi.fn().mockResolvedValue({ success: true });
+    const get = toolsFor({ getIndexer, testIndexer });
+    await get('prowlarr_test_indexer').handler({ indexerId: 3 });
+    expect(getIndexer).toHaveBeenCalledWith(3);
+    expect(testIndexer).toHaveBeenCalledWith(indexerRecord);
+  });
 });

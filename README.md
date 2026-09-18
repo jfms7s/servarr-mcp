@@ -60,6 +60,9 @@ The server reads configuration from environment variables. Each product is **ind
 | `RADARR_API_KEY` | `abc123def456` | Only if `RADARR_URL` is set | API key from Radarr Settings → General |
 | `PROWLARR_URL` | `http://localhost:9696` | No | Base URL of your Prowlarr instance |
 | `PROWLARR_API_KEY` | `abc123def456` | Only if `PROWLARR_URL` is set | API key from Prowlarr Settings → General |
+| `SERVARR_MCP_TRANSPORT` | `stdio` or `http` or `both` | No | Transport mode (default `stdio`) |
+| `SERVARR_MCP_PORT` | `3000` | No | Port for HTTP transport (default `3000`) |
+| `SERVARR_MCP_TOKEN` | `a-long-random-secret` | Required if transport is `http` or `both` | Bearer token for HTTP client authentication |
 
 ### Example: Sonarr and Prowlarr only
 

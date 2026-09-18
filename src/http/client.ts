@@ -93,7 +93,8 @@ export function createArrClient(options: ArrClientOptions): ArrHttpClient {
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch (cause) {
-      const detail = cause instanceof Error ? cause.message : String(cause);
+      const inner = cause instanceof Error && cause.cause instanceof Error ? cause.cause : cause;
+      const detail = inner instanceof Error ? inner.message : String(inner);
       throw new ArrApiError({ product, method, path: apiPath, detail });
     }
 

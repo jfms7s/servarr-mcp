@@ -65,6 +65,8 @@ export function createProwlarrClient(config: InstanceConfig): ProwlarrClient {
     grabRelease: (payload) => http.post('/search', payload),
     listIndexers: () => http.get('/indexer'),
     getIndexer: (id) => http.get(`/indexer/${id}`),
+    // Sends the record back verbatim: Prowlarr redacts secret field values on read and
+    // restores them on write, which only works if fields[] round-trips untouched.
     testIndexer: (indexer) => http.post('/indexer/test', indexer),
     getIndexerStats: () => http.get('/indexerstats'),
     getIndexerStatus: () => http.get('/indexerstatus'),

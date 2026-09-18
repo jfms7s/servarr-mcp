@@ -68,6 +68,13 @@ describe('createSonarrTools', () => {
     expect(deleteSeries).toHaveBeenCalledWith(4, { deleteFiles: false, addImportListExclusion: false });
   });
 
+  it('defaults delete_queue_item to safe removal', async () => {
+    const deleteQueueItem = vi.fn().mockResolvedValue(undefined);
+    const get = toolsFor({ deleteQueueItem });
+    await get('sonarr_delete_queue_item').handler({ id: 4 });
+    expect(deleteQueueItem).toHaveBeenCalledWith(4, { removeFromClient: false, blocklist: false });
+  });
+
   it('summarises queue records', async () => {
     const getQueue = vi.fn().mockResolvedValue({
       page: 1,
@@ -91,5 +98,41 @@ describe('createSonarrTools', () => {
     const listSeries = vi.fn().mockRejectedValue(new Error('down'));
     const get = toolsFor({ listSeries });
     await expect(get('sonarr_list_series').handler({})).rejects.toThrow('down');
+  });
+
+  it('update_series merges changes with fetched record and preserves other fields', async () => {
+    const getSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [1, 2],
+      year: 2020,
+      status: 'continuing',
+    });
+    const updateSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      monitored: false,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [1, 2],
+      year: 2020,
+      status: 'continuing',
+    });
+    const get = toolsFor({ getSeries, updateSeries });
+    await get('sonarr_update_series').handler({ seriesId: 5, monitored: false });
+    expect(updateSeries).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({
+        id: 5,
+        title: 'Test Series',
+        monitored: false,
+        qualityProfileId: 1,
+        seasonFolder: true,
+        tags: [1, 2],
+      }),
+    );
   });
 });

@@ -237,7 +237,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         blocklist: z.boolean().optional().describe('Add to blocklist (default false)'),
       },
       handler: async ({ id, removeFromClient, blocklist }) => {
-        await client.deleteQueueItem(id, { removeFromClient, blocklist });
+        await client.deleteQueueItem(id, {
+          removeFromClient: removeFromClient ?? false,
+          blocklist: blocklist ?? false,
+        });
         return undefined;
       },
     }),

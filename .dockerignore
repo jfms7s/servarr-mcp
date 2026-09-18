@@ -4,3 +4,4 @@ test
 docs
 .git
 *.log
+.env

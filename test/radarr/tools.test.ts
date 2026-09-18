@@ -66,6 +66,13 @@ describe('createRadarrTools', () => {
     expect(deleteMovie).toHaveBeenCalledWith(2, { deleteFiles: false, addImportExclusion: false });
   });
 
+  it('defaults delete_queue_item to safe removal', async () => {
+    const deleteQueueItem = vi.fn().mockResolvedValue(undefined);
+    const get = toolsFor({ deleteQueueItem });
+    await get('radarr_delete_queue_item').handler({ id: 4 });
+    expect(deleteQueueItem).toHaveBeenCalledWith(4, { removeFromClient: false, blocklist: false });
+  });
+
   it('restricts run_command to supported command names', () => {
     const tool = createRadarrTools({} as RadarrClient).find((t) => t.name === 'radarr_run_command');
     const shape = tool?.inputSchema as { name: { parse: (v: unknown) => unknown } };
@@ -76,5 +83,41 @@ describe('createRadarrTools', () => {
   it('propagates client errors', async () => {
     const get = toolsFor({ listMovies: vi.fn().mockRejectedValue(new Error('down')) });
     await expect(get('radarr_list_movies').handler({})).rejects.toThrow('down');
+  });
+
+  it('update_movie merges changes with fetched record and preserves other fields', async () => {
+    const getMovie = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Dune',
+      monitored: true,
+      qualityProfileId: 1,
+      minimumAvailability: 'released',
+      tags: [1, 2],
+      year: 2021,
+      status: 'released',
+    });
+    const updateMovie = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Dune',
+      monitored: false,
+      qualityProfileId: 1,
+      minimumAvailability: 'released',
+      tags: [1, 2],
+      year: 2021,
+      status: 'released',
+    });
+    const get = toolsFor({ getMovie, updateMovie });
+    await get('radarr_update_movie').handler({ movieId: 5, monitored: false });
+    expect(updateMovie).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({
+        id: 5,
+        title: 'Dune',
+        monitored: false,
+        qualityProfileId: 1,
+        minimumAvailability: 'released',
+        tags: [1, 2],
+      }),
+    );
   });
 });
