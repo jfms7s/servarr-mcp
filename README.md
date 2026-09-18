@@ -31,10 +31,11 @@ The server will start on a stdio interface, expecting MCP protocol messages. Use
 
 ### With Docker
 
-Use the published container image:
+Use the published container image (`linux/amd64` and `linux/arm64`), pinned to a release tag such as `v0.1.2`, or `latest`:
 
 ```bash
 docker run --rm -p 3000:3000 \
+  -e SERVARR_MCP_TOKEN=a-long-random-secret \
   -e SONARR_URL=http://sonarr:8989 \
   -e SONARR_API_KEY=your-sonarr-api-key \
   -e RADARR_URL=http://radarr:7878 \
@@ -44,20 +45,7 @@ docker run --rm -p 3000:3000 \
   ghcr.io/jfms7s/servarr-mcp:v0.1.2
 ```
 
-Use `latest` instead of `v0.1.2` to pull the latest release:
-
-```bash
-docker run --rm -p 3000:3000 \
-  -e SONARR_URL=http://sonarr:8989 \
-  -e SONARR_API_KEY=your-sonarr-api-key \
-  -e RADARR_URL=http://radarr:7878 \
-  -e RADARR_API_KEY=your-radarr-api-key \
-  -e PROWLARR_URL=http://prowlarr:9696 \
-  -e PROWLARR_API_KEY=your-prowlarr-api-key \
-  ghcr.io/jfms7s/servarr-mcp:latest
-```
-
-**Note:** The container defaults to the HTTP transport (`SERVARR_MCP_TRANSPORT=http`). When using HTTP, you must set `SERVARR_MCP_TOKEN` (a shared bearer token for client authentication). The container will exit immediately if it is not set. For multiple environment variables, use `--env-file`:
+**Note:** The image defaults to the HTTP transport (`SERVARR_MCP_TRANSPORT=http`), which requires `SERVARR_MCP_TOKEN` — without it the container exits at startup. The URLs must be reachable from *inside* the container: `localhost` there is the container itself, not your host. Use the arr containers' names on a shared Docker network (as above), or their LAN addresses. For many variables, use `--env-file`:
 
 ```bash
 docker run --rm -p 3000:3000 --env-file .env ghcr.io/jfms7s/servarr-mcp:latest
@@ -102,17 +90,6 @@ export PROWLARR_API_KEY=your-prowlarr-key
 node dist/index.js
 ```
 
-Or with Docker:
-
-```bash
-docker run --rm -p 3000:3000 \
-  -e SONARR_URL=http://localhost:8989 \
-  -e SONARR_API_KEY=your-sonarr-key \
-  -e PROWLARR_URL=http://localhost:9696 \
-  -e PROWLARR_API_KEY=your-prowlarr-key \
-  ghcr.io/jfms7s/servarr-mcp:latest
-```
-
 The server will register 40 tools (26 Sonarr + 14 Prowlarr) and start normally. Radarr tools will not be available.
 
 ## Claude Desktop / Claude Code Setup
@@ -153,16 +130,19 @@ Replace `/path/to/servarr-mcp/dist/index.js` with the absolute path to the built
         "run",
         "--rm",
         "-i",
+        "--add-host=host.docker.internal:host-gateway",
         "--env",
-        "SONARR_URL=http://localhost:8989",
+        "SERVARR_MCP_TRANSPORT=stdio",
+        "--env",
+        "SONARR_URL=http://host.docker.internal:8989",
         "--env",
         "SONARR_API_KEY=your-sonarr-api-key",
         "--env",
-        "RADARR_URL=http://localhost:7878",
+        "RADARR_URL=http://host.docker.internal:7878",
         "--env",
         "RADARR_API_KEY=your-radarr-api-key",
         "--env",
-        "PROWLARR_URL=http://localhost:9696",
+        "PROWLARR_URL=http://host.docker.internal:9696",
         "--env",
         "PROWLARR_API_KEY=your-prowlarr-api-key",
         "ghcr.io/jfms7s/servarr-mcp:latest"
@@ -172,7 +152,7 @@ Replace `/path/to/servarr-mcp/dist/index.js` with the absolute path to the built
 }
 ```
 
-Replace `your-*-api-key` with your actual API keys from each application's Settings → General → API Key.
+Two things differ from the source setup. `SERVARR_MCP_TRANSPORT=stdio` is required: the image defaults to HTTP, and without the override it would neither speak stdio nor start at all (HTTP needs a token). And `localhost` inside the container is the container itself, so the arr apps on your host are reached through `host.docker.internal`, which the `--add-host` flag maps to the host on Linux (Docker Desktop provides it already). Replace `your-*-api-key` with your actual API keys from each application's Settings → General → API Key.
 
 ## Remote / HTTP Deployment
 
