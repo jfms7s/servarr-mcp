@@ -135,7 +135,9 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_calendar',
-      description: 'List episodes airing in a date range, defaulting to the next week.',
+      description:
+        'List episodes airing in a date range. Pass start and end for a predictable ' +
+        'window; if they are omitted Sonarr chooses its own short range around today.',
       inputSchema: {
         start: z.string().optional().describe('ISO date, inclusive'),
         end: z.string().optional().describe('ISO date, exclusive'),

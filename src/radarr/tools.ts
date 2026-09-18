@@ -151,7 +151,8 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
     defineTool({
       name: 'radarr_get_calendar',
       description:
-        'List movies with releases in a date range, defaulting to the next 14 days. ' +
+        'List movies with releases in a date range. Pass start and end for a predictable ' +
+        'window; if they are omitted Radarr chooses its own short range around today. ' +
         'Use this to see upcoming releases.',
       inputSchema: {
         start: z.string().optional().describe('ISO date, inclusive'),
