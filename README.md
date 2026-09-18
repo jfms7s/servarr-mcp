@@ -116,6 +116,15 @@ npx -y servarr-mcp
 
 The server will listen on the specified port on all interfaces, authenticated with a single bearer token. Control which interfaces can reach it using your container networking, firewall, or reverse proxy configuration.
 
+Two routes are served:
+
+| Route | Auth | Purpose |
+| --- | --- | --- |
+| `/mcp` | Bearer token required | The MCP endpoint |
+| `/healthz` | None | Liveness/readiness probes; returns `200 ok` |
+
+`/healthz` is deliberately unauthenticated so an orchestrator's probes can reach it — a probe cannot present a token, and `/mcp` answers an unauthenticated request with `401`, which a probe reads as a failing container. It reports only that this process is still serving. It deliberately does *not* check your Sonarr, Radarr or Prowlarr instances, so an outage in one of those will not get this container restarted or pulled out of service.
+
 ### ⚠️ Security Warning
 
 **The HTTP transport is dangerous.** It uses a single shared bearer token for authentication and grants full read/write access to your entire media stack, including the ability to delete series, movies, and files on disk. **Never expose this over the open internet.** The HTTP interface must be:

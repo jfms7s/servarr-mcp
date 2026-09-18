@@ -19,6 +19,16 @@ export async function startHttp(
 ): Promise<HttpHandle> {
   const app = express();
 
+  // Deliberately before bearerAuth and deliberately contentless: a Kubernetes
+  // probe cannot present a token, and /mcp answers an unauthenticated request
+  // with 401, which a probe reads as a failing container. Reaching here proves
+  // the event loop is still serving, which is what a probe is for -- it says
+  // nothing about the arr instances, and must never report on them, since that
+  // would take the pod down for an outage outside it.
+  app.get('/healthz', (_request, response) => {
+    response.type('text/plain').send('ok');
+  });
+
   app.all('/mcp', bearerAuth(options.token), express.json(), (request, response) => {
     void (async () => {
       const server = createMcpServer();

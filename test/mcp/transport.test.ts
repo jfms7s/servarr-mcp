@@ -83,6 +83,23 @@ describe('startHttp integration', () => {
     expect(JSON.stringify(body)).not.toContain(token);
   });
 
+  it('serves /healthz without a token and leaks nothing', async () => {
+    const token = 'test-secret-token';
+    handle = await startHttp(() => createServer([testTool]), {
+      port: 0,
+      token,
+    });
+
+    // Kubernetes probes cannot present a bearer token, and /mcp answers an
+    // unauthenticated probe with 401 -- which a probe reads as failure.
+    const response = await fetch(`http://localhost:${handle.port}/healthz`);
+
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).not.toContain(token);
+    expect(body).toBe('ok');
+  });
+
   it('rejects requests with wrong bearer token', async () => {
     const token = 'test-secret-token';
     handle = await startHttp(() => createServer([testTool]), {
