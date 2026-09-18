@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import type { RadarrClient } from '../../src/radarr/client.js';
 import { createRadarrTools } from '../../src/radarr/tools.js';
 
@@ -75,9 +76,10 @@ describe('createRadarrTools', () => {
 
   it('restricts run_command to supported command names', () => {
     const tool = createRadarrTools({} as RadarrClient).find((t) => t.name === 'radarr_run_command');
-    const shape = tool?.inputSchema as { name: { parse: (v: unknown) => unknown } };
-    expect(() => shape.name.parse('MoviesSearch')).not.toThrow();
-    expect(() => shape.name.parse('Nope')).toThrow();
+    if (!tool) throw new Error('radarr_run_command is not registered');
+    const schema = z.object(tool.inputSchema).pick({ name: true });
+    expect(() => schema.parse({ name: 'MoviesSearch' })).not.toThrow();
+    expect(() => schema.parse({ name: 'Nope' })).toThrow();
   });
 
   it('propagates client errors', async () => {

@@ -51,7 +51,10 @@ describe('startHttp integration', () => {
       arguments: { text: 'hello' },
     });
     expect(callResult.isError).toBeFalsy();
-    expect(callResult.content[0]?.type).toBe('text');
+    // The SDK types callTool's result loosely enough that content is unknown;
+    // narrow it to the shape toolResult() in src/mcp/server.ts actually emits.
+    const content = callResult.content as Array<{ type: string }>;
+    expect(content[0]?.type).toBe('text');
 
     // Third request: call again to verify multiple requests work
     const callResult2 = await client.callTool({

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import type { SonarrClient } from '../../src/sonarr/client.js';
 import { createSonarrTools } from '../../src/sonarr/tools.js';
 
@@ -89,9 +90,13 @@ describe('createSonarrTools', () => {
 
   it('restricts run_command to the supported command names', async () => {
     const tool = createSonarrTools({} as SonarrClient).find((t) => t.name === 'sonarr_run_command');
-    const shape = tool?.inputSchema as { name: { parse: (v: unknown) => unknown } };
-    expect(() => shape.name.parse('SeriesSearch')).not.toThrow();
-    expect(() => shape.name.parse('DropDatabase')).toThrow();
+    if (!tool) throw new Error('sonarr_run_command is not registered');
+    // Picked down to `name` so a rejection can only come from the enum, never
+    // from some other required field -- which would make the toThrow() below
+    // pass for the wrong reason.
+    const schema = z.object(tool.inputSchema).pick({ name: true });
+    expect(() => schema.parse({ name: 'SeriesSearch' })).not.toThrow();
+    expect(() => schema.parse({ name: 'DropDatabase' })).toThrow();
   });
 
   it('propagates client errors out of the handler', async () => {

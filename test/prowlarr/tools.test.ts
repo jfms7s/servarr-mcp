@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import type { ProwlarrClient } from '../../src/prowlarr/client.js';
 import { createProwlarrTools } from '../../src/prowlarr/tools.js';
 
@@ -51,8 +52,11 @@ describe('createProwlarrTools', () => {
 
   it('requires a non-empty search query', () => {
     const tool = createProwlarrTools({} as ProwlarrClient).find((t) => t.name === 'prowlarr_search');
-    const shape = tool?.inputSchema as { query: { parse: (v: unknown) => unknown } };
-    expect(() => shape.query.parse('')).toThrow();
+    if (!tool) throw new Error('prowlarr_search is not registered');
+    const schema = z.object(tool.inputSchema).pick({ query: true });
+    expect(() => schema.parse({ query: '' })).toThrow();
+    // Without the positive case, a schema rejecting every query would pass.
+    expect(() => schema.parse({ query: 'andor' })).not.toThrow();
   });
 
   it('propagates client errors', async () => {

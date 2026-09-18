@@ -3,19 +3,6 @@
 Findings from the final whole-branch review that were deliberately not fixed
 before merge. Each was triaged; none blocks the server from working.
 
-## Needs a decision
-
-### `tsc --noEmit` does not cover `test/**`
-
-`tsconfig.json` sets `include: ["src/**/*"]`, so 15 of 35 TypeScript files are
-never typechecked. The tests lean on casts that could drift from the real
-shapes with nothing failing.
-
-Adding `test/**` to `include` **breaks `npm run build`**, because `rootDir` is
-`src`. The fix is a separate `tsconfig.test.json` extending the base with
-`"include": ["src/**/*", "test/**/*"]`, `"noEmit": true`, `"rootDir": "."`, and
-pointing the `typecheck` script at it.
-
 ## Accepted, with reasoning
 
 - **Test breadth.** Roughly half the client methods and most tools have no
@@ -41,13 +28,19 @@ pointing the `typecheck` script at it.
 
 ## Unverified
 
-- **The Docker image has never been built.** Docker is not installed in the
-  environment this was developed in. The Dockerfile was reviewed by inspection
-  only: multi-stage, `npm ci --omit=dev`, non-root `USER node`, no secrets in
-  any layer. Build it once before publishing.
-- **No live instance was ever contacted.** Every endpoint path, query parameter
-  and response shape was verified against the products' published OpenAPI
-  specs, and the whole suite runs against mocked HTTP. Response types are not
-  validated at runtime, so a wrong declaration would be silent.
+- **Write paths have never run against a live instance.** The image is now
+  built and published multi-arch (amd64 + arm64), and it has been exercised
+  against real Sonarr, Radarr and Prowlarr in a k3s cluster -- but only
+  through read tools: the three `get_system_status` calls,
+  `prowlarr_list_indexers` and `sonarr_list_quality_profiles`. Every POST,
+  PUT and DELETE, including the destructive tools, has run only against
+  mocked HTTP. The one Critical bug found during the build was in exactly that
+  territory (`delete_queue_item` defaulting to removing downloads from the
+  client), so this is the gap most worth closing. A non-destructive way to
+  prove the write path: `sonarr_run_command` with `RefreshSeries`.
+- **Response types are not validated at runtime.** Paths, query parameters and
+  response shapes were checked against the published OpenAPI specs, and the
+  live reads above returned what the types declare. A wrong declaration on an
+  untested endpoint would still be silent.
 - **`npx servarr-mcp` in the README assumes publication.** Either publish to
   npm or drop those instructions until you do.
