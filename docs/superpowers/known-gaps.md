@@ -5,34 +5,6 @@ before merge. Each was triaged; none blocks the server from working.
 
 ## Needs a decision
 
-### Response shaping is missing on ~15 record types
-
-The spec requires list tools to return trimmed projections so a large library
-does not flood the context window. Shaping exists for series, episode, queue,
-movie and release — and stops there. These list tools return the raw upstream
-record:
-
-- `sonarr_list_quality_profiles` / `radarr_list_quality_profiles` — the full
-  profile including `items[]` (every quality with its allowed flag) and
-  `formatItems[]`. The spec names this case explicitly as what to avoid. The
-  only documented use is picking an id, so `{ id, name }` would do.
-- `prowlarr_list_indexers` — the full record including `fields[]` and
-  `capabilities.categories[]`, often 50+ categories per indexer. Its own
-  description claims it returns "protocol, priority and enabled state", which
-  is not what it returns.
-- `sonarr_list_episode_files` / `radarr_list_movie_files` — full file records
-  including `mediaInfo`, unpaginated, potentially hundreds per series.
-- Both blocklist tools, all three history tools, `prowlarr_list_applications`,
-  `prowlarr_list_download_clients`.
-
-The per-product `types.ts` files declare trimmed interfaces, which reads as if
-shaping is happening. It is not — TypeScript interfaces do not filter at
-runtime, and what reaches the LLM is whatever `JSON.parse` produced.
-
-**Do this together with the Prowlarr note below, not before it.** Shaping
-`getIndexer` would break `prowlarr_test_indexer`, which depends on `fields[]`
-round-tripping untouched.
-
 ### `tsc --noEmit` does not cover `test/**`
 
 `tsconfig.json` sets `include: ["src/**/*"]`, so 15 of 35 TypeScript files are
@@ -54,10 +26,15 @@ pointing the `typecheck` script at it.
 - **`response.text()` is read on 401/403 and discarded.** This looks wasteful
   but is deliberate: it guarantees an API key echoed back in an auth-failure
   body can never reach an error message.
-- **Prowlarr secret redaction is upstream's doing, not ours.** Provider
-  `fields[]` arrays hold tracker passkeys and download-client passwords;
-  Prowlarr replaces them with `********` server-side before serialising. This
-  codebase has no defence of its own if that ever changes.
+- **Prowlarr secret redaction is upstream's doing, not ours — on one
+  remaining path.** Provider `fields[]` arrays hold tracker passkeys and
+  download-client passwords; Prowlarr replaces them with `********`
+  server-side before serialising. The list tools no longer return `fields[]`
+  at all, so this now applies only to `prowlarr_get_indexer`, which returns
+  the full record by design (get-by-id does, per the spec) and is the one
+  input `prowlarr_test_indexer` round-trips back to Prowlarr. If upstream
+  ever stopped redacting, that one tool would hand real credentials to the
+  model.
 - **Bare id parameter descriptions** ("Sonarr series id") do not name the tool
   that supplies the id. The tools that genuinely need cross-referencing — the
   add/lookup/grab chains — all have it.
