@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { describe, expect, it } from 'vitest';
@@ -22,6 +23,17 @@ const echoTool = defineTool({
 });
 
 describe('createServer', () => {
+  it('reports the package.json version, not a hardcoded one', async () => {
+    // It was hardcoded as '0.1.0' and still said so while v0.1.2 was
+    // running in production. Reading package.json is what keeps a client's
+    // view of the server version honest across releases.
+    const { version } = JSON.parse(
+      readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+    ) as { version: string };
+    const client = await connect([echoTool]);
+    expect(client.getServerVersion()).toEqual({ name: 'servarr-mcp', version });
+  });
+
   it('lists registered tools with their descriptions', async () => {
     const client = await connect([echoTool]);
     const { tools } = await client.listTools();

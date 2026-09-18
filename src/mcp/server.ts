@@ -1,6 +1,14 @@
+import { createRequire } from 'node:module';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { describeError } from '../http/errors.js';
 import type { ToolDefinition } from './types.js';
+
+// Read at runtime rather than imported: package.json sits outside rootDir
+// ("src"), so a JSON import would drag the build's rootDir up and nest the
+// output under dist/src. The relative path resolves from both src/mcp (tests)
+// and dist/mcp (the built server; the Dockerfile copies package.json to the
+// app root alongside dist/).
+const { version } = createRequire(import.meta.url)('../../package.json') as { version: string };
 
 export function toolResult(value: unknown): { content: Array<{ type: 'text'; text: string }> } {
   const text = value === undefined ? 'Success.' : JSON.stringify(value, null, 2);
@@ -8,7 +16,7 @@ export function toolResult(value: unknown): { content: Array<{ type: 'text'; tex
 }
 
 export function createServer(tools: ToolDefinition[]): McpServer {
-  const server = new McpServer({ name: 'servarr-mcp', version: '0.1.0' });
+  const server = new McpServer({ name: 'servarr-mcp', version });
 
   for (const tool of tools) {
     server.registerTool(

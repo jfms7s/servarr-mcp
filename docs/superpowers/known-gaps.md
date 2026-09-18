@@ -28,19 +28,16 @@ before merge. Each was triaged; none blocks the server from working.
 
 ## Unverified
 
-- **Write paths have never run against a live instance.** The image is now
-  built and published multi-arch (amd64 + arm64), and it has been exercised
-  against real Sonarr, Radarr and Prowlarr in a k3s cluster -- but only
-  through read tools: the three `get_system_status` calls,
-  `prowlarr_list_indexers` and `sonarr_list_quality_profiles`. Every POST,
-  PUT and DELETE, including the destructive tools, has run only against
-  mocked HTTP. The one Critical bug found during the build was in exactly that
-  territory (`delete_queue_item` defaulting to removing downloads from the
-  client), so this is the gap most worth closing. A non-destructive way to
-  prove the write path: `sonarr_run_command` with `RefreshSeries`.
+- **Destructive write paths have never run against a live instance.** The
+  write path itself is proven: `sonarr_run_command` (`RefreshSeries` on one
+  series) was POSTed through the deployed server to real Sonarr, and
+  `sonarr_get_command` followed the returned command from `started` to
+  `completed`. What has not run live are the PUT and DELETE tools --
+  `update_*`, `monitor_episodes` and every `delete_*`. The one Critical bug
+  found during the build was in that territory (`delete_queue_item`
+  defaulting to removing downloads from the client); it is fixed and
+  regression-tested, but against mocked HTTP.
 - **Response types are not validated at runtime.** Paths, query parameters and
   response shapes were checked against the published OpenAPI specs, and the
   live reads above returned what the types declare. A wrong declaration on an
   untested endpoint would still be silent.
-- **`npx servarr-mcp` in the README assumes publication.** Either publish to
-  npm or drop those instructions until you do.
