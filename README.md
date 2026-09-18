@@ -1,0 +1,247 @@
+# servarr-mcp
+
+An MCP server exposing Sonarr, Radarr, and Prowlarr to an LLM client. Connect Claude or another MCP-compatible LLM to your media stack and ask it to search for content, manage your library, check download status, and more — all via natural language.
+
+This server reaches Sonarr and Radarr at their `/api/v3` endpoints, and Prowlarr at `/api/v1`. (Note: Sonarr's published documentation often references "v5" in the URL, but that is the *application* version, not the API version — use v3.)
+
+## Install
+
+### With npx
+
+```bash
+npx -y servarr-mcp
+```
+
+The server will start on a stdio interface, expecting MCP protocol messages. Use this command in your MCP client's configuration.
+
+### With Docker
+
+```dockerfile
+FROM servarr-mcp:latest
+ENV SONARR_URL=http://your-sonarr:8989
+ENV SONARR_API_KEY=your-key
+ENV RADARR_URL=http://your-radarr:7878
+ENV RADARR_API_KEY=your-key
+ENV PROWLARR_URL=http://your-prowlarr:9696
+ENV PROWLARR_API_KEY=your-key
+```
+
+Build with:
+```bash
+docker build -t servarr-mcp:latest .
+```
+
+## Configuration
+
+The server reads configuration from environment variables. Each product is **independently optional** — you can configure only the ones you use. The server will fail to start only if *no* products are configured.
+
+| Variable | Example | Required | Purpose |
+|----------|---------|----------|---------|
+| `SONARR_URL` | `http://localhost:8989` | No | Base URL of your Sonarr instance |
+| `SONARR_API_KEY` | `abc123def456` | Only if `SONARR_URL` is set | API key from Sonarr Settings → General |
+| `RADARR_URL` | `http://localhost:7878` | No | Base URL of your Radarr instance |
+| `RADARR_API_KEY` | `abc123def456` | Only if `RADARR_URL` is set | API key from Radarr Settings → General |
+| `PROWLARR_URL` | `http://localhost:9696` | No | Base URL of your Prowlarr instance |
+| `PROWLARR_API_KEY` | `abc123def456` | Only if `PROWLARR_URL` is set | API key from Prowlarr Settings → General |
+
+### Example: Sonarr and Prowlarr only
+
+If you only want to use Sonarr and Prowlarr, set only these:
+
+```bash
+export SONARR_URL=http://localhost:8989
+export SONARR_API_KEY=your-sonarr-key
+export PROWLARR_URL=http://localhost:9696
+export PROWLARR_API_KEY=your-prowlarr-key
+npx -y servarr-mcp
+```
+
+The server will register 40 tools (26 Sonarr + 14 Prowlarr) and start normally. Radarr tools will not be available.
+
+## Claude Desktop / Claude Code Setup
+
+Add this to your `claude_desktop_config.json` or Claude Code MCP server configuration:
+
+```json
+{
+  "mcpServers": {
+    "servarr": {
+      "command": "npx",
+      "args": ["-y", "servarr-mcp"],
+      "env": {
+        "SONARR_URL": "http://localhost:8989",
+        "SONARR_API_KEY": "your-sonarr-api-key",
+        "RADARR_URL": "http://localhost:7878",
+        "RADARR_API_KEY": "your-radarr-api-key",
+        "PROWLARR_URL": "http://localhost:9696",
+        "PROWLARR_API_KEY": "your-prowlarr-api-key"
+      }
+    }
+  }
+}
+```
+
+Replace `your-*-api-key` with your actual API keys from each application's Settings → General → API Key.
+
+## Remote / HTTP Deployment
+
+For a remote setup (e.g., accessing Sonarr from a separate machine), use the HTTP transport:
+
+```bash
+export SERVARR_MCP_TRANSPORT=http
+export SERVARR_MCP_HOST=0.0.0.0
+export SERVARR_MCP_PORT=3000
+export SERVARR_MCP_TOKEN=your-shared-bearer-token
+npx -y servarr-mcp
+```
+
+The server will accept HTTP connections on the specified port, authenticated with a single bearer token.
+
+### ⚠️ Security Warning
+
+**The HTTP transport is dangerous.** It uses a single shared bearer token for authentication and grants full read/write access to your entire media stack, including the ability to delete series, movies, and files on disk. **Never expose this over the open internet.** The HTTP interface must be:
+
+1. Behind a VPN
+2. Protected by a reverse proxy with additional authentication (e.g., basic auth, OAuth)
+3. On a trusted LAN only
+
+A compromised bearer token gives an attacker complete control to delete your library. Use HTTP only in environments you fully control.
+
+## Tools
+
+This server exposes 64 tools across the three products.
+
+### Sonarr (26 tools)
+
+| Tool | Purpose |
+|------|---------|
+| `sonarr_list_series` | List all TV series in the Sonarr library |
+| `sonarr_get_series` | Get the full record for one series, including all seasons |
+| `sonarr_lookup_series` | Search TheTVDB for series matching a search term |
+| `sonarr_add_series` | Add a new series to Sonarr |
+| `sonarr_delete_series` | Remove a series from Sonarr (optionally delete files) |
+| `sonarr_update_series` | Update series settings (monitored, quality profile, tags, season folders) |
+| `sonarr_list_episodes` | List episodes for a series or season |
+| `sonarr_get_episode` | Get the full record for one episode |
+| `sonarr_monitor_episodes` | Set monitored state for one or more episodes |
+| `sonarr_list_episode_files` | List downloaded episode files for a series |
+| `sonarr_delete_episode_file` | Permanently delete an episode file |
+| `sonarr_get_queue` | List items currently downloading or awaiting import |
+| `sonarr_delete_queue_item` | Remove an item from the download queue |
+| `sonarr_get_calendar` | List episodes airing in a date range |
+| `sonarr_get_history` | List download, import, and grab event history |
+| `sonarr_get_wanted_missing` | List wanted but missing episodes |
+| `sonarr_get_blocklist` | List releases on the blocklist |
+| `sonarr_delete_blocklist_item` | Remove a release from the blocklist |
+| `sonarr_run_command` | Trigger a background command (search, rescan, refresh) |
+| `sonarr_get_command` | Poll the status of a background command |
+| `sonarr_list_quality_profiles` | List available quality profiles |
+| `sonarr_list_root_folders` | List configured root folders |
+| `sonarr_list_tags` | List all tags available for series organization |
+| `sonarr_get_system_status` | Get Sonarr version and system information |
+| `sonarr_get_health` | Check Sonarr health status and warnings |
+| `sonarr_get_disk_space` | List disk space on drives containing series |
+
+### Radarr (24 tools)
+
+| Tool | Purpose |
+|------|---------|
+| `radarr_list_movies` | List all movies in the Radarr library |
+| `radarr_get_movie` | Get the full record for one movie |
+| `radarr_lookup_movie` | Search TMDB for movies matching a search term |
+| `radarr_add_movie` | Add a new movie to Radarr |
+| `radarr_update_movie` | Update movie settings (monitored, quality profile, tags, availability) |
+| `radarr_delete_movie` | Remove a movie from Radarr (optionally delete files) |
+| `radarr_list_movie_files` | List downloaded movie files for a movie |
+| `radarr_delete_movie_file` | Permanently delete a movie file |
+| `radarr_get_calendar` | List movies with releases in a date range |
+| `radarr_get_queue` | List items currently downloading or awaiting import |
+| `radarr_delete_queue_item` | Remove an item from the download queue |
+| `radarr_get_history` | List download, import, and grab event history |
+| `radarr_get_wanted_missing` | List wanted but missing movies |
+| `radarr_get_blocklist` | List releases on the blocklist |
+| `radarr_delete_blocklist_item` | Remove a release from the blocklist |
+| `radarr_list_collections` | List all movie collections |
+| `radarr_run_command` | Trigger a background command (search, rescan, refresh) |
+| `radarr_get_command` | Poll the status of a background command |
+| `radarr_list_quality_profiles` | List available quality profiles |
+| `radarr_list_root_folders` | List configured root folders |
+| `radarr_list_tags` | List all tags available for movie organization |
+| `radarr_get_system_status` | Get Radarr version and system information |
+| `radarr_get_health` | Check Radarr health status and warnings |
+| `radarr_get_disk_space` | List disk space on drives containing movies |
+
+### Prowlarr (14 tools)
+
+| Tool | Purpose |
+|------|---------|
+| `prowlarr_search` | Search configured indexers for releases |
+| `prowlarr_grab_release` | Send a release to the download client |
+| `prowlarr_list_indexers` | List configured indexers with protocol and status |
+| `prowlarr_get_indexer` | Get details about a specific indexer |
+| `prowlarr_test_indexer` | Test connectivity of an indexer |
+| `prowlarr_get_indexer_stats` | Get query and grab statistics for each indexer |
+| `prowlarr_get_indexer_status` | Get health and backoff status of indexers |
+| `prowlarr_list_categories` | List newznab categories supported by indexers |
+| `prowlarr_get_history` | Get history of indexer queries and grabs |
+| `prowlarr_list_applications` | List *arr applications synced by Prowlarr |
+| `prowlarr_list_download_clients` | List download clients configured in Prowlarr |
+| `prowlarr_run_command` | Run administrative commands (sync, health check) |
+| `prowlarr_get_system_status` | Get Prowlarr version and system information |
+| `prowlarr_get_health` | Get health check results for Prowlarr |
+
+## Finding Your API Key
+
+In each application's web UI:
+
+1. Go to **Settings**
+2. Click **General**
+3. Scroll to the **API Key** field
+4. Copy the entire string
+
+This is a sensitive credential — treat it like a password. Do not commit it to version control or share it.
+
+## Development
+
+### Prerequisites
+
+- Node.js 20 or later
+- npm 10+
+
+### Running Tests
+
+```bash
+npm test
+```
+
+### Linting and Type Checking
+
+```bash
+npm run lint
+npm run typecheck
+```
+
+### Building
+
+```bash
+npm run build
+```
+
+This emits compiled JavaScript to `dist/index.js`.
+
+### Running Locally
+
+```bash
+# Set up environment variables
+export SONARR_URL=http://localhost:8989
+export SONARR_API_KEY=your-key
+# ... other env vars
+
+npx ts-node src/index.ts
+```
+
+Or after building:
+
+```bash
+node dist/index.js
+```
