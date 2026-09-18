@@ -36,7 +36,9 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
       name: 'prowlarr_grab_release',
       description:
         'Send a release to the download client configured in Prowlarr. Get guid and indexerId ' +
-        'from prowlarr_search.',
+        'from prowlarr_search. This bypasses Sonarr and Radarr: they will not track or import ' +
+        'the download. For a TV episode or movie, use sonarr_grab_release or ' +
+        'radarr_grab_release instead.',
       inputSchema: {
         guid: z.string().min(1).describe('Release guid from prowlarr_search'),
         indexerId: z.number().int().describe('Indexer id from prowlarr_search'),
