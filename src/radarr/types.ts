@@ -157,3 +157,27 @@ export interface PageParams {
   page?: number;
   pageSize?: number;
 }
+
+export interface Release {
+  guid: string;
+  title: string;
+  indexerId: number;
+  indexer: string;
+  size: number;
+  age: number;
+  protocol: string;
+  seeders?: number;
+  leechers?: number;
+  releaseGroup?: string;
+  edition?: string;
+  languages?: Array<{ id: number; name: string }>;
+  quality?: { quality: { id: number; name: string } };
+  customFormatScore?: number;
+  approved: boolean;
+  rejections?: string[];
+}
+
+export interface GrabReleasePayload {
+  guid: string;
+  indexerId: number;
+}

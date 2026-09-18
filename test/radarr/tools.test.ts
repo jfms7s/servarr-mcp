@@ -25,11 +25,11 @@ const movie = {
 };
 
 describe('createRadarrTools', () => {
-  it('registers all 24 tools with unique radarr_ prefixed names', () => {
+  it('registers all 26 tools with unique radarr_ prefixed names', () => {
     const names = createRadarrTools({} as RadarrClient).map((t) => t.name);
-    expect(names).toHaveLength(24);
+    expect(names).toHaveLength(26);
     expect(names.every((n) => n.startsWith('radarr_'))).toBe(true);
-    expect(new Set(names).size).toBe(24);
+    expect(new Set(names).size).toBe(26);
   });
 
   it('summarises the movie list', async () => {
@@ -121,5 +121,138 @@ describe('createRadarrTools', () => {
         tags: [1, 2],
       }),
     );
+  });
+
+  it('search_releases assigns rank to full unfiltered list, then filters', async () => {
+    const searchReleases = vi.fn().mockResolvedValue([
+      {
+        guid: 'abc-123',
+        title: 'Dune.2021.1080p.BluRay',
+        indexerId: 1,
+        indexer: 'Indexer1',
+        size: 5368709120,
+        age: 14,
+        protocol: 'torrent',
+        approved: true,
+      },
+      {
+        guid: 'def-456',
+        title: 'Dune.2021.720p.BluRay',
+        indexerId: 2,
+        indexer: 'Indexer2',
+        size: 2684354560,
+        age: 10,
+        protocol: 'torrent',
+        approved: false,
+      },
+      {
+        guid: 'ghi-789',
+        title: 'Dune.2021.1080p.WEB-DL',
+        indexerId: 1,
+        indexer: 'Indexer1',
+        size: 4294967296,
+        age: 5,
+        protocol: 'torrent',
+        approved: true,
+      },
+    ]);
+    const get = toolsFor({ searchReleases });
+
+    interface SearchResult {
+      total: number;
+      matched: number;
+      returned: number;
+      releases: Array<{ rank: number }>;
+    }
+
+    // No filters
+    const result1 = (await get('radarr_search_releases').handler({
+      movieId: 12,
+    })) as SearchResult;
+    expect(result1.total).toBe(3);
+    expect(result1.matched).toBe(3);
+    expect(result1.returned).toBe(3);
+    expect(result1.releases).toHaveLength(3);
+    expect(result1.releases[0].rank).toBe(1);
+    expect(result1.releases[1].rank).toBe(2);
+    expect(result1.releases[2].rank).toBe(3);
+
+    // With titleContains filter (case-insensitive)
+    const result2 = (await get('radarr_search_releases').handler({
+      movieId: 12,
+      titleContains: '1080p',
+    })) as SearchResult;
+    expect(result2.total).toBe(3);
+    expect(result2.matched).toBe(2);
+    expect(result2.returned).toBe(2);
+    expect(result2.releases[0].rank).toBe(1);
+    expect(result2.releases[1].rank).toBe(3);
+
+    // With approvedOnly filter
+    const result3 = (await get('radarr_search_releases').handler({
+      movieId: 12,
+      approvedOnly: true,
+    })) as SearchResult;
+    expect(result3.total).toBe(3);
+    expect(result3.matched).toBe(2);
+    expect(result3.returned).toBe(2);
+
+    // With limit
+    const result4 = (await get('radarr_search_releases').handler({
+      movieId: 12,
+      limit: 2,
+    })) as SearchResult;
+    expect(result4.total).toBe(3);
+    expect(result4.matched).toBe(3);
+    expect(result4.returned).toBe(2);
+  });
+
+  it('search_releases defaults titleContains to case-insensitive and limit to 20', async () => {
+    const searchReleases = vi.fn().mockResolvedValue([
+      {
+        guid: 'test',
+        title: 'DUNE.2021.1080P',
+        indexerId: 1,
+        indexer: 'Indexer',
+        size: 5368709120,
+        age: 1,
+        protocol: 'torrent',
+        approved: true,
+      },
+    ]);
+    const get = toolsFor({ searchReleases });
+
+    // titleContains is case-insensitive
+    const result = (await get('radarr_search_releases').handler({
+      movieId: 12,
+      titleContains: 'dune',
+    })) as unknown as { returned: number };
+    expect(result.returned).toBe(1);
+
+    // Default limit is 20
+    const resultNoLimit = (await get('radarr_search_releases').handler({
+      movieId: 12,
+    })) as unknown as { returned: number };
+    expect(resultNoLimit.returned).toBe(1);
+  });
+
+  it('grab_release sends only guid and indexerId', async () => {
+    const grabRelease = vi.fn().mockResolvedValue({
+      guid: 'abc-123',
+      title: 'Dune.2021.1080p',
+      indexerId: 1,
+      indexer: 'Indexer',
+      size: 5368709120,
+      age: 14,
+      protocol: 'torrent',
+      approved: true,
+    });
+    const get = toolsFor({ grabRelease });
+    const result = (await get('radarr_grab_release').handler({
+      guid: 'abc-123',
+      indexerId: 1,
+    })) as unknown as { grabbed: boolean };
+    expect(grabRelease).toHaveBeenCalledWith({ guid: 'abc-123', indexerId: 1 });
+    expect(result.grabbed).toBe(true);
   });
 });

@@ -7,6 +7,7 @@ import type {
   CommandPayload,
   CommandResource,
   DiskSpace,
+  GrabReleasePayload,
   HealthCheck,
   HistoryRecord,
   Movie,
@@ -15,6 +16,7 @@ import type {
   PagedResponse,
   QualityProfile,
   QueueRecord,
+  Release,
   RootFolder,
   SystemStatus,
   Tag,
@@ -64,6 +66,8 @@ export interface RadarrClient {
   listCollections(): Promise<Collection[]>;
   runCommand(payload: CommandPayload): Promise<CommandResource>;
   getCommand(id: number): Promise<CommandResource>;
+  searchReleases(movieId: number): Promise<Release[]>;
+  grabRelease(payload: GrabReleasePayload): Promise<Release>;
   listQualityProfiles(): Promise<QualityProfile[]>;
   listRootFolders(): Promise<RootFolder[]>;
   listTags(): Promise<Tag[]>;
@@ -100,6 +104,8 @@ export function createRadarrClient(config: InstanceConfig): RadarrClient {
     listCollections: () => http.get('/collection'),
     runCommand: (payload) => http.post('/command', payload),
     getCommand: (id) => http.get(`/command/${id}`),
+    searchReleases: (movieId) => http.get('/release', { movieId }),
+    grabRelease: (payload) => http.post('/release', payload),
     listQualityProfiles: () => http.get('/qualityprofile'),
     listRootFolders: () => http.get('/rootfolder'),
     listTags: () => http.get('/tag'),

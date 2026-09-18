@@ -5,6 +5,7 @@ import {
   summarizeHistoryRecord,
   summarizeMovieFile,
   summarizeQualityProfile,
+  summarizeRelease,
 } from '../../src/radarr/shape.js';
 import type {
   BlocklistRecord,
@@ -12,6 +13,7 @@ import type {
   HistoryRecord,
   MovieFile,
   QualityProfile,
+  Release,
 } from '../../src/radarr/types.js';
 
 describe('summarizeQualityProfile', () => {
@@ -142,5 +144,87 @@ describe('summarizeCollection', () => {
   it('reports zero members when the collection has no movies array', () => {
     const collection = { id: 3, title: 'Empty', tmdbId: 1, monitored: false } as Collection;
     expect(summarizeCollection(collection).movieCount).toBe(0);
+  });
+});
+
+describe('summarizeRelease', () => {
+  it('keeps verbatim rejections and returns exact key set', () => {
+    // Raw release payloads are ~5 KB each, and rejections are kept verbatim
+    // because they are the exact reasons Radarr declines a release.
+    const release = {
+      guid: 'abc-123-def',
+      title: 'Dune.Part.Two.2024.2160p.UHD.BluRay.x265',
+      indexerId: 2,
+      indexer: 'My Indexer',
+      size: 53_687_091_200,
+      age: 7,
+      protocol: 'torrent',
+      seeders: 42,
+      leechers: 5,
+      releaseGroup: 'GROUP',
+      edition: 'Extended',
+      languages: [{ id: 1, name: 'English' }, { id: 3, name: 'German' }],
+      quality: { quality: { id: 19, name: 'Bluray-2160p' } },
+      customFormatScore: 95,
+      approved: false,
+      rejections: [
+        'Existing file meets cutoff: Bluray-1080p',
+        'Custom format score (95) is below required score (100)',
+      ],
+      downloadUrl: 'https://example.com/download',
+      infoUrl: 'https://example.com/info',
+    } as unknown as Release;
+
+    const result = summarizeRelease(release, 1);
+
+    expect(Object.keys(result).sort()).toEqual([
+      'ageDays',
+      'approved',
+      'customFormatScore',
+      'edition',
+      'guid',
+      'indexer',
+      'indexerId',
+      'languages',
+      'leechers',
+      'protocol',
+      'quality',
+      'rank',
+      'rejections',
+      'releaseGroup',
+      'seeders',
+      'sizeGb',
+      'title',
+    ]);
+    expect(result.rank).toBe(1);
+    expect(result.sizeGb).toBe(50);
+    expect(result.ageDays).toBe(7);
+    expect(result.quality).toBe('Bluray-2160p');
+    expect(result.languages).toEqual(['English', 'German']);
+    expect(result.rejections).toEqual([
+      'Existing file meets cutoff: Bluray-1080p',
+      'Custom format score (95) is below required score (100)',
+    ]);
+  });
+
+  it('returns empty arrays when optional fields are absent', () => {
+    const release = {
+      guid: 'xyz-789',
+      title: 'Movie.2024.1080p',
+      indexerId: 1,
+      indexer: 'Indexer',
+      size: 5368709120,
+      age: 3,
+      protocol: 'torrent',
+      approved: true,
+    } as Release;
+
+    const result = summarizeRelease(release, 2);
+
+    expect(result.languages).toEqual([]);
+    expect(result.rejections).toEqual([]);
+    expect(result.seeders).toBeUndefined();
+    expect(result.leechers).toBeUndefined();
+    expect(result.quality).toBeUndefined();
   });
 });
