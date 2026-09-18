@@ -4,7 +4,11 @@ An MCP server exposing Sonarr, Radarr, and Prowlarr to an LLM client. Connect Cl
 
 This server reaches Sonarr and Radarr at their `/api/v3` endpoints, and Prowlarr at `/api/v1`. (Note: Sonarr's published documentation often references "v5" in the URL, but that is the *application* version, not the API version — use v3.)
 
+**Important:** This server grants any connected MCP client full read/write access to your media stack, including the ability to permanently delete series, movies, and files on disk. Any LLM you connect can invoke destructive tools. Understand this before enabling it, and configure your MCP client with appropriate safeguards.
+
 ## Install
+
+**Prerequisites:** Node.js 20 or later.
 
 ### With npx
 
@@ -16,20 +20,33 @@ The server will start on a stdio interface, expecting MCP protocol messages. Use
 
 ### With Docker
 
-```dockerfile
-FROM servarr-mcp:latest
-ENV SONARR_URL=http://your-sonarr:8989
-ENV SONARR_API_KEY=your-key
-ENV RADARR_URL=http://your-radarr:7878
-ENV RADARR_API_KEY=your-key
-ENV PROWLARR_URL=http://your-prowlarr:9696
-ENV PROWLARR_API_KEY=your-key
+Build the image once:
+
+```bash
+docker build -t servarr-mcp .
 ```
 
-Build with:
+Then run it with your configuration passed at container startup:
+
 ```bash
-docker build -t servarr-mcp:latest .
+docker run --rm -p 3000:3000 \
+  -e SONARR_URL=http://sonarr:8989 \
+  -e SONARR_API_KEY=your-sonarr-api-key \
+  -e RADARR_URL=http://radarr:7878 \
+  -e RADARR_API_KEY=your-radarr-api-key \
+  -e PROWLARR_URL=http://prowlarr:9696 \
+  -e PROWLARR_API_KEY=your-prowlarr-api-key \
+  -e SERVARR_MCP_TOKEN=a-long-random-secret \
+  servarr-mcp
 ```
+
+**Note:** The HTTP transport requires `SERVARR_MCP_TOKEN` (a shared bearer token for client authentication). The container will exit immediately if it is not set. For multiple environment variables, use `--env-file`:
+
+```bash
+docker run --rm -p 3000:3000 --env-file .env servarr-mcp
+```
+
+Where `.env` contains your configuration lines (one per line: `VAR_NAME=value`).
 
 ## Configuration
 
@@ -89,13 +106,12 @@ For a remote setup (e.g., accessing Sonarr from a separate machine), use the HTT
 
 ```bash
 export SERVARR_MCP_TRANSPORT=http
-export SERVARR_MCP_HOST=0.0.0.0
 export SERVARR_MCP_PORT=3000
 export SERVARR_MCP_TOKEN=your-shared-bearer-token
 npx -y servarr-mcp
 ```
 
-The server will accept HTTP connections on the specified port, authenticated with a single bearer token.
+The server will listen on the specified port on all interfaces, authenticated with a single bearer token. Control which interfaces can reach it using your container networking, firewall, or reverse proxy configuration.
 
 ### ⚠️ Security Warning
 
@@ -119,20 +135,20 @@ This server exposes 64 tools across the three products.
 | `sonarr_get_series` | Get the full record for one series, including all seasons |
 | `sonarr_lookup_series` | Search TheTVDB for series matching a search term |
 | `sonarr_add_series` | Add a new series to Sonarr |
-| `sonarr_delete_series` | Remove a series from Sonarr (optionally delete files) |
+| `sonarr_delete_series` | **Destructive:** Remove a series from Sonarr (optionally delete files) |
 | `sonarr_update_series` | Update series settings (monitored, quality profile, tags, season folders) |
 | `sonarr_list_episodes` | List episodes for a series or season |
 | `sonarr_get_episode` | Get the full record for one episode |
 | `sonarr_monitor_episodes` | Set monitored state for one or more episodes |
 | `sonarr_list_episode_files` | List downloaded episode files for a series |
-| `sonarr_delete_episode_file` | Permanently delete an episode file |
+| `sonarr_delete_episode_file` | **Destructive:** Permanently delete an episode file |
 | `sonarr_get_queue` | List items currently downloading or awaiting import |
-| `sonarr_delete_queue_item` | Remove an item from the download queue |
+| `sonarr_delete_queue_item` | **Destructive:** Remove an item from the download queue |
 | `sonarr_get_calendar` | List episodes airing in a date range |
 | `sonarr_get_history` | List download, import, and grab event history |
 | `sonarr_get_wanted_missing` | List wanted but missing episodes |
 | `sonarr_get_blocklist` | List releases on the blocklist |
-| `sonarr_delete_blocklist_item` | Remove a release from the blocklist |
+| `sonarr_delete_blocklist_item` | **Destructive:** Remove a release from the blocklist |
 | `sonarr_run_command` | Trigger a background command (search, rescan, refresh) |
 | `sonarr_get_command` | Poll the status of a background command |
 | `sonarr_list_quality_profiles` | List available quality profiles |
@@ -151,16 +167,16 @@ This server exposes 64 tools across the three products.
 | `radarr_lookup_movie` | Search TMDB for movies matching a search term |
 | `radarr_add_movie` | Add a new movie to Radarr |
 | `radarr_update_movie` | Update movie settings (monitored, quality profile, tags, availability) |
-| `radarr_delete_movie` | Remove a movie from Radarr (optionally delete files) |
+| `radarr_delete_movie` | **Destructive:** Remove a movie from Radarr (optionally delete files) |
 | `radarr_list_movie_files` | List downloaded movie files for a movie |
-| `radarr_delete_movie_file` | Permanently delete a movie file |
+| `radarr_delete_movie_file` | **Destructive:** Permanently delete a movie file |
 | `radarr_get_calendar` | List movies with releases in a date range |
 | `radarr_get_queue` | List items currently downloading or awaiting import |
-| `radarr_delete_queue_item` | Remove an item from the download queue |
+| `radarr_delete_queue_item` | **Destructive:** Remove an item from the download queue |
 | `radarr_get_history` | List download, import, and grab event history |
 | `radarr_get_wanted_missing` | List wanted but missing movies |
 | `radarr_get_blocklist` | List releases on the blocklist |
-| `radarr_delete_blocklist_item` | Remove a release from the blocklist |
+| `radarr_delete_blocklist_item` | **Destructive:** Remove a release from the blocklist |
 | `radarr_list_collections` | List all movie collections |
 | `radarr_run_command` | Trigger a background command (search, rescan, refresh) |
 | `radarr_get_command` | Poll the status of a background command |
@@ -231,17 +247,19 @@ This emits compiled JavaScript to `dist/index.js`.
 
 ### Running Locally
 
+First build the project, then run it:
+
+```bash
+npm run build
+```
+
+Then start the server with your configuration:
+
 ```bash
 # Set up environment variables
 export SONARR_URL=http://localhost:8989
 export SONARR_API_KEY=your-key
 # ... other env vars
 
-npx ts-node src/index.ts
-```
-
-Or after building:
-
-```bash
 node dist/index.js
 ```
