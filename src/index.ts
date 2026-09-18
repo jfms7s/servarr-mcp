@@ -18,11 +18,31 @@ async function main(): Promise<void> {
   console.error(`servarr-mcp: ${tools.length} tools from ${enabled.join(', ')}`);
 
   if (config.transport === 'http' || config.transport === 'both') {
-    await startHttp(() => createServer(tools), {
+    const http = await startHttp(() => createServer(tools), {
       port: config.port,
       token: config.token as string,
     });
     console.error(`servarr-mcp: http transport listening on port ${config.port}`);
+
+    // This process is PID 1 in a container, and the kernel applies no default
+    // signal disposition to PID 1 -- without these handlers SIGTERM is ignored
+    // outright and every pod rollout waits out the full termination grace
+    // period before being SIGKILLed.
+    for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+      process.once(signal, () => {
+        // Don't let a stuck connection hold the pod open for the whole grace
+        // period; close() resolving first cancels this.
+        const forceExit = setTimeout(() => process.exit(0), 5000);
+        forceExit.unref();
+        void http.close().then(
+          () => process.exit(0),
+          (error: unknown) => {
+            console.error(error);
+            process.exit(1);
+          },
+        );
+      });
+    }
   }
 
   if (config.transport === 'stdio' || config.transport === 'both') {

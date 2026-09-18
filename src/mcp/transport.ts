@@ -48,6 +48,9 @@ export async function startHttp(
     close: () =>
       new Promise<void>((resolve, reject) => {
         listener.close((error) => (error ? reject(error) : resolve()));
+        // close() alone stops new connections but waits for keep-alive ones to
+        // go idle on their own, which a polling MCP client may never do.
+        listener.closeIdleConnections();
       }),
   };
 }
