@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { ProwlarrClient } from './client.js';
-import { summarizeRelease } from './shape.js';
+import {
+  summarizeApplication,
+  summarizeDownloadClient,
+  summarizeHistoryRecord,
+  summarizeIndexer,
+  summarizeRelease,
+} from './shape.js';
 
 export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
   return [
@@ -40,9 +46,11 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_list_indexers',
-      description: 'List configured indexers with their protocol, priority and enabled state.',
+      description:
+        'List configured indexers with their protocol, priority and enabled state. Use ' +
+        'prowlarr_get_indexer for one indexer\'s full configuration, including its fields.',
       inputSchema: {},
-      handler: () => client.listIndexers(),
+      handler: async () => (await client.listIndexers()).map(summarizeIndexer),
     }),
 
     defineTool({
@@ -101,7 +109,10 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
         pageSize: z.number().int().min(1).optional().describe('Results per page (default 20)'),
         eventType: z.number().int().optional().describe('Filter by event type'),
       },
-      handler: (args) => client.getHistory(args),
+      handler: async (args) => {
+        const response = await client.getHistory(args);
+        return { ...response, records: response.records.map(summarizeHistoryRecord) };
+      },
     }),
 
     defineTool({
@@ -109,14 +120,14 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
       description:
         'List the *arr applications (Sonarr, Radarr, etc.) that Prowlarr syncs indexers to.',
       inputSchema: {},
-      handler: () => client.listApplications(),
+      handler: async () => (await client.listApplications()).map(summarizeApplication),
     }),
 
     defineTool({
       name: 'prowlarr_list_download_clients',
       description: 'List download clients configured in Prowlarr.',
       inputSchema: {},
-      handler: () => client.listDownloadClients(),
+      handler: async () => (await client.listDownloadClients()).map(summarizeDownloadClient),
     }),
 
     defineTool({

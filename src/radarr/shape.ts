@@ -1,4 +1,12 @@
-import type { Movie, QueueRecord } from './types.js';
+import type {
+  BlocklistRecord,
+  Collection,
+  HistoryRecord,
+  Movie,
+  MovieFile,
+  QualityProfile,
+  QueueRecord,
+} from './types.js';
 
 const MAX_OVERVIEW = 300;
 
@@ -72,5 +80,115 @@ export function summarizeQueueRecord(record: QueueRecord): QueueSummary {
     downloadClient: record.downloadClient,
     errorMessage: record.errorMessage,
     statusMessages: statusMessages?.length ? statusMessages : undefined,
+  };
+}
+
+// See the note on sonarr/shape.ts's list summaries: a TypeScript interface
+// filters nothing at runtime, so these tools returned the full upstream
+// record until now. Collections are the Radarr-only case -- the movies[]
+// array is kept but reduced to identity, since an upstream collection
+// carries a full Movie object per entry.
+
+export interface QualityProfileSummary {
+  id: number;
+  name: string;
+  upgradeAllowed: boolean;
+  cutoff: number;
+}
+
+export function summarizeQualityProfile(profile: QualityProfile): QualityProfileSummary {
+  return {
+    id: profile.id,
+    name: profile.name,
+    upgradeAllowed: profile.upgradeAllowed,
+    cutoff: profile.cutoff,
+  };
+}
+
+export interface MovieFileSummary {
+  id: number;
+  movieId: number;
+  relativePath: string;
+  sizeGb: number;
+  dateAdded: string;
+  quality?: string;
+}
+
+export function summarizeMovieFile(file: MovieFile): MovieFileSummary {
+  return {
+    id: file.id,
+    movieId: file.movieId,
+    relativePath: file.relativePath,
+    sizeGb: Math.round((file.size / 1024 ** 3) * 100) / 100,
+    dateAdded: file.dateAdded,
+    quality: file.quality?.quality.name,
+  };
+}
+
+export interface HistorySummary {
+  id: number;
+  movieId: number;
+  sourceTitle: string;
+  eventType: string;
+  date: string;
+  data?: Record<string, string>;
+}
+
+export function summarizeHistoryRecord(record: HistoryRecord): HistorySummary {
+  return {
+    id: record.id,
+    movieId: record.movieId,
+    sourceTitle: record.sourceTitle,
+    eventType: record.eventType,
+    date: record.date,
+    data: record.data,
+  };
+}
+
+export interface BlocklistSummary {
+  id: number;
+  movieId: number;
+  sourceTitle: string;
+  date: string;
+  protocol?: string;
+  indexer?: string;
+}
+
+export function summarizeBlocklistRecord(record: BlocklistRecord): BlocklistSummary {
+  return {
+    id: record.id,
+    movieId: record.movieId,
+    sourceTitle: record.sourceTitle,
+    date: record.date,
+    protocol: record.protocol,
+    indexer: record.indexer,
+  };
+}
+
+export interface CollectionSummary {
+  id: number;
+  title: string;
+  tmdbId: number;
+  monitored: boolean;
+  qualityProfileId?: number;
+  rootFolderPath?: string;
+  movieCount: number;
+  movies?: Array<{ tmdbId: number; title: string; monitored?: boolean }>;
+}
+
+export function summarizeCollection(collection: Collection): CollectionSummary {
+  return {
+    id: collection.id,
+    title: collection.title,
+    tmdbId: collection.tmdbId,
+    monitored: collection.monitored,
+    qualityProfileId: collection.qualityProfileId,
+    rootFolderPath: collection.rootFolderPath,
+    movieCount: collection.movies?.length ?? 0,
+    movies: collection.movies?.map((movie) => ({
+      tmdbId: movie.tmdbId,
+      title: movie.title,
+      monitored: movie.monitored,
+    })),
   };
 }

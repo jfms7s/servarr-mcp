@@ -1,7 +1,15 @@
 import { z } from 'zod';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { RadarrClient } from './client.js';
-import { summarizeMovie, summarizeQueueRecord } from './shape.js';
+import {
+  summarizeBlocklistRecord,
+  summarizeCollection,
+  summarizeHistoryRecord,
+  summarizeMovie,
+  summarizeMovieFile,
+  summarizeQualityProfile,
+  summarizeQueueRecord,
+} from './shape.js';
 
 const COMMAND_NAMES = [
   'MoviesSearch',
@@ -133,7 +141,8 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       description:
         'List downloaded movie files for a movie. Shows file path, size, and quality information.',
       inputSchema: { movieId: z.number().int().describe('Radarr movie id') },
-      handler: ({ movieId }) => client.listMovieFiles(movieId),
+      handler: async ({ movieId }) =>
+        (await client.listMovieFiles(movieId)).map(summarizeMovieFile),
     }),
 
     defineTool({
@@ -206,8 +215,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
             'Filter by event type: 1 grabbed, 2 downloadFolderImported, 3 downloadFailed, 4 movieFileDeleted, 5 movieFileRenamed, 6 downloadIgnored. Omit for all events.',
           ),
       },
-      handler: ({ page: pageNum, pageSize, eventType }) =>
-        client.getHistory({ page: pageNum, pageSize, eventType }),
+      handler: async ({ page: pageNum, pageSize, eventType }) => {
+        const response = await client.getHistory({ page: pageNum, pageSize, eventType });
+        return { ...response, records: response.records.map(summarizeHistoryRecord) };
+      },
     }),
 
     defineTool({
@@ -224,8 +235,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       name: 'radarr_get_blocklist',
       description: 'List releases on the blocklist (failed imports or manually blocked).',
       inputSchema: { ...page },
-      handler: ({ page: pageNum, pageSize }) =>
-        client.getBlocklist({ page: pageNum, pageSize }),
+      handler: async ({ page: pageNum, pageSize }) => {
+        const response = await client.getBlocklist({ page: pageNum, pageSize });
+        return { ...response, records: response.records.map(summarizeBlocklistRecord) };
+      },
     }),
 
     defineTool({
@@ -244,7 +257,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       name: 'radarr_list_collections',
       description: 'List all movie collections defined in Radarr.',
       inputSchema: {},
-      handler: () => client.listCollections(),
+      handler: async () => (await client.listCollections()).map(summarizeCollection),
     }),
 
     defineTool({
@@ -274,7 +287,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       description:
         'List available quality profiles. Use these ids in radarr_add_movie and radarr_update_movie.',
       inputSchema: {},
-      handler: () => client.listQualityProfiles(),
+      handler: async () => (await client.listQualityProfiles()).map(summarizeQualityProfile),
     }),
 
     defineTool({

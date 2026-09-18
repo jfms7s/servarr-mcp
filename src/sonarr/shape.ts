@@ -1,6 +1,18 @@
-import type { Episode, QueueRecord, Series } from './types.js';
+import type {
+  BlocklistRecord,
+  Episode,
+  EpisodeFile,
+  HistoryRecord,
+  QualityProfile,
+  QueueRecord,
+  Series,
+} from './types.js';
 
 const MAX_OVERVIEW = 300;
+
+function toGb(bytes: number): number {
+  return Math.round((bytes / 1024 ** 3) * 100) / 100;
+}
 
 function truncateOverview(overview: string | undefined): string | undefined {
   if (!overview) return undefined;
@@ -103,5 +115,98 @@ export function summarizeQueueRecord(record: QueueRecord): QueueSummary {
     downloadClient: record.downloadClient,
     errorMessage: record.errorMessage,
     statusMessages: statusMessages?.length ? statusMessages : undefined,
+  };
+}
+
+// The four summaries below exist because a TypeScript interface does not
+// filter anything at runtime. The list tools used to return whatever
+// JSON.parse produced, which for these four record types is several times
+// what the declared interface admits to -- quality profiles carry every
+// known quality with its allowed flag, episode files carry a full mediaInfo
+// block, and history/blocklist records carry the whole embedded series.
+// Asserting the exact key set is how the tests pin that down.
+
+export interface QualityProfileSummary {
+  id: number;
+  name: string;
+  upgradeAllowed: boolean;
+  cutoff: number;
+}
+
+export function summarizeQualityProfile(profile: QualityProfile): QualityProfileSummary {
+  return {
+    id: profile.id,
+    name: profile.name,
+    upgradeAllowed: profile.upgradeAllowed,
+    cutoff: profile.cutoff,
+  };
+}
+
+export interface EpisodeFileSummary {
+  id: number;
+  seriesId: number;
+  seasonNumber: number;
+  relativePath: string;
+  sizeGb: number;
+  dateAdded: string;
+  quality?: string;
+}
+
+export function summarizeEpisodeFile(file: EpisodeFile): EpisodeFileSummary {
+  return {
+    id: file.id,
+    seriesId: file.seriesId,
+    seasonNumber: file.seasonNumber,
+    // relativePath alone -- the absolute path adds the series folder prefix
+    // to every row and tells the caller nothing it can act on.
+    relativePath: file.relativePath,
+    sizeGb: toGb(file.size),
+    dateAdded: file.dateAdded,
+    quality: file.quality?.quality.name,
+  };
+}
+
+export interface HistorySummary {
+  id: number;
+  episodeId: number;
+  seriesId: number;
+  sourceTitle: string;
+  eventType: string;
+  date: string;
+  data?: Record<string, string>;
+}
+
+export function summarizeHistoryRecord(record: HistoryRecord): HistorySummary {
+  return {
+    id: record.id,
+    episodeId: record.episodeId,
+    seriesId: record.seriesId,
+    sourceTitle: record.sourceTitle,
+    eventType: record.eventType,
+    date: record.date,
+    // Kept: a flat string map holding the event's own detail (why an import
+    // was rejected, where a file landed). It is the substance of a history
+    // row, and it is bounded -- unlike the series/episode objects dropped here.
+    data: record.data,
+  };
+}
+
+export interface BlocklistSummary {
+  id: number;
+  seriesId: number;
+  sourceTitle: string;
+  date: string;
+  protocol?: string;
+  indexer?: string;
+}
+
+export function summarizeBlocklistRecord(record: BlocklistRecord): BlocklistSummary {
+  return {
+    id: record.id,
+    seriesId: record.seriesId,
+    sourceTitle: record.sourceTitle,
+    date: record.date,
+    protocol: record.protocol,
+    indexer: record.indexer,
   };
 }

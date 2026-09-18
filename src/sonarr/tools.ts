@@ -1,7 +1,15 @@
 import { z } from 'zod';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { SonarrClient } from './client.js';
-import { summarizeEpisode, summarizeQueueRecord, summarizeSeries } from './shape.js';
+import {
+  summarizeBlocklistRecord,
+  summarizeEpisode,
+  summarizeEpisodeFile,
+  summarizeHistoryRecord,
+  summarizeQualityProfile,
+  summarizeQueueRecord,
+  summarizeSeries,
+} from './shape.js';
 
 const COMMAND_NAMES = [
   'SeriesSearch',
@@ -211,7 +219,8 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
       },
-      handler: ({ seriesId }) => client.listEpisodeFiles(seriesId),
+      handler: async ({ seriesId }) =>
+        (await client.listEpisodeFiles(seriesId)).map(summarizeEpisodeFile),
     }),
 
     defineTool({
@@ -249,8 +258,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       name: 'sonarr_get_history',
       description: 'List history of download, import and grab events.',
       inputSchema: { ...page, eventType: z.number().int().optional().describe('Filter by event type: 1 grabbed, 2 seriesFolderImported, 3 downloadFolderImported, 4 downloadFailed, 5 episodeFileDeleted, 6 episodeFileRenamed, 7 downloadIgnored. Omit for all events.') },
-      handler: ({ page: pageNum, pageSize, eventType }) =>
-        client.getHistory({ page: pageNum, pageSize, eventType }),
+      handler: async ({ page: pageNum, pageSize, eventType }) => {
+        const response = await client.getHistory({ page: pageNum, pageSize, eventType });
+        return { ...response, records: response.records.map(summarizeHistoryRecord) };
+      },
     }),
 
     defineTool({
@@ -267,8 +278,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       name: 'sonarr_get_blocklist',
       description: 'List releases on the blocklist (failed imports or manually blocked).',
       inputSchema: { ...page },
-      handler: ({ page: pageNum, pageSize }) =>
-        client.getBlocklist({ page: pageNum, pageSize }),
+      handler: async ({ page: pageNum, pageSize }) => {
+        const response = await client.getBlocklist({ page: pageNum, pageSize });
+        return { ...response, records: response.records.map(summarizeBlocklistRecord) };
+      },
     }),
 
     defineTool({
@@ -298,7 +311,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       description:
         'List available quality profiles. Use these ids in sonarr_add_series and sonarr_update_series.',
       inputSchema: {},
-      handler: () => client.listQualityProfiles(),
+      handler: async () => (await client.listQualityProfiles()).map(summarizeQualityProfile),
     }),
 
     defineTool({
