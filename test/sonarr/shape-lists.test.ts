@@ -4,12 +4,14 @@ import {
   summarizeEpisodeFile,
   summarizeHistoryRecord,
   summarizeQualityProfile,
+  summarizeRelease,
 } from '../../src/sonarr/shape.js';
 import type {
   BlocklistRecord,
   EpisodeFile,
   HistoryRecord,
   QualityProfile,
+  Release,
 } from '../../src/sonarr/types.js';
 
 // Each fixture below carries the fields we want PLUS the bulky ones Sonarr
@@ -152,5 +154,57 @@ describe('summarizeBlocklistRecord', () => {
       'seriesId',
       'sourceTitle',
     ]);
+  });
+});
+
+describe('summarizeRelease', () => {
+  it('keeps rejections verbatim and reshapes languages, quality, and sizeGb', () => {
+    const release = {
+      guid: 'abc123',
+      title: 'Series.S01E01.1080p.WEB-DL',
+      indexerId: 2,
+      indexer: 'TorrentSite',
+      size: 5_368_709_120,
+      age: 3,
+      protocol: 'torrent',
+      seeders: 45,
+      leechers: 12,
+      releaseGroup: 'GROUP',
+      languages: [{ id: 1, name: 'English' }],
+      quality: { quality: { id: 9, name: 'WEBDL-1080p' } },
+      customFormatScore: 50,
+      approved: true,
+      rejections: ['Not an upgrade', 'Already in queue'],
+      fullSeason: false,
+      seasonNumber: 1,
+      // Extraneous fields that should be dropped
+      extraField: 'should not appear',
+    } as unknown as Release;
+
+    const result = summarizeRelease(release, 1);
+
+    expect(Object.keys(result).sort()).toEqual([
+      'ageDays',
+      'approved',
+      'customFormatScore',
+      'fullSeason',
+      'guid',
+      'indexer',
+      'indexerId',
+      'leechers',
+      'protocol',
+      'quality',
+      'rank',
+      'rejections',
+      'releaseGroup',
+      'seeders',
+      'sizeGb',
+      'title',
+      'languages',
+    ].sort());
+    expect(result.sizeGb).toBe(5);
+    expect(result.quality).toBe('WEBDL-1080p');
+    expect(result.languages).toEqual(['English']);
+    expect(result.rejections).toEqual(['Not an upgrade', 'Already in queue']);
   });
 });
