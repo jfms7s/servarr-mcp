@@ -10,23 +10,28 @@ This server reaches Sonarr and Radarr at their `/api/v3` endpoints, and Prowlarr
 
 **Prerequisites:** Node.js 20 or later.
 
-### With npx
+### From Source
+
+Clone the repository, install dependencies, and build:
 
 ```bash
-npx -y servarr-mcp
+git clone https://github.com/jfms7s/servarr-mcp.git
+cd servarr-mcp
+npm ci
+npm run build
 ```
 
-The server will start on a stdio interface, expecting MCP protocol messages. Use this command in your MCP client's configuration.
+Then run the server:
+
+```bash
+node dist/index.js
+```
+
+The server will start on a stdio interface, expecting MCP protocol messages. Use this command in your MCP client's configuration (see the Claude Desktop / Claude Code Setup section below).
 
 ### With Docker
 
-Build the image once:
-
-```bash
-docker build -t servarr-mcp .
-```
-
-Then run it with your configuration passed at container startup:
+Use the published container image:
 
 ```bash
 docker run --rm -p 3000:3000 \
@@ -36,17 +41,38 @@ docker run --rm -p 3000:3000 \
   -e RADARR_API_KEY=your-radarr-api-key \
   -e PROWLARR_URL=http://prowlarr:9696 \
   -e PROWLARR_API_KEY=your-prowlarr-api-key \
-  -e SERVARR_MCP_TOKEN=a-long-random-secret \
-  servarr-mcp
+  ghcr.io/jfms7s/servarr-mcp:v0.1.2
 ```
 
-**Note:** The HTTP transport requires `SERVARR_MCP_TOKEN` (a shared bearer token for client authentication). The container will exit immediately if it is not set. For multiple environment variables, use `--env-file`:
+Use `latest` instead of `v0.1.2` to pull the latest release:
 
 ```bash
-docker run --rm -p 3000:3000 --env-file .env servarr-mcp
+docker run --rm -p 3000:3000 \
+  -e SONARR_URL=http://sonarr:8989 \
+  -e SONARR_API_KEY=your-sonarr-api-key \
+  -e RADARR_URL=http://radarr:7878 \
+  -e RADARR_API_KEY=your-radarr-api-key \
+  -e PROWLARR_URL=http://prowlarr:9696 \
+  -e PROWLARR_API_KEY=your-prowlarr-api-key \
+  ghcr.io/jfms7s/servarr-mcp:latest
+```
+
+**Note:** The container defaults to the HTTP transport (`SERVARR_MCP_TRANSPORT=http`). When using HTTP, you must set `SERVARR_MCP_TOKEN` (a shared bearer token for client authentication). The container will exit immediately if it is not set. For multiple environment variables, use `--env-file`:
+
+```bash
+docker run --rm -p 3000:3000 --env-file .env ghcr.io/jfms7s/servarr-mcp:latest
 ```
 
 Where `.env` contains your configuration lines (one per line: `VAR_NAME=value`).
+
+#### Building the Docker Image Locally
+
+If you want to build the image locally:
+
+```bash
+docker build -t servarr-mcp .
+docker run --rm -p 3000:3000 --env-file .env servarr-mcp
+```
 
 ## Configuration
 
@@ -73,12 +99,25 @@ export SONARR_URL=http://localhost:8989
 export SONARR_API_KEY=your-sonarr-key
 export PROWLARR_URL=http://localhost:9696
 export PROWLARR_API_KEY=your-prowlarr-key
-npx -y servarr-mcp
+node dist/index.js
+```
+
+Or with Docker:
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e SONARR_URL=http://localhost:8989 \
+  -e SONARR_API_KEY=your-sonarr-key \
+  -e PROWLARR_URL=http://localhost:9696 \
+  -e PROWLARR_API_KEY=your-prowlarr-key \
+  ghcr.io/jfms7s/servarr-mcp:latest
 ```
 
 The server will register 40 tools (26 Sonarr + 14 Prowlarr) and start normally. Radarr tools will not be available.
 
 ## Claude Desktop / Claude Code Setup
+
+### From Source
 
 Add this to your `claude_desktop_config.json` or Claude Code MCP server configuration:
 
@@ -86,8 +125,8 @@ Add this to your `claude_desktop_config.json` or Claude Code MCP server configur
 {
   "mcpServers": {
     "servarr": {
-      "command": "npx",
-      "args": ["-y", "servarr-mcp"],
+      "command": "node",
+      "args": ["/path/to/servarr-mcp/dist/index.js"],
       "env": {
         "SONARR_URL": "http://localhost:8989",
         "SONARR_API_KEY": "your-sonarr-api-key",
@@ -101,17 +140,63 @@ Add this to your `claude_desktop_config.json` or Claude Code MCP server configur
 }
 ```
 
+Replace `/path/to/servarr-mcp/dist/index.js` with the absolute path to the built server in your cloned repository. Replace `your-*-api-key` with your actual API keys from each application's Settings → General → API Key.
+
+### With Docker
+
+```json
+{
+  "mcpServers": {
+    "servarr": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--env",
+        "SONARR_URL=http://localhost:8989",
+        "--env",
+        "SONARR_API_KEY=your-sonarr-api-key",
+        "--env",
+        "RADARR_URL=http://localhost:7878",
+        "--env",
+        "RADARR_API_KEY=your-radarr-api-key",
+        "--env",
+        "PROWLARR_URL=http://localhost:9696",
+        "--env",
+        "PROWLARR_API_KEY=your-prowlarr-api-key",
+        "ghcr.io/jfms7s/servarr-mcp:latest"
+      ]
+    }
+  }
+}
+```
+
 Replace `your-*-api-key` with your actual API keys from each application's Settings → General → API Key.
 
 ## Remote / HTTP Deployment
 
 For a remote setup (e.g., accessing Sonarr from a separate machine), use the HTTP transport:
 
+### From Source
+
 ```bash
 export SERVARR_MCP_TRANSPORT=http
 export SERVARR_MCP_PORT=3000
 export SERVARR_MCP_TOKEN=your-shared-bearer-token
-npx -y servarr-mcp
+node dist/index.js
+```
+
+### With Docker
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e SERVARR_MCP_TRANSPORT=http \
+  -e SERVARR_MCP_PORT=3000 \
+  -e SERVARR_MCP_TOKEN=your-shared-bearer-token \
+  -e SONARR_URL=http://sonarr:8989 \
+  -e SONARR_API_KEY=your-sonarr-api-key \
+  ghcr.io/jfms7s/servarr-mcp:latest
 ```
 
 The server will listen on the specified port on all interfaces, authenticated with a single bearer token. Control which interfaces can reach it using your container networking, firewall, or reverse proxy configuration.
