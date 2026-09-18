@@ -22,7 +22,7 @@ describe('buildTools', () => {
     }).map((t) => t.name);
 
     expect(names.filter((n) => n.startsWith('sonarr_'))).toHaveLength(28);
-    expect(names.filter((n) => n.startsWith('radarr_'))).toHaveLength(24);
+    expect(names.filter((n) => n.startsWith('radarr_'))).toHaveLength(26);
     expect(names.filter((n) => n.startsWith('prowlarr_'))).toHaveLength(14);
   });
 
