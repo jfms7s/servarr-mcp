@@ -1,5 +1,7 @@
 import type { ServarrConfig } from './config.js';
 import type { ToolDefinition } from './mcp/types.js';
+import { createOverseerrClient } from './overseerr/client.js';
+import { createOverseerrTools } from './overseerr/tools.js';
 import { createProwlarrClient } from './prowlarr/client.js';
 import { createProwlarrTools } from './prowlarr/tools.js';
 import { createRadarrClient } from './radarr/client.js';
@@ -13,6 +15,7 @@ export function buildTools(config: ServarrConfig): ToolDefinition[] {
   if (config.sonarr) tools.push(...createSonarrTools(createSonarrClient(config.sonarr)));
   if (config.radarr) tools.push(...createRadarrTools(createRadarrClient(config.radarr)));
   if (config.prowlarr) tools.push(...createProwlarrTools(createProwlarrClient(config.prowlarr)));
+  if (config.overseerr) tools.push(...createOverseerrTools(createOverseerrClient(config.overseerr)));
 
   return tools;
 }

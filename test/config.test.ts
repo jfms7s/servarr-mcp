@@ -31,6 +31,27 @@ describe('loadConfig', () => {
     expect(() => loadConfig({})).toThrow(/at least one/i);
   });
 
+  it('loads Overseerr configuration', () => {
+    const config = loadConfig({
+      ...base,
+      OVERSEERR_URL: 'http://localhost:5055',
+      OVERSEERR_API_KEY: 'overseerr-key',
+    });
+    expect(config.overseerr).toEqual({
+      baseUrl: 'http://localhost:5055',
+      apiKey: 'overseerr-key',
+    });
+  });
+
+  it('counts Overseerr toward "at least one product configured"', () => {
+    const config = loadConfig({
+      OVERSEERR_URL: 'http://localhost:5055',
+      OVERSEERR_API_KEY: 'overseerr-key',
+    });
+    expect(config.overseerr).toBeDefined();
+    expect(config.sonarr).toBeUndefined();
+  });
+
   it('throws when the url is not parseable', () => {
     expect(() => loadConfig({ SONARR_URL: 'not a url', SONARR_API_KEY: 'k' })).toThrow(ConfigError);
   });
