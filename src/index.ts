@@ -12,6 +12,7 @@ async function main(): Promise<void> {
     config.sonarr && 'Sonarr',
     config.radarr && 'Radarr',
     config.prowlarr && 'Prowlarr',
+    config.overseerr && 'Overseerr',
   ].filter(Boolean);
 
   // stdout carries the MCP protocol on the stdio transport, so log to stderr.

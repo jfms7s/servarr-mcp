@@ -9,6 +9,7 @@ export interface ServarrConfig {
   sonarr?: InstanceConfig;
   radarr?: InstanceConfig;
   prowlarr?: InstanceConfig;
+  overseerr?: InstanceConfig;
   transport: TransportMode;
   port: number;
   token?: string;
@@ -69,11 +70,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServarrConfig 
   const sonarr = readInstance(env, 'Sonarr', 'SONARR');
   const radarr = readInstance(env, 'Radarr', 'RADARR');
   const prowlarr = readInstance(env, 'Prowlarr', 'PROWLARR');
+  const overseerr = readInstance(env, 'Overseerr', 'OVERSEERR');
 
-  if (!sonarr && !radarr && !prowlarr) {
+  if (!sonarr && !radarr && !prowlarr && !overseerr) {
     throw new ConfigError(
       'No products configured. Set at least one of SONARR_URL/SONARR_API_KEY, ' +
-        'RADARR_URL/RADARR_API_KEY, PROWLARR_URL/PROWLARR_API_KEY.',
+        'RADARR_URL/RADARR_API_KEY, PROWLARR_URL/PROWLARR_API_KEY, OVERSEERR_URL/OVERSEERR_API_KEY.',
     );
   }
 
@@ -86,5 +88,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServarrConfig 
     );
   }
 
-  return { sonarr, radarr, prowlarr, transport, port: readPort(env), token };
+  return { sonarr, radarr, prowlarr, overseerr, transport, port: readPort(env), token };
 }

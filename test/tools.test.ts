@@ -11,19 +11,22 @@ describe('buildTools', () => {
     expect(names.some((n) => n.startsWith('sonarr_'))).toBe(true);
     expect(names.some((n) => n.startsWith('radarr_'))).toBe(false);
     expect(names.some((n) => n.startsWith('prowlarr_'))).toBe(false);
+    expect(names.some((n) => n.startsWith('overseerr_'))).toBe(false);
   });
 
-  it('registers every product when all three are configured', () => {
+  it('registers every product when all four are configured', () => {
     const names = buildTools({
       ...base,
       sonarr: instance,
       radarr: instance,
       prowlarr: instance,
+      overseerr: instance,
     }).map((t) => t.name);
 
     expect(names.filter((n) => n.startsWith('sonarr_'))).toHaveLength(28);
     expect(names.filter((n) => n.startsWith('radarr_'))).toHaveLength(26);
     expect(names.filter((n) => n.startsWith('prowlarr_'))).toHaveLength(14);
+    expect(names.filter((n) => n.startsWith('overseerr_'))).toHaveLength(25);
   });
 
   it('produces globally unique tool names', () => {
@@ -32,6 +35,7 @@ describe('buildTools', () => {
       sonarr: instance,
       radarr: instance,
       prowlarr: instance,
+      overseerr: instance,
     }).map((t) => t.name);
     expect(new Set(names).size).toBe(names.length);
   });
@@ -40,5 +44,12 @@ describe('buildTools', () => {
     const names = buildTools({ ...base, sonarr: instance, prowlarr: instance }).map((t) => t.name);
     expect(names.some((n) => n.startsWith('prowlarr_'))).toBe(true);
     expect(names.some((n) => n.startsWith('radarr_'))).toBe(false);
+    expect(names.some((n) => n.startsWith('overseerr_'))).toBe(false);
+  });
+
+  it('registers overseerr when configured', () => {
+    const names = buildTools({ ...base, overseerr: instance }).map((t) => t.name);
+    expect(names.every((n) => n.startsWith('overseerr_'))).toBe(true);
+    expect(names).toHaveLength(25);
   });
 });

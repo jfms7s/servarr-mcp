@@ -1,6 +1,6 @@
 # servarr-mcp
 
-An MCP server exposing Sonarr, Radarr, and Prowlarr to an LLM client. Connect Claude or another MCP-compatible LLM to your media stack and ask it to search for content, manage your library, check download status, and more — all via natural language.
+An MCP server exposing Sonarr, Radarr, Prowlarr, and Overseerr to an LLM client. Connect Claude or another MCP-compatible LLM to your media stack and ask it to search for content, manage your library, check download status, and more — all via natural language.
 
 This server reaches Sonarr and Radarr at their `/api/v3` endpoints, and Prowlarr at `/api/v1`. (Note: Sonarr's published documentation often references "v5" in the URL, but that is the *application* version, not the API version — use v3.)
 
@@ -42,6 +42,8 @@ docker run --rm -p 3000:3000 \
   -e RADARR_API_KEY=your-radarr-api-key \
   -e PROWLARR_URL=http://prowlarr:9696 \
   -e PROWLARR_API_KEY=your-prowlarr-api-key \
+  -e OVERSEERR_URL=http://overseerr:5055 \
+  -e OVERSEERR_API_KEY=your-overseerr-api-key \
   ghcr.io/jfms7s/servarr-mcp:v0.1.2
 ```
 
@@ -74,6 +76,8 @@ The server reads configuration from environment variables. Each product is **ind
 | `RADARR_API_KEY` | `abc123def456` | Only if `RADARR_URL` is set | API key from Radarr Settings → General |
 | `PROWLARR_URL` | `http://localhost:9696` | No | Base URL of your Prowlarr instance |
 | `PROWLARR_API_KEY` | `abc123def456` | Only if `PROWLARR_URL` is set | API key from Prowlarr Settings → General |
+| `OVERSEERR_URL` | `http://localhost:5055` | No | Base URL of your Overseerr instance |
+| `OVERSEERR_API_KEY` | `abc123def456` | Only if `OVERSEERR_URL` is set | API key from Overseerr Settings → General |
 | `SERVARR_MCP_TRANSPORT` | `stdio` or `http` or `both` | No | Transport mode (default `stdio`) |
 | `SERVARR_MCP_PORT` | `3000` | No | Port for HTTP transport (default `3000`) |
 | `SERVARR_MCP_TOKEN` | `a-long-random-secret` | Required if transport is `http` or `both` | Bearer token for HTTP client authentication |
@@ -90,7 +94,7 @@ export PROWLARR_API_KEY=your-prowlarr-key
 node dist/index.js
 ```
 
-The server will register 42 tools (28 Sonarr + 14 Prowlarr) and start normally. Radarr tools will not be available.
+The server will register 42 tools (28 Sonarr + 14 Prowlarr) and start normally. Radarr and Overseerr tools will not be available.
 
 ## Claude Desktop / Claude Code Setup
 
@@ -110,7 +114,9 @@ Add this to your `claude_desktop_config.json` or Claude Code MCP server configur
         "RADARR_URL": "http://localhost:7878",
         "RADARR_API_KEY": "your-radarr-api-key",
         "PROWLARR_URL": "http://localhost:9696",
-        "PROWLARR_API_KEY": "your-prowlarr-api-key"
+        "PROWLARR_API_KEY": "your-prowlarr-api-key",
+        "OVERSEERR_URL": "http://localhost:5055",
+        "OVERSEERR_API_KEY": "your-overseerr-api-key"
       }
     }
   }
@@ -145,6 +151,10 @@ Replace `/path/to/servarr-mcp/dist/index.js` with the absolute path to the built
         "PROWLARR_URL=http://host.docker.internal:9696",
         "--env",
         "PROWLARR_API_KEY=your-prowlarr-api-key",
+        "--env",
+        "OVERSEERR_URL=http://host.docker.internal:5055",
+        "--env",
+        "OVERSEERR_API_KEY=your-overseerr-api-key",
         "ghcr.io/jfms7s/servarr-mcp:latest"
       ]
     }
@@ -202,7 +212,7 @@ A compromised bearer token gives an attacker complete control to delete your lib
 
 ## Tools
 
-This server exposes 68 tools across the three products.
+This server exposes 93 tools across the four products.
 
 ### Sonarr (28 tools)
 
@@ -286,6 +296,36 @@ This server exposes 68 tools across the three products.
 | `prowlarr_run_command` | Run administrative commands (sync, health check) |
 | `prowlarr_get_system_status` | Get Prowlarr version and system information |
 | `prowlarr_get_health` | Get health check results for Prowlarr |
+
+### Overseerr (25 tools)
+
+| Tool | Purpose |
+|------|---------|
+| `overseerr_search` | Search Overseerr for movies, TV shows, and people by title |
+| `overseerr_discover_movies` | Discover popular and upcoming movies from TMDB |
+| `overseerr_discover_tv` | Discover popular and upcoming TV shows from TMDB |
+| `overseerr_get_trending` | List currently trending movies and TV shows |
+| `overseerr_get_movie` | Get full Overseerr/TMDB details for one movie |
+| `overseerr_get_tv` | Get full Overseerr/TMDB details for one TV series |
+| `overseerr_get_movie_recommendations` | Get movies recommended based on a given movie |
+| `overseerr_get_similar_movies` | Get movies similar to a given movie |
+| `overseerr_get_tv_recommendations` | Get TV shows recommended based on a given show |
+| `overseerr_get_similar_tv` | Get TV shows similar to a given show |
+| `overseerr_get_movie_ratings` | Get Rotten Tomatoes and IMDB ratings for a movie |
+| `overseerr_get_tv_ratings` | Get Rotten Tomatoes ratings for a TV show |
+| `overseerr_get_person` | Get biography and details for a person |
+| `overseerr_get_person_credits` | Get a person's combined movie and TV credits |
+| `overseerr_list_requests` | List media requests with optional filtering and sorting |
+| `overseerr_get_request` | Get one media request by id |
+| `overseerr_get_request_count` | Get counts of requests by status |
+| `overseerr_create_request` | Request that a movie or TV show be added |
+| `overseerr_update_request_status` | Approve or decline a pending media request |
+| `overseerr_retry_request` | Retry a failed request to Sonarr or Radarr |
+| `overseerr_delete_request` | **Destructive:** Permanently remove a media request |
+| `overseerr_list_media` | List media items known to Overseerr with their availability status |
+| `overseerr_delete_media` | **Destructive:** Remove a media item from Overseerr |
+| `overseerr_list_users` | List Overseerr users |
+| `overseerr_get_system_status` | Get Overseerr version and update status |
 
 ## Finding Your API Key
 
