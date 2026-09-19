@@ -136,4 +136,44 @@ describe('SonarrClient', () => {
     await expect(client.getHealth()).resolves.toHaveLength(1);
     await expect(client.getDiskSpace()).resolves.toHaveLength(1);
   });
+
+  it('searches releases by episodeId', async () => {
+    let params: URLSearchParams | undefined;
+    server.use(
+      http.get(url('/release'), ({ request }) => {
+        params = new URL(request.url).searchParams;
+        return HttpResponse.json([{ guid: 'abc', title: 'Release 1' }]);
+      }),
+    );
+    const releases = await client.searchReleases({ episodeId: 42 });
+    expect(params?.get('episodeId')).toBe('42');
+    expect(releases).toHaveLength(1);
+    expect(releases[0]).toMatchObject({ guid: 'abc', title: 'Release 1' });
+  });
+
+  it('searches releases by seriesId and seasonNumber', async () => {
+    let params: URLSearchParams | undefined;
+    server.use(
+      http.get(url('/release'), ({ request }) => {
+        params = new URL(request.url).searchParams;
+        return HttpResponse.json([]);
+      }),
+    );
+    await client.searchReleases({ seriesId: 7, seasonNumber: 2 });
+    expect(params?.get('seriesId')).toBe('7');
+    expect(params?.get('seasonNumber')).toBe('2');
+  });
+
+  it('grabs a release with guid and indexerId', async () => {
+    let body: unknown;
+    server.use(
+      http.post(url('/release'), async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ guid: 'xyz', title: 'Grabbed Release' }, { status: 200 });
+      }),
+    );
+    const result = await client.grabRelease({ guid: 'xyz', indexerId: 3 });
+    expect(body).toEqual({ guid: 'xyz', indexerId: 3 });
+    expect(result).toMatchObject({ guid: 'xyz', title: 'Grabbed Release' });
+  });
 });

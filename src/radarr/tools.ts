@@ -9,6 +9,7 @@ import {
   summarizeMovieFile,
   summarizeQualityProfile,
   summarizeQueueRecord,
+  summarizeRelease,
 } from './shape.js';
 
 const COMMAND_NAMES = [
@@ -280,6 +281,87 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         commandId: z.number().int().describe('Command id'),
       },
       handler: ({ commandId }) => client.getCommand(commandId),
+    }),
+
+    defineTool({
+      name: 'radarr_search_releases',
+      description:
+        'Search for releases to download a movie. Runs a live interactive search across indexers ' +
+        '(can take several seconds); results are in Radarr\'s preference order with `rank`. ' +
+        '`rejections` are Radarr\'s verbatim reasons for not choosing a release automatically. ' +
+        'Use guid + indexerId with radarr_grab_release to download a release.',
+      inputSchema: {
+        movieId: z.number().int().describe('Radarr movie id'),
+        titleContains: z
+          .string()
+          .min(1)
+          .optional()
+          .describe('Filter results by title substring (case-insensitive)'),
+        approvedOnly: z
+          .boolean()
+          .optional()
+          .describe('Only show approved releases (default false)'),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('Maximum results to return (default 20)'),
+      },
+      handler: async ({ movieId, titleContains, approvedOnly, limit: userLimit }) => {
+        const releases = await client.searchReleases(movieId);
+        const defaultLimit = 20;
+        const finalLimit = userLimit ?? defaultLimit;
+
+        let filtered = releases.map((release, index) => summarizeRelease(release, index + 1));
+
+        if (titleContains) {
+          const lowerFilter = titleContains.toLowerCase();
+          filtered = filtered.filter((r) => r.title.toLowerCase().includes(lowerFilter));
+        }
+
+        if (approvedOnly) {
+          filtered = filtered.filter((r) => r.approved);
+        }
+
+        const matched = filtered.length;
+        const returned = Math.min(matched, finalLimit);
+        const result = filtered.slice(0, finalLimit);
+
+        return {
+          total: releases.length,
+          matched,
+          returned,
+          releases: result,
+        };
+      },
+    }),
+
+    defineTool({
+      name: 'radarr_grab_release',
+      description:
+        'Download a release from a previous search. Note two caveats: ' +
+        '(a) Radarr grabs from its cached search results, which expire after about 30 minutes — ' +
+        'if the grab fails, run radarr_search_releases again first. ' +
+        '(b) Grabbing a rejected release overrides Radarr\'s decision to DOWNLOAD it, not necessarily ' +
+        'its decision to IMPORT it — the rejection reasons (e.g. not an upgrade, quality not wanted in profile) ' +
+        'can still block import, leaving the item stuck in the queue. ' +
+        'This starts a real download that Radarr tracks and imports (unlike prowlarr_grab_release, ' +
+        'which bypasses Radarr).',
+      inputSchema: {
+        guid: z.string().min(1).describe('Release guid from radarr_search_releases'),
+        indexerId: z.number().int().describe('Release indexerId from radarr_search_releases'),
+      },
+      handler: async ({ guid, indexerId }) => {
+        const response = await client.grabRelease({ guid, indexerId });
+        return {
+          grabbed: true,
+          guid,
+          indexerId,
+          title: response.title,
+        };
+      },
     }),
 
     defineTool({

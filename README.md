@@ -94,7 +94,7 @@ export PROWLARR_API_KEY=your-prowlarr-key
 node dist/index.js
 ```
 
-The server will register 40 tools (26 Sonarr + 14 Prowlarr) and start normally. Radarr and Overseerr tools will not be available.
+The server will register 42 tools (28 Sonarr + 14 Prowlarr) and start normally. Radarr and Overseerr tools will not be available.
 
 ## Claude Desktop / Claude Code Setup
 
@@ -212,9 +212,9 @@ A compromised bearer token gives an attacker complete control to delete your lib
 
 ## Tools
 
-This server exposes 89 tools across the four products.
+This server exposes 93 tools across the four products.
 
-### Sonarr (26 tools)
+### Sonarr (28 tools)
 
 | Tool | Purpose |
 |------|---------|
@@ -231,6 +231,8 @@ This server exposes 89 tools across the four products.
 | `sonarr_delete_episode_file` | **Destructive:** Permanently delete an episode file |
 | `sonarr_get_queue` | List items currently downloading or awaiting import |
 | `sonarr_delete_queue_item` | **Destructive:** Remove an item from the download queue |
+| `sonarr_search_releases` | Interactive search for an episode or season pack, with Sonarr's rank and rejection reasons |
+| `sonarr_grab_release` | Download a specific release from a search; Sonarr tracks and imports it |
 | `sonarr_get_calendar` | List episodes airing in a date range |
 | `sonarr_get_history` | List download, import, and grab event history |
 | `sonarr_get_wanted_missing` | List wanted but missing episodes |
@@ -245,7 +247,7 @@ This server exposes 89 tools across the four products.
 | `sonarr_get_health` | Check Sonarr health status and warnings |
 | `sonarr_get_disk_space` | List disk space on drives containing series |
 
-### Radarr (24 tools)
+### Radarr (26 tools)
 
 | Tool | Purpose |
 |------|---------|
@@ -260,6 +262,8 @@ This server exposes 89 tools across the four products.
 | `radarr_get_calendar` | List movies with releases in a date range |
 | `radarr_get_queue` | List items currently downloading or awaiting import |
 | `radarr_delete_queue_item` | **Destructive:** Remove an item from the download queue |
+| `radarr_search_releases` | Interactive search for a movie, with Radarr's rank and rejection reasons |
+| `radarr_grab_release` | Download a specific release from a search; Radarr tracks and imports it |
 | `radarr_get_history` | List download, import, and grab event history |
 | `radarr_get_wanted_missing` | List wanted but missing movies |
 | `radarr_get_blocklist` | List releases on the blocklist |
@@ -279,7 +283,7 @@ This server exposes 89 tools across the four products.
 | Tool | Purpose |
 |------|---------|
 | `prowlarr_search` | Search configured indexers for releases |
-| `prowlarr_grab_release` | Send a release to the download client |
+| `prowlarr_grab_release` | Send a release to the download client (bypasses Sonarr/Radarr tracking) |
 | `prowlarr_list_indexers` | List configured indexers with protocol and status |
 | `prowlarr_get_indexer` | Get details about a specific indexer |
 | `prowlarr_test_indexer` | Test connectivity of an indexer |

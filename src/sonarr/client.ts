@@ -8,12 +8,14 @@ import type {
   DiskSpace,
   Episode,
   EpisodeFile,
+  GrabReleasePayload,
   HealthCheck,
   HistoryRecord,
   PageParams,
   PagedResponse,
   QualityProfile,
   QueueRecord,
+  Release,
   RootFolder,
   Series,
   SystemStatus,
@@ -76,6 +78,8 @@ export interface SonarrClient {
   getSystemStatus(): Promise<SystemStatus>;
   getHealth(): Promise<HealthCheck[]>;
   getDiskSpace(): Promise<DiskSpace[]>;
+  searchReleases(params: { episodeId?: number; seriesId?: number; seasonNumber?: number }): Promise<Release[]>;
+  grabRelease(payload: GrabReleasePayload): Promise<Release>;
 }
 
 export function createSonarrClient(config: InstanceConfig): SonarrClient {
@@ -114,5 +118,7 @@ export function createSonarrClient(config: InstanceConfig): SonarrClient {
     getSystemStatus: () => http.get('/system/status'),
     getHealth: () => http.get('/health'),
     getDiskSpace: () => http.get('/diskspace'),
+    searchReleases: (params) => http.get('/release', { ...params }),
+    grabRelease: (payload) => http.post('/release', payload),
   };
 }

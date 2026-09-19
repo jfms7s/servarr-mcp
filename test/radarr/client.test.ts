@@ -107,4 +107,50 @@ describe('RadarrClient', () => {
     await expect(client.getHealth()).resolves.toEqual([]);
     await expect(client.getDiskSpace()).resolves.toEqual([]);
   });
+
+  it('searches releases for a movie', async () => {
+    let seen: string | null = null;
+    server.use(
+      http.get(url('/release'), ({ request }) => {
+        seen = new URL(request.url).searchParams.get('movieId');
+        return HttpResponse.json([
+          {
+            guid: 'abc-123',
+            title: 'Dune.2021.1080p',
+            indexerId: 1,
+            indexer: 'Test Indexer',
+            size: 5368709120,
+            age: 14,
+            protocol: 'torrent',
+            approved: true,
+          },
+        ]);
+      }),
+    );
+    const releases = await client.searchReleases(12);
+    expect(seen).toBe('12');
+    expect(releases).toHaveLength(1);
+    expect(releases[0]?.guid).toBe('abc-123');
+  });
+
+  it('grabs a release', async () => {
+    let body: unknown;
+    server.use(
+      http.post(url('/release'), async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({
+          guid: 'abc-123',
+          title: 'Dune.2021.1080p',
+          indexerId: 1,
+          indexer: 'Test Indexer',
+          size: 5368709120,
+          age: 14,
+          protocol: 'torrent',
+          approved: true,
+        });
+      }),
+    );
+    await client.grabRelease({ guid: 'abc-123', indexerId: 1 });
+    expect(body).toEqual({ guid: 'abc-123', indexerId: 1 });
+  });
 });

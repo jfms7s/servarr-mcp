@@ -6,6 +6,7 @@ import type {
   MovieFile,
   QualityProfile,
   QueueRecord,
+  Release,
 } from './types.js';
 
 const MAX_OVERVIEW = 300;
@@ -190,5 +191,49 @@ export function summarizeCollection(collection: Collection): CollectionSummary {
       title: movie.title,
       monitored: movie.monitored,
     })),
+  };
+}
+
+// Raw release payloads are ~5 KB each, and rejections are kept verbatim
+// because they are the exact reasons Radarr declines a release.
+export interface ReleaseSummary {
+  rank: number;
+  guid: string;
+  indexerId: number;
+  title: string;
+  quality?: string;
+  sizeGb: number;
+  ageDays: number;
+  indexer: string;
+  protocol: string;
+  seeders?: number;
+  leechers?: number;
+  releaseGroup?: string;
+  edition?: string;
+  languages: string[];
+  customFormatScore?: number;
+  approved: boolean;
+  rejections: string[];
+}
+
+export function summarizeRelease(release: Release, rank: number): ReleaseSummary {
+  return {
+    rank,
+    guid: release.guid,
+    indexerId: release.indexerId,
+    title: release.title,
+    quality: release.quality?.quality.name,
+    sizeGb: Math.round((release.size / 1024 ** 3) * 100) / 100,
+    ageDays: release.age,
+    indexer: release.indexer,
+    protocol: release.protocol,
+    seeders: release.seeders,
+    leechers: release.leechers,
+    releaseGroup: release.releaseGroup,
+    edition: release.edition,
+    languages: release.languages?.map((lang) => lang.name) ?? [],
+    customFormatScore: release.customFormatScore,
+    approved: release.approved,
+    rejections: release.rejections ?? [],
   };
 }
