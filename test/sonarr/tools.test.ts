@@ -14,11 +14,11 @@ function toolsFor(overrides: Partial<SonarrClient>) {
 }
 
 describe('createSonarrTools', () => {
-  it('registers all 28 tools with unique sonarr_ prefixed names', () => {
+  it('registers all 33 tools with unique sonarr_ prefixed names', () => {
     const names = createSonarrTools({} as SonarrClient).map((t) => t.name);
-    expect(names).toHaveLength(28);
+    expect(names).toHaveLength(33);
     expect(names.every((n) => n.startsWith('sonarr_'))).toBe(true);
-    expect(new Set(names).size).toBe(28);
+    expect(new Set(names).size).toBe(33);
   });
 
   it('gives every tool a non-empty description', () => {
@@ -32,8 +32,8 @@ describe('createSonarrTools', () => {
       { id: 1, title: 'Andor', year: 2022, status: 'continuing', monitored: true, qualityProfileId: 1, tvdbId: 9, tags: [], seasons: [] },
     ]);
     const get = toolsFor({ listSeries });
-    const result = (await get('sonarr_list_series').handler({})) as unknown[];
-    expect(result).toEqual([expect.objectContaining({ id: 1, title: 'Andor', seasonCount: 0 })]);
+    const result = (await get('sonarr_list_series').handler({})) as { series: unknown[] };
+    expect(result.series).toEqual([expect.objectContaining({ id: 1, title: 'Andor', seasonCount: 0 })]);
   });
 
   it('returns the full record from get_series', async () => {
@@ -109,6 +109,7 @@ describe('createSonarrTools', () => {
     const getSeries = vi.fn().mockResolvedValue({
       id: 5,
       title: 'Test Series',
+      path: '/tv/Test Series',
       monitored: true,
       qualityProfileId: 1,
       seasonFolder: true,
@@ -138,6 +139,7 @@ describe('createSonarrTools', () => {
         seasonFolder: true,
         tags: [1, 2],
       }),
+      { moveFiles: undefined },
     );
   });
 
@@ -311,5 +313,704 @@ describe('createSonarrTools', () => {
     expect(result.guid).toBe('xyz');
     expect(result.indexerId).toBe(3);
     expect(result.title).toBe('Grabbed Release Title');
+  });
+
+  it('update_series now supports rootFolderPath, seriesType, and moveFiles', async () => {
+    const getSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: '/tv/Test Series',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+    });
+    const updateSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: '/anime/Test Series',
+      rootFolderPath: '/anime',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      seriesType: 'anime',
+      year: 2020,
+      status: 'continuing',
+    });
+    const get = toolsFor({ getSeries, updateSeries });
+    await get('sonarr_update_series').handler({
+      seriesId: 5,
+      rootFolderPath: '/anime',
+      seriesType: 'anime',
+      moveFiles: true,
+    });
+    expect(updateSeries).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({
+        path: '/anime/Test Series',
+        rootFolderPath: '/anime',
+        seriesType: 'anime',
+      }),
+      { moveFiles: true },
+    );
+  });
+
+  it('update_series strips trailing slash from rootFolderPath to avoid double slashes', async () => {
+    const getSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: '/tv/Test Series',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+    });
+    const updateSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: '/newroot/Test Series',
+      rootFolderPath: '/newroot/',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+    });
+    const get = toolsFor({ getSeries, updateSeries });
+    await get('sonarr_update_series').handler({
+      seriesId: 5,
+      rootFolderPath: '/newroot/',
+    });
+    expect(updateSeries).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({
+        path: '/newroot/Test Series',
+      }),
+      { moveFiles: undefined },
+    );
+  });
+
+  it('update_series handles current.path with trailing slash correctly', async () => {
+    const getSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: '/tv/Test Series/',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+    });
+    const updateSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: '/anime/Test Series',
+      rootFolderPath: '/anime',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+    });
+    const get = toolsFor({ getSeries, updateSeries });
+    await get('sonarr_update_series').handler({
+      seriesId: 5,
+      rootFolderPath: '/anime',
+    });
+    expect(updateSeries).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({
+        path: '/anime/Test Series',
+      }),
+      { moveFiles: undefined },
+    );
+  });
+
+  it('update_series falls back to folder field when path is unavailable', async () => {
+    const getSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      folder: 'Test Series (2020)',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+    });
+    const updateSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: '/anime/Test Series (2020)',
+      rootFolderPath: '/anime',
+      folder: 'Test Series (2020)',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+    });
+    const get = toolsFor({ getSeries, updateSeries });
+    await get('sonarr_update_series').handler({
+      seriesId: 5,
+      rootFolderPath: '/anime',
+    });
+    expect(updateSeries).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({
+        path: '/anime/Test Series (2020)',
+      }),
+      { moveFiles: undefined },
+    );
+  });
+
+  it('update_series throws when path and folder are both unavailable', async () => {
+    const getSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+    });
+    const get = toolsFor({ getSeries });
+    const tool = get('sonarr_update_series');
+    await expect(
+      tool.handler({
+        seriesId: 5,
+        rootFolderPath: '/anime',
+      }),
+    ).rejects.toThrow(/Cannot determine folder name/);
+  });
+
+  it('update_series without rootFolderPath does not rewrite path', async () => {
+    const getSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: '/tv/Test Series',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+    });
+    const updateSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: '/tv/Test Series',
+      monitored: false,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+    });
+    const get = toolsFor({ getSeries, updateSeries });
+    await get('sonarr_update_series').handler({
+      seriesId: 5,
+      monitored: false,
+    });
+    expect(updateSeries).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({
+        path: '/tv/Test Series',
+        monitored: false,
+      }),
+      { moveFiles: undefined },
+    );
+  });
+
+  it('list_series applies filters client-side', async () => {
+    const listSeries = vi.fn().mockResolvedValue([
+      {
+        id: 1,
+        title: 'Andor',
+        year: 2022,
+        status: 'continuing',
+        monitored: true,
+        qualityProfileId: 1,
+        tvdbId: 1,
+        tags: [],
+        seasons: [],
+        path: '/tv/Andor',
+        rootFolderPath: '/tv',
+        genres: ['sci-fi', 'drama'],
+        seriesType: 'standard',
+      },
+      {
+        id: 2,
+        title: 'Attack on Titan',
+        year: 2013,
+        status: 'ended',
+        monitored: false,
+        qualityProfileId: 1,
+        tvdbId: 2,
+        tags: [],
+        seasons: [],
+        path: '/anime/Attack on Titan',
+        rootFolderPath: '/anime',
+        genres: ['action', 'anime'],
+        seriesType: 'anime',
+      },
+    ]);
+    const get = toolsFor({ listSeries });
+    const result = (await get('sonarr_list_series').handler({ seriesType: 'anime' })) as {
+      totalMatched: number;
+      series: unknown[];
+    };
+    expect(result.totalMatched).toBe(1);
+    expect(result.series[0]).toMatchObject({ title: 'Attack on Titan' });
+  });
+
+  it('list_series filters by genre case-insensitively', async () => {
+    const listSeries = vi.fn().mockResolvedValue([
+      { id: 1, title: 'Series1', year: 2020, status: 'continuing', monitored: true, qualityProfileId: 1, tvdbId: 1, tags: [], seasons: [], genres: ['Drama', 'Comedy'] },
+      { id: 2, title: 'Series2', year: 2020, status: 'continuing', monitored: true, qualityProfileId: 1, tvdbId: 2, tags: [], seasons: [], genres: ['Action'] },
+    ]);
+    const get = toolsFor({ listSeries });
+    const result = (await get('sonarr_list_series').handler({ genre: 'drama' })) as { totalMatched: number };
+    expect(result.totalMatched).toBe(1);
+  });
+
+  it('list_series respects offset and limit pagination', async () => {
+    const listSeries = vi.fn().mockResolvedValue(
+      Array.from({ length: 100 }, (_, i) => ({
+        id: i,
+        title: `Series ${i}`,
+        year: 2020,
+        status: 'continuing',
+        monitored: true,
+        qualityProfileId: 1,
+        tvdbId: i,
+        tags: [],
+        seasons: [],
+      })),
+    );
+    const get = toolsFor({ listSeries });
+    const result = (await get('sonarr_list_series').handler({ offset: 10, limit: 5 })) as {
+      totalMatched: number;
+      offset: number;
+      limit: number;
+      series: unknown[];
+    };
+    expect(result.totalMatched).toBe(100);
+    expect(result.offset).toBe(10);
+    expect(result.limit).toBe(5);
+    expect(result.series).toHaveLength(5);
+  });
+
+  it('bulk_edit_series omits undefined fields', async () => {
+    const bulkEditSeries = vi.fn().mockResolvedValue([
+      { id: 1, title: 'Series1', year: 2020, status: 'continuing', monitored: true, qualityProfileId: 1, tvdbId: 1, tags: [], seasons: [] },
+      { id: 2, title: 'Series2', year: 2020, status: 'continuing', monitored: true, qualityProfileId: 1, tvdbId: 2, tags: [], seasons: [] },
+    ]);
+    const get = toolsFor({ bulkEditSeries });
+    await get('sonarr_bulk_edit_series').handler({
+      seriesIds: [1, 2],
+      monitored: true,
+    });
+    expect(bulkEditSeries).toHaveBeenCalledWith({
+      seriesIds: [1, 2],
+      monitored: true,
+    });
+    expect(bulkEditSeries).not.toHaveBeenCalledWith(
+      expect.objectContaining({ qualityProfileId: undefined }),
+    );
+  });
+
+  it('list_unmapped_folders returns flat array with rootFolderId', async () => {
+    const listRootFolders = vi.fn().mockResolvedValue([
+      {
+        id: 1,
+        path: '/tv',
+        accessible: true,
+        unmappedFolders: [
+          { name: 'NewSeries1', path: '/tv/NewSeries1', relativePath: 'NewSeries1' },
+          { name: 'NewSeries2', path: '/tv/NewSeries2', relativePath: 'NewSeries2' },
+        ],
+      },
+      {
+        id: 2,
+        path: '/anime',
+        accessible: true,
+        unmappedFolders: [{ name: 'NewAnime', path: '/anime/NewAnime', relativePath: 'NewAnime' }],
+      },
+    ]);
+    const get = toolsFor({ listRootFolders });
+    const result = (await get('sonarr_list_unmapped_folders').handler({})) as Array<{
+      rootFolderId: number;
+      rootFolderPath: string;
+      folderName?: string;
+      folderPath?: string;
+    }>;
+    expect(result).toHaveLength(3);
+    expect(result[0]).toMatchObject({
+      rootFolderId: 1,
+      rootFolderPath: '/tv',
+      folderName: 'NewSeries1',
+    });
+    expect(result[2]).toMatchObject({
+      rootFolderId: 2,
+      rootFolderPath: '/anime',
+      folderName: 'NewAnime',
+    });
+  });
+
+  it('get_rename_preview caps results at 100 but reports total', async () => {
+    const getRenamePreview = vi.fn().mockResolvedValue(
+      Array.from({ length: 150 }, (_, i) => ({
+        id: i,
+        seriesId: 1,
+        seasonNumber: 1,
+        episodeNumbers: [i + 1],
+        existingPath: `/old/episode${i}.mkv`,
+        newPath: `/new/S01E${(i + 1).toString().padStart(2, '0')}.mkv`,
+      })),
+    );
+    const get = toolsFor({ getRenamePreview });
+    const result = (await get('sonarr_get_rename_preview').handler({ seriesId: 1 })) as {
+      total: number;
+      shown: number;
+      previews: unknown[];
+    };
+    expect(result.total).toBe(150);
+    expect(result.shown).toBe(100);
+    expect(result.previews).toHaveLength(100);
+  });
+
+  it('find_duplicate_series detects exact duplicates by tvdbId', async () => {
+    const listSeries = vi.fn().mockResolvedValue([
+      {
+        id: 1,
+        title: 'Series',
+        year: 2020,
+        tvdbId: 100,
+        path: '/tv/Series',
+        rootFolderPath: '/tv',
+        status: 'continuing',
+        monitored: true,
+        qualityProfileId: 1,
+        tags: [],
+        seasons: [],
+      },
+      {
+        id: 2,
+        title: 'Series',
+        year: 2020,
+        tvdbId: 100,
+        path: '/backup/Series',
+        rootFolderPath: '/backup',
+        status: 'continuing',
+        monitored: true,
+        qualityProfileId: 1,
+        tags: [],
+        seasons: [],
+      },
+    ]);
+    const get = toolsFor({ listSeries });
+    const result = (await get('sonarr_find_duplicate_series').handler({})) as {
+      total: number;
+      exactDuplicates: Array<{ count: number }>;
+      misplacedCopies: unknown[];
+    };
+    expect(result.total).toBe(2);
+    expect(result.exactDuplicates).toHaveLength(1);
+    expect(result.exactDuplicates[0]?.count).toBe(2);
+  });
+
+  it('find_duplicate_series detects misplaced copies by title+year in different folders', async () => {
+    const listSeries = vi.fn().mockResolvedValue([
+      {
+        id: 1,
+        title: 'Andor',
+        year: 2022,
+        tvdbId: 1,
+        path: '/tv/Andor',
+        rootFolderPath: '/tv',
+        status: 'continuing',
+        monitored: true,
+        qualityProfileId: 1,
+        tags: [],
+        seasons: [],
+      },
+      {
+        id: 2,
+        title: 'Andor',
+        year: 2022,
+        tvdbId: 999,
+        path: '/backup/Andor',
+        rootFolderPath: '/backup',
+        status: 'continuing',
+        monitored: true,
+        qualityProfileId: 1,
+        tags: [],
+        seasons: [],
+      },
+    ]);
+    const get = toolsFor({ listSeries });
+    const result = (await get('sonarr_find_duplicate_series').handler({})) as {
+      total: number;
+      exactDuplicates: unknown[];
+      misplacedCopies: Array<{ count: number }>;
+    };
+    expect(result.total).toBe(2);
+    expect(result.exactDuplicates).toHaveLength(0);
+    expect(result.misplacedCopies).toHaveLength(1);
+    expect(result.misplacedCopies[0]?.count).toBe(2);
+  });
+
+  it('find_duplicate_series does not flag series with same title+year in same root folder', async () => {
+    const listSeries = vi.fn().mockResolvedValue([
+      {
+        id: 1,
+        title: 'Andor',
+        year: 2022,
+        tvdbId: 1,
+        path: '/tv/Andor',
+        rootFolderPath: '/tv',
+        status: 'continuing',
+        monitored: true,
+        qualityProfileId: 1,
+        tags: [],
+        seasons: [],
+      },
+      {
+        id: 2,
+        title: 'Andor',
+        year: 2022,
+        tvdbId: 999,
+        path: '/tv/Andor2',
+        rootFolderPath: '/tv',
+        status: 'continuing',
+        monitored: true,
+        qualityProfileId: 1,
+        tags: [],
+        seasons: [],
+      },
+    ]);
+    const get = toolsFor({ listSeries });
+    const result = (await get('sonarr_find_duplicate_series').handler({})) as {
+      total: number;
+      exactDuplicates: unknown[];
+      misplacedCopies: Array<{ count: number }>;
+    };
+    expect(result.total).toBe(2);
+    expect(result.exactDuplicates).toHaveLength(0);
+    expect(result.misplacedCopies).toHaveLength(0);
+  });
+
+  it('update_series handles Windows-style paths correctly', async () => {
+    const getSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: 'D:\\TV\\Test Series',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+      rootFolderPath: 'D:\\TV',
+    });
+    const updateSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: 'E:\\TV2\\Test Series',
+      rootFolderPath: 'E:\\TV2',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+    });
+    const get = toolsFor({ getSeries, updateSeries });
+    await get('sonarr_update_series').handler({
+      seriesId: 5,
+      rootFolderPath: 'E:\\TV2',
+    });
+    expect(updateSeries).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({
+        path: 'E:\\TV2\\Test Series',
+      }),
+      { moveFiles: undefined },
+    );
+  });
+
+  it('update_series preserves forward slashes when moving to Unix path', async () => {
+    const getSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: '/old/tv/Test Series',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+      rootFolderPath: '/old/tv',
+    });
+    const updateSeries = vi.fn().mockResolvedValue({
+      id: 5,
+      title: 'Test Series',
+      path: '/new/tv/Test Series',
+      rootFolderPath: '/new/tv',
+      monitored: true,
+      qualityProfileId: 1,
+      seasonFolder: true,
+      tags: [],
+      year: 2020,
+      status: 'continuing',
+    });
+    const get = toolsFor({ getSeries, updateSeries });
+    await get('sonarr_update_series').handler({
+      seriesId: 5,
+      rootFolderPath: '/new/tv',
+    });
+    expect(updateSeries).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({
+        path: '/new/tv/Test Series',
+      }),
+      { moveFiles: undefined },
+    );
+  });
+
+  it('delete_series returns preview when deleteFiles=true without confirmDeleteFiles', async () => {
+    const getSeries = vi.fn().mockResolvedValue({
+      id: 3,
+      title: 'Series',
+      year: 2020,
+      tvdbId: 123,
+      path: '/tv/Series',
+      rootFolderPath: '/tv',
+      status: 'continuing',
+      monitored: true,
+      qualityProfileId: 1,
+      tags: [],
+      seasons: [],
+      statistics: { episodeFileCount: 50, episodeCount: 100, sizeOnDisk: 5368709120 },
+    });
+    const listEpisodeFiles = vi.fn().mockResolvedValue([]);
+    const get = toolsFor({ getSeries, listEpisodeFiles });
+    const result = (await get('sonarr_delete_series').handler({
+      seriesId: 3,
+      deleteFiles: true,
+    })) as unknown as { wouldDelete: { episodeFileCount: number; sizeOnDisk: number }; confirmRequired: boolean };
+    expect(result.confirmRequired).toBe(true);
+    expect(result.wouldDelete.episodeFileCount).toBe(50);
+    expect(result.wouldDelete.sizeOnDisk).toBe(5368709120);
+  });
+
+  it('delete_series executes when confirmDeleteFiles=true', async () => {
+    const deleteSeries = vi.fn().mockResolvedValue(undefined);
+    const get = toolsFor({ deleteSeries });
+    await get('sonarr_delete_series').handler({
+      seriesId: 3,
+      deleteFiles: true,
+      confirmDeleteFiles: true,
+    });
+    expect(deleteSeries).toHaveBeenCalledWith(3, { deleteFiles: true, addImportListExclusion: false });
+  });
+
+  it('bulk_edit_series returns { updated, series } envelope', async () => {
+    const bulkEditSeries = vi.fn().mockResolvedValue([
+      { id: 1, title: 'Series1', year: 2020, status: 'continuing', monitored: false, qualityProfileId: 1, tvdbId: 1, tags: [], seasons: [] },
+      { id: 2, title: 'Series2', year: 2020, status: 'continuing', monitored: false, qualityProfileId: 1, tvdbId: 2, tags: [], seasons: [] },
+    ]);
+    const get = toolsFor({ bulkEditSeries });
+    const result = (await get('sonarr_bulk_edit_series').handler({
+      seriesIds: [1, 2],
+      monitored: false,
+    })) as unknown as { updated: number; series: unknown[] };
+    expect(result.updated).toBe(2);
+    expect(result.series).toHaveLength(2);
+  });
+
+  it('list_unmapped_folders returns flat array with rootFolderId', async () => {
+    const listRootFolders = vi.fn().mockResolvedValue([
+      {
+        id: 1,
+        path: '/tv',
+        accessible: true,
+        unmappedFolders: [
+          { name: 'NewSeries1', path: '/tv/NewSeries1', relativePath: 'NewSeries1' },
+          { name: 'NewSeries2', path: '/tv/NewSeries2', relativePath: 'NewSeries2' },
+        ],
+      },
+      {
+        id: 2,
+        path: '/anime',
+        accessible: true,
+        unmappedFolders: [{ name: 'NewAnime', path: '/anime/NewAnime', relativePath: 'NewAnime' }],
+      },
+    ]);
+    const get = toolsFor({ listRootFolders });
+    const result = (await get('sonarr_list_unmapped_folders').handler({})) as Array<{
+      rootFolderId: number;
+      rootFolderPath: string;
+      folderName?: string;
+      folderPath?: string;
+    }>;
+    expect(result).toHaveLength(3);
+    expect(result[0]).toMatchObject({
+      rootFolderId: 1,
+      rootFolderPath: '/tv',
+      folderName: 'NewSeries1',
+    });
+    expect(result[2]).toMatchObject({
+      rootFolderId: 2,
+      rootFolderPath: '/anime',
+      folderName: 'NewAnime',
+    });
+  });
+
+  it('import_folder calls runCommand with DownloadedEpisodesScan and path', async () => {
+    const runCommand = vi.fn().mockResolvedValue({
+      id: 99,
+      name: 'DownloadedEpisodesScan',
+      status: 'queued',
+    });
+    const get = toolsFor({ runCommand });
+    const result = (await get('sonarr_import_folder').handler({
+      path: '/unmapped/NewSeries',
+    })) as unknown as { commandId: number; status: string };
+    expect(runCommand).toHaveBeenCalledWith({
+      name: 'DownloadedEpisodesScan',
+      path: '/unmapped/NewSeries',
+    });
+    expect(result.commandId).toBe(99);
+    expect(result.status).toBe('queued');
+  });
+
+  it('import_folder supports importMode parameter', async () => {
+    const runCommand = vi.fn().mockResolvedValue({
+      id: 100,
+      name: 'DownloadedEpisodesScan',
+      status: 'queued',
+    });
+    const get = toolsFor({ runCommand });
+    await get('sonarr_import_folder').handler({
+      path: '/unmapped/Series',
+      importMode: 'Copy',
+    });
+    expect(runCommand).toHaveBeenCalledWith({
+      name: 'DownloadedEpisodesScan',
+      path: '/unmapped/Series',
+      importMode: 'Copy',
+    });
   });
 });

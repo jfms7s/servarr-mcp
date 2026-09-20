@@ -225,3 +225,27 @@ export interface PersonCombinedCredits {
   cast: CreditRole[];
   crew: CreditRole[];
 }
+
+export interface RadarrSettings {
+  id: number;
+  name: string;
+  hostname: string;
+  port: number;
+  apiKey: string;
+  useSsl: boolean;
+  baseUrl?: string;
+  activeProfileId: number;
+  activeProfileName: string;
+  activeDirectory: string;
+  is4k: boolean;
+  minimumAvailability: string;
+  isDefault: boolean;
+  externalUrl?: string;
+  syncEnabled?: boolean;
+  preventSearch?: boolean;
+}
+
+export interface ServiceProfile {
+  id: number;
+  name: string;
+}

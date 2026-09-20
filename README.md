@@ -212,18 +212,18 @@ A compromised bearer token gives an attacker complete control to delete your lib
 
 ## Tools
 
-This server exposes 93 tools across the four products.
+This server exposes 106 tools across the four products.
 
-### Sonarr (28 tools)
+### Sonarr (33 tools)
 
 | Tool | Purpose |
 |------|---------|
-| `sonarr_list_series` | List all TV series in the Sonarr library |
+| `sonarr_list_series` | List series, filterable by root folder, genre, series type, title and monitored state; paginated (default 50) |
 | `sonarr_get_series` | Get the full record for one series, including all seasons |
 | `sonarr_lookup_series` | Search TheTVDB for series matching a search term |
 | `sonarr_add_series` | Add a new series to Sonarr |
-| `sonarr_delete_series` | **Destructive:** Remove a series from Sonarr (optionally delete files) |
-| `sonarr_update_series` | Update series settings (monitored, quality profile, tags, season folders) |
+| `sonarr_delete_series` | **Destructive:** Remove a series from Sonarr; deleting files requires an explicit confirm flag |
+| `sonarr_update_series` | Update series settings, including **root folder** and series type, optionally moving files on disk |
 | `sonarr_list_episodes` | List episodes for a series or season |
 | `sonarr_get_episode` | Get the full record for one episode |
 | `sonarr_monitor_episodes` | Set monitored state for one or more episodes |
@@ -241,22 +241,27 @@ This server exposes 93 tools across the four products.
 | `sonarr_run_command` | Trigger a background command (search, rescan, refresh) |
 | `sonarr_get_command` | Poll the status of a background command |
 | `sonarr_list_quality_profiles` | List available quality profiles |
-| `sonarr_list_root_folders` | List configured root folders |
+| `sonarr_bulk_edit_series` | Change root folder, quality profile, series type, monitored state or tags on many series at once |
+| `sonarr_list_unmapped_folders` | List folders on disk under each root folder that Sonarr has no series for |
+| `sonarr_import_folder` | Scan a folder and import any episode files found into an existing series |
+| `sonarr_get_rename_preview` | Preview the folder and file names a rename would produce, without renaming |
+| `sonarr_find_duplicate_series` | Report series present under more than one root folder |
+| `sonarr_list_root_folders` | List configured root folders, including unmapped folders |
 | `sonarr_list_tags` | List all tags available for series organization |
 | `sonarr_get_system_status` | Get Sonarr version and system information |
 | `sonarr_get_health` | Check Sonarr health status and warnings |
 | `sonarr_get_disk_space` | List disk space on drives containing series |
 
-### Radarr (26 tools)
+### Radarr (31 tools)
 
 | Tool | Purpose |
 |------|---------|
-| `radarr_list_movies` | List all movies in the Radarr library |
+| `radarr_list_movies` | List movies, filterable by root folder, genre, title, file and monitored state; paginated (default 50) |
 | `radarr_get_movie` | Get the full record for one movie |
 | `radarr_lookup_movie` | Search TMDB for movies matching a search term |
 | `radarr_add_movie` | Add a new movie to Radarr |
-| `radarr_update_movie` | Update movie settings (monitored, quality profile, tags, availability) |
-| `radarr_delete_movie` | **Destructive:** Remove a movie from Radarr (optionally delete files) |
+| `radarr_update_movie` | Update movie settings, including **root folder**, optionally moving files on disk |
+| `radarr_delete_movie` | **Destructive:** Remove a movie from Radarr; deleting files requires an explicit confirm flag |
 | `radarr_list_movie_files` | List downloaded movie files for a movie |
 | `radarr_delete_movie_file` | **Destructive:** Permanently delete a movie file |
 | `radarr_get_calendar` | List movies with releases in a date range |
@@ -272,7 +277,12 @@ This server exposes 93 tools across the four products.
 | `radarr_run_command` | Trigger a background command (search, rescan, refresh) |
 | `radarr_get_command` | Poll the status of a background command |
 | `radarr_list_quality_profiles` | List available quality profiles |
-| `radarr_list_root_folders` | List configured root folders |
+| `radarr_bulk_edit_movies` | Change root folder, quality profile, monitored state or tags on many movies at once |
+| `radarr_list_unmapped_folders` | List folders on disk under each root folder that Radarr has no movie for |
+| `radarr_import_folder` | Scan a folder and import any movie file found into an existing movie |
+| `radarr_get_rename_preview` | Preview the folder and file names a rename would produce, without renaming |
+| `radarr_find_duplicate_movies` | Report films present under more than one root folder |
+| `radarr_list_root_folders` | List configured root folders, including unmapped folders |
 | `radarr_list_tags` | List all tags available for movie organization |
 | `radarr_get_system_status` | Get Radarr version and system information |
 | `radarr_get_health` | Check Radarr health status and warnings |
@@ -297,7 +307,7 @@ This server exposes 93 tools across the four products.
 | `prowlarr_get_system_status` | Get Prowlarr version and system information |
 | `prowlarr_get_health` | Get health check results for Prowlarr |
 
-### Overseerr (25 tools)
+### Overseerr (28 tools)
 
 | Tool | Purpose |
 |------|---------|
@@ -326,6 +336,23 @@ This server exposes 93 tools across the four products.
 | `overseerr_delete_media` | **Destructive:** Remove a media item from Overseerr |
 | `overseerr_list_users` | List Overseerr users |
 | `overseerr_get_system_status` | Get Overseerr version and update status |
+| `overseerr_list_radarr_servers` | List the Radarr servers Overseerr routes to, with each one's default root folder |
+| `overseerr_get_radarr_profiles` | List quality profiles available on one of those Radarr servers |
+| `overseerr_update_request` | Change a request's root folder, quality profile or target server |
+
+### Organising a library
+
+Several tools exist to audit and correct how a library is filed on disk.
+
+`radarr_list_movies` and `sonarr_list_series` filter by `rootFolder`, `genre`, `titleContains` and monitored/file state, and return `genres` and `originalLanguage` in the summary. That makes it possible to answer questions like "which animation-genre films are filed under the live-action root" in a single call, instead of one lookup per title.
+
+To correct what you find, `radarr_update_movie` and `sonarr_update_series` accept a `rootFolderPath`, and `radarr_bulk_edit_movies` / `sonarr_bulk_edit_series` do the same for many items at once. Pass `moveFiles: true` to relocate the files on disk rather than only changing the record.
+
+`radarr_list_unmapped_folders` and `sonarr_list_unmapped_folders` show folders present on disk that the application has no entry for; `radarr_import_folder` and `sonarr_import_folder` scan such a folder and import what they find. `radarr_get_rename_preview` and `sonarr_get_rename_preview` show the names a rename would produce before you run one, and the `find_duplicate_*` tools report titles present under more than one root folder.
+
+Routing is decided upstream: `overseerr_list_radarr_servers` reports the `activeDirectory` each Radarr server defaults to, which is usually what determines where new requests land. Note that `overseerr_update_request` changes where a request will be sent — it does not move media that has already been downloaded. Use the Radarr or Sonarr tools for that.
+
+**Safety note:** deleting files through `radarr_delete_movie` or `sonarr_delete_series` requires `confirmDeleteFiles: true`. Called without it, these tools return a description of what would be lost and delete nothing. The bulk editors deliberately do not expose file deletion at all.
 
 ## Finding Your API Key
 

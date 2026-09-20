@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { SonarrClient } from './client.js';
+import type { SeriesBulkEditPayload } from './types.js';
 import {
   summarizeBlocklistRecord,
   summarizeEpisode,
@@ -9,6 +10,7 @@ import {
   summarizeQualityProfile,
   summarizeQueueRecord,
   summarizeRelease,
+  summarizeRenamePreview,
   summarizeSeries,
 } from './shape.js';
 
@@ -23,6 +25,33 @@ const COMMAND_NAMES = [
   'DownloadedEpisodesScan',
 ] as const;
 
+/**
+ * Extract folder name from a path, handling both Unix and Windows separators.
+ * Split on either separator, then use the root folder's separator style for the result.
+ */
+function getFolderNameAndJoinPath(currentPath: string | undefined, fallbackName: string | undefined, rootFolderPath: string): { folderName: string; newPath: string } {
+  const folderName = currentPath?.split(/[/\\]+/).filter(Boolean).pop() ?? fallbackName;
+
+  if (!folderName) {
+    throw new Error(
+      'Cannot determine folder name: current path is empty and folderName is not set. ' +
+        'Ensure the series has a valid path before relocating.',
+    );
+  }
+
+  // Determine separator to use: if rootFolderPath contains backslash and no forward slash, use backslash; otherwise use forward slash
+  const usesBackslash = rootFolderPath.includes('\\') && !rootFolderPath.includes('/');
+  const separator = usesBackslash ? '\\' : '/';
+
+  // Normalize root folder path (remove trailing separators of either type)
+  const cleanRoot = rootFolderPath.replace(/[/\\]+$/, '');
+
+  return {
+    folderName,
+    newPath: `${cleanRoot}${separator}${folderName}`,
+  };
+}
+
 const page = {
   page: z.number().int().min(1).optional().describe('Page number, starting at 1'),
   pageSize: z.number().int().min(1).max(200).optional().describe('Records per page (default 20)'),
@@ -33,10 +62,37 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
     defineTool({
       name: 'sonarr_list_series',
       description:
-        'List all TV series in the Sonarr library, summarised. Returns id, title, year, ' +
-        'monitored state and episode counts. Use sonarr_get_series for the full record.',
-      inputSchema: {},
-      handler: async () => (await client.listSeries()).map(summarizeSeries),
+        'List TV series in the Sonarr library with optional filters. Results are returned ' +
+        'as { totalMatched, offset, limit, series } so pagination is visible. Default limit is 50 ' +
+        '(pass limit and offset for different ranges). Filters are applied client-side after ' +
+        'fetching all series, so titleContains and genre matches are case-insensitive substring/array searches.',
+      inputSchema: {
+        rootFolder: z.string().optional().describe('Filter by root folder path (substring/prefix match)'),
+        monitored: z.boolean().optional().describe('Filter by monitored state'),
+        genre: z.string().optional().describe('Filter by genre (case-insensitive match against genres array)'),
+        titleContains: z.string().optional().describe('Filter by title (case-insensitive substring match)'),
+        seriesType: z.enum(['standard', 'daily', 'anime']).optional().describe('Filter by series type'),
+        limit: z.number().int().min(1).optional().describe('Maximum results to return (default 50)'),
+        offset: z.number().int().min(0).optional().describe('Skip this many results (default 0)'),
+      },
+      handler: async ({ rootFolder, monitored, genre, titleContains, seriesType, limit = 50, offset = 0 }) => {
+        const allSeries = await client.listSeries();
+
+        // Apply filters client-side
+        const filtered = allSeries.filter((s) => {
+          if (rootFolder !== undefined && !s.rootFolderPath?.includes(rootFolder)) return false;
+          if (monitored !== undefined && s.monitored !== monitored) return false;
+          if (genre !== undefined && !s.genres?.some((g) => g.toLowerCase().includes(genre.toLowerCase()))) return false;
+          if (titleContains !== undefined && !s.title.toLowerCase().includes(titleContains.toLowerCase())) return false;
+          if (seriesType !== undefined && s.seriesType !== seriesType) return false;
+          return true;
+        });
+
+        const totalMatched = filtered.length;
+        const series = filtered.slice(offset, offset + limit).map(summarizeSeries);
+
+        return { totalMatched, offset, limit, series };
+      },
     }),
 
     defineTool({
@@ -94,17 +150,38 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
     defineTool({
       name: 'sonarr_delete_series',
       description:
-        'Remove a series from Sonarr. Destructive: set deleteFiles to true only when the ' +
-        'user has explicitly asked for the files on disk to be deleted too.',
+        'Remove a series from Sonarr. ' +
+        'When deleteFiles=true without confirmDeleteFiles=true, returns what would be deleted as a safety check. ' +
+        'Set confirmDeleteFiles=true to confirm the destructive operation.',
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
         deleteFiles: z.boolean().optional().describe('Also delete episode files (default false)'),
+        confirmDeleteFiles: z
+          .boolean()
+          .optional()
+          .describe('Required when deleteFiles=true, prevents accidental deletion'),
         addImportListExclusion: z
           .boolean()
           .optional()
           .describe('Prevent import lists re-adding it (default false)'),
       },
-      handler: async ({ seriesId, deleteFiles, addImportListExclusion }) => {
+      handler: async ({ seriesId, deleteFiles, confirmDeleteFiles, addImportListExclusion }) => {
+        // Guard against destructive operations without confirmation
+        if (deleteFiles && !confirmDeleteFiles) {
+          const series = await client.getSeries(seriesId);
+          return {
+            wouldDelete: {
+              title: series.title,
+              year: series.year,
+              path: series.path,
+              episodeFileCount: series.statistics?.episodeFileCount ?? 0,
+              sizeOnDisk: series.statistics?.sizeOnDisk ?? 0,
+              monitored: series.monitored,
+            },
+            confirmRequired: true,
+          };
+        }
+
         await client.deleteSeries(seriesId, {
           deleteFiles: deleteFiles ?? false,
           addImportListExclusion: addImportListExclusion ?? false,
@@ -159,15 +236,20 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       name: 'sonarr_update_series',
       description:
         'Update a series, changing only the provided fields (monitored, qualityProfileId, ' +
-        'seasonFolder, tags). All other fields are read from the current record.',
+        'seasonFolder, tags, rootFolderPath, seriesType). When rootFolderPath is provided, ' +
+        'the series path is automatically updated to <rootFolderPath>/<folderName>. ' +
+        'Set moveFiles to move existing episode files to the new location.',
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
         monitored: z.boolean().optional().describe('Monitor the series'),
         qualityProfileId: z.number().int().optional().describe('From sonarr_list_quality_profiles'),
         seasonFolder: z.boolean().optional().describe('Use season folders'),
         tags: z.array(z.number().int()).optional().describe('Tag ids from sonarr_list_tags'),
+        rootFolderPath: z.string().optional().describe('Root folder path from sonarr_list_root_folders. Updates the series path automatically.'),
+        seriesType: z.enum(['standard', 'daily', 'anime']).optional().describe('Series type affects episode numbering for anime'),
+        moveFiles: z.boolean().optional().describe('Move existing files to new location when changing rootFolderPath (default false)'),
       },
-      handler: async ({ seriesId, monitored, qualityProfileId, seasonFolder, tags }) => {
+      handler: async ({ seriesId, monitored, qualityProfileId, seasonFolder, tags, rootFolderPath, seriesType, moveFiles }) => {
         const current = await client.getSeries(seriesId);
         const merged = {
           ...current,
@@ -175,8 +257,18 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
           ...(qualityProfileId !== undefined && { qualityProfileId }),
           ...(seasonFolder !== undefined && { seasonFolder }),
           ...(tags !== undefined && { tags }),
+          ...(seriesType !== undefined && { seriesType }),
+          // When changing rootFolderPath, construct the new path by combining
+          // the new root folder with the series' folder name
+          ...(rootFolderPath !== undefined && (() => {
+            const { newPath } = getFolderNameAndJoinPath(current.path, current.folder, rootFolderPath);
+            return {
+              path: newPath,
+              rootFolderPath,
+            };
+          })()),
         };
-        const updated = await client.updateSeries(seriesId, merged);
+        const updated = await client.updateSeries(seriesId, merged, { moveFiles });
         return summarizeSeries(updated);
       },
     }),
@@ -426,6 +518,180 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
           guid,
           indexerId,
           title: grabbed.title,
+        };
+      },
+    }),
+
+    defineTool({
+      name: 'sonarr_bulk_edit_series',
+      description:
+        'Bulk edit multiple series at once. Only fields explicitly provided are updated; ' +
+        'omitted fields are not changed. Supports changing root folder, quality profile, series type, ' +
+        'monitored state, season folder setting, and tags. Set moveFiles to move existing files ' +
+        'when changing root folder.',
+      inputSchema: {
+        seriesIds: z.array(z.number().int()).min(1).describe('Series ids to update'),
+        monitored: z.boolean().optional().describe('Set monitored state'),
+        qualityProfileId: z.number().int().optional().describe('From sonarr_list_quality_profiles'),
+        seriesType: z.enum(['standard', 'daily', 'anime']).optional().describe('Series type'),
+        seasonFolder: z.boolean().optional().describe('Use season folders'),
+        rootFolderPath: z.string().optional().describe('Root folder path from sonarr_list_root_folders'),
+        tags: z.array(z.number().int()).optional().describe('Tag ids from sonarr_list_tags'),
+        applyTags: z.enum(['add', 'remove', 'replace']).optional().describe('How to apply tags (default replace)'),
+        moveFiles: z.boolean().optional().describe('Move files when changing rootFolderPath (default false)'),
+      },
+      handler: async (args) => {
+        // Build payload with only defined fields to avoid blanking unspecified fields
+        const payload: Partial<SeriesBulkEditPayload> = { seriesIds: args.seriesIds };
+        if (args.monitored !== undefined) payload.monitored = args.monitored;
+        if (args.qualityProfileId !== undefined) payload.qualityProfileId = args.qualityProfileId;
+        if (args.seriesType !== undefined) payload.seriesType = args.seriesType;
+        if (args.seasonFolder !== undefined) payload.seasonFolder = args.seasonFolder;
+        if (args.rootFolderPath !== undefined) payload.rootFolderPath = args.rootFolderPath;
+        if (args.tags !== undefined) payload.tags = args.tags;
+        if (args.applyTags !== undefined) payload.applyTags = args.applyTags;
+        if (args.moveFiles !== undefined) payload.moveFiles = args.moveFiles;
+
+        const result = await client.bulkEditSeries(payload as unknown as SeriesBulkEditPayload);
+        return {
+          updated: result.length,
+          series: result.map(summarizeSeries),
+        };
+      },
+    }),
+
+    defineTool({
+      name: 'sonarr_list_unmapped_folders',
+      description:
+        'List folders in each root folder that are not yet mapped to any series. ' +
+        'Use this to find media that needs to be imported or organized.',
+      inputSchema: {},
+      handler: async () => {
+        const rootFolders = await client.listRootFolders();
+        const result = [];
+        for (const rf of rootFolders) {
+          const unmapped = rf.unmappedFolders ?? [];
+          for (const folder of unmapped) {
+            result.push({
+              rootFolderId: rf.id,
+              rootFolderPath: rf.path,
+              folderName: folder.name,
+              folderPath: folder.path,
+              relativePath: folder.relativePath,
+            });
+          }
+        }
+        return result;
+      },
+    }),
+
+    defineTool({
+      name: 'sonarr_get_rename_preview',
+      description:
+        'Preview how Sonarr will rename episode files for a series or season without actually ' +
+        'running the rename. Useful for verifying your naming rules are working correctly. ' +
+        'If the series has hundreds of episodes, only the first 100 are shown but the total count is reported.',
+      inputSchema: {
+        seriesId: z.number().int().describe('Sonarr series id'),
+        seasonNumber: z.number().int().optional().describe('Season number (all seasons if omitted)'),
+      },
+      handler: async ({ seriesId, seasonNumber }) => {
+        const previews = await client.getRenamePreview(seriesId, seasonNumber);
+        const MAX_PREVIEW = 100;
+        const shown = previews.slice(0, MAX_PREVIEW).map(summarizeRenamePreview);
+        return {
+          total: previews.length,
+          shown: shown.length,
+          previews: shown,
+        };
+      },
+    }),
+
+    defineTool({
+      name: 'sonarr_find_duplicate_series',
+      description:
+        'Find potential duplicate series in the library. Detects series with the same tvdbId ' +
+        '(exact duplicate) and same normalized title + year under different root folders ' +
+        '(likely misplaced copies). Helps identify library organization issues.',
+      inputSchema: {},
+      handler: async () => {
+        const allSeries = await client.listSeries();
+
+        // Find series with duplicate tvdbIds (exact duplicates)
+        const tvdbMap = new Map<number, typeof allSeries>();
+        for (const series of allSeries) {
+          if (!tvdbMap.has(series.tvdbId)) {
+            tvdbMap.set(series.tvdbId, []);
+          }
+          tvdbMap.get(series.tvdbId)!.push(series);
+        }
+
+        const exactDuplicates = Array.from(tvdbMap.values())
+          .filter((group) => group.length > 1)
+          .map((group) => {
+            const first = group[0]!;
+            return {
+              tvdbId: first.tvdbId,
+              count: group.length,
+              series: group.map((s) => ({ id: s.id, title: s.title, path: s.path })),
+            };
+          });
+
+        // Find series with same normalized title+year in different root folders
+        type TitleYearKey = string;
+        const titleYearMap = new Map<TitleYearKey, typeof allSeries>();
+        for (const series of allSeries) {
+          const key = `${series.title.toLowerCase().replace(/[^a-z0-9]/g, '')}:${series.year}`;
+          if (!titleYearMap.has(key)) {
+            titleYearMap.set(key, []);
+          }
+          titleYearMap.get(key)!.push(series);
+        }
+
+        const misplacedCopies = Array.from(titleYearMap.values())
+          .filter((group) => group.length > 1 && new Set(group.map((s) => s.rootFolderPath)).size > 1)
+          .map((group) => {
+            const first = group[0]!;
+            return {
+              title: first.title,
+              year: first.year,
+              count: group.length,
+              series: group.map((s) => ({ id: s.id, title: s.title, path: s.path })),
+            };
+          });
+
+        return {
+          total: allSeries.length,
+          exactDuplicates,
+          misplacedCopies,
+        };
+      },
+    }),
+
+    defineTool({
+      name: 'sonarr_import_folder',
+      description:
+        'Scan a folder and import any episode files found into existing series entries in Sonarr. ' +
+        'This is asynchronous — it returns a command id that can be polled with sonarr_get_command. ' +
+        'Important: the series must already exist in Sonarr for files to attach to it; otherwise the scan will not import them. ' +
+        'Use folderPath from sonarr_list_unmapped_folders.',
+      inputSchema: {
+        path: z.string().describe('Absolute path to the folder to import, as returned by sonarr_list_unmapped_folders (folderPath field)'),
+        importMode: z
+          .enum(['Auto', 'Move', 'Copy'])
+          .optional()
+          .describe('How to handle files: Auto (default, let Sonarr decide), Move (relocate to configured library), Copy (keep original, duplicate to library)'),
+      },
+      handler: async ({ path, importMode }) => {
+        const command = await client.runCommand({
+          name: 'DownloadedEpisodesScan',
+          path,
+          ...(importMode && { importMode }),
+        });
+        return {
+          commandId: command.id,
+          status: command.status,
+          message: `Scanning ${path} for episodes to import`,
         };
       },
     }),

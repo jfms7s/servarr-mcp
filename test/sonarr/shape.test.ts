@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeEpisode, summarizeQueueRecord, summarizeSeries } from '../../src/sonarr/shape.js';
-import type { Episode, QueueRecord, Series } from '../../src/sonarr/types.js';
+import { summarizeEpisode, summarizeQueueRecord, summarizeRenamePreview, summarizeSeries, summarizeUnmappedFolder } from '../../src/sonarr/shape.js';
+import type { Episode, QueueRecord, RenameEpisodeResource, Series, UnmappedFolder } from '../../src/sonarr/types.js';
 
 const series = {
   id: 1,
@@ -103,5 +103,70 @@ describe('summarizeQueueRecord', () => {
   it('reports 0 percent complete when size is unknown', () => {
     const summary = summarizeQueueRecord({ id: 1, title: 't', status: 's', size: 0, sizeleft: 0 } as QueueRecord);
     expect(summary.percentComplete).toBe(0);
+  });
+});
+
+describe('summarizeSeries with new fields', () => {
+  it('includes genres, originalLanguage, and seriesType', () => {
+    const fullSeries = {
+      ...series,
+      genres: ['drama', 'sci-fi'],
+      seriesType: 'standard',
+      originalLanguage: { id: 1, name: 'en' },
+    } as unknown as Series;
+
+    const summary = summarizeSeries(fullSeries);
+    expect(summary).toMatchObject({
+      genres: ['drama', 'sci-fi'],
+      seriesType: 'standard',
+      originalLanguage: 'en',
+    });
+  });
+
+  it('handles missing genres, seriesType, and originalLanguage gracefully', () => {
+    const summary = summarizeSeries(series);
+    expect(summary.genres).toBeUndefined();
+    expect(summary.seriesType).toBeUndefined();
+    expect(summary.originalLanguage).toBeUndefined();
+  });
+});
+
+describe('summarizeRenamePreview', () => {
+  it('projects rename preview fields', () => {
+    const preview = {
+      id: 1,
+      seriesId: 5,
+      seasonNumber: 1,
+      episodeNumbers: [3],
+      episodeFileId: 100,
+      existingPath: '/old/episode.mkv',
+      newPath: '/new/S01E03.mkv',
+    } as RenameEpisodeResource;
+
+    const summary = summarizeRenamePreview(preview);
+    expect(summary).toMatchObject({
+      seasonNumber: 1,
+      episodeNumbers: [3],
+      episodeFileId: 100,
+      existingPath: '/old/episode.mkv',
+      newPath: '/new/S01E03.mkv',
+    });
+  });
+});
+
+describe('summarizeUnmappedFolder', () => {
+  it('projects unmapped folder fields', () => {
+    const folder = {
+      name: 'NewSeries',
+      path: '/tv/NewSeries',
+      relativePath: 'NewSeries',
+    } as UnmappedFolder;
+
+    const summary = summarizeUnmappedFolder(folder);
+    expect(summary).toMatchObject({
+      name: 'NewSeries',
+      path: '/tv/NewSeries',
+      relativePath: 'NewSeries',
+    });
   });
 });

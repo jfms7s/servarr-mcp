@@ -16,8 +16,10 @@ import type {
   QualityProfile,
   QueueRecord,
   Release,
+  RenameEpisodeResource,
   RootFolder,
   Series,
+  SeriesBulkEditPayload,
   SystemStatus,
   Tag,
 } from './types.js';
@@ -25,6 +27,10 @@ import type {
 export interface DeleteSeriesOptions {
   deleteFiles?: boolean;
   addImportListExclusion?: boolean;
+}
+
+export interface UpdateSeriesOptions {
+  moveFiles?: boolean;
 }
 
 export interface CalendarOptions {
@@ -56,7 +62,8 @@ export interface SonarrClient {
   getSeries(id: number): Promise<Series>;
   lookupSeries(term: string): Promise<Series[]>;
   addSeries(payload: AddSeriesPayload): Promise<Series>;
-  updateSeries(id: number, payload: Series): Promise<Series>;
+  updateSeries(id: number, payload: Series, options?: UpdateSeriesOptions): Promise<Series>;
+  bulkEditSeries(payload: SeriesBulkEditPayload): Promise<Series[]>;
   deleteSeries(id: number, options?: DeleteSeriesOptions): Promise<void>;
   listEpisodes(seriesId: number, seasonNumber?: number): Promise<Episode[]>;
   getEpisode(id: number): Promise<Episode>;
@@ -70,6 +77,7 @@ export interface SonarrClient {
   getWantedMissing(options?: WantedOptions): Promise<PagedResponse<Episode>>;
   getBlocklist(options?: PageParams): Promise<PagedResponse<BlocklistRecord>>;
   deleteBlocklistItem(id: number): Promise<void>;
+  getRenamePreview(seriesId: number, seasonNumber?: number): Promise<RenameEpisodeResource[]>;
   runCommand(payload: CommandPayload): Promise<CommandResource>;
   getCommand(id: number): Promise<CommandResource>;
   listQualityProfiles(): Promise<QualityProfile[]>;
@@ -95,7 +103,9 @@ export function createSonarrClient(config: InstanceConfig): SonarrClient {
     getSeries: (id) => http.get(`/series/${id}`),
     lookupSeries: (term) => http.get('/series/lookup', { term }),
     addSeries: (payload) => http.post('/series', payload),
-    updateSeries: (id, payload) => http.put(`/series/${id}`, payload),
+    updateSeries: (id, payload, options) =>
+      http.put(`/series/${id}`, payload, { moveFiles: options?.moveFiles }),
+    bulkEditSeries: (payload) => http.put('/series/editor', payload),
     deleteSeries: (id, options) => http.del(`/series/${id}`, { ...options }),
     listEpisodes: (seriesId, seasonNumber) => http.get('/episode', { seriesId, seasonNumber }),
     getEpisode: (id) => http.get(`/episode/${id}`),
@@ -110,6 +120,8 @@ export function createSonarrClient(config: InstanceConfig): SonarrClient {
     getWantedMissing: (options) => http.get('/wanted/missing', { ...options }),
     getBlocklist: (options) => http.get('/blocklist', { ...options }),
     deleteBlocklistItem: (id) => http.del(`/blocklist/${id}`),
+    getRenamePreview: (seriesId, seasonNumber) =>
+      http.get('/rename', { seriesId, seasonNumber }),
     runCommand: (payload) => http.post('/command', payload),
     getCommand: (id) => http.get(`/command/${id}`),
     listQualityProfiles: () => http.get('/qualityprofile'),

@@ -11,12 +11,14 @@ import type {
   HealthCheck,
   HistoryRecord,
   Movie,
+  MovieEditorPayload,
   MovieFile,
   PageParams,
   PagedResponse,
   QualityProfile,
   QueueRecord,
   Release,
+  RenameMovieResource,
   RootFolder,
   SystemStatus,
   Tag,
@@ -25,6 +27,10 @@ import type {
 export interface DeleteMovieOptions {
   deleteFiles?: boolean;
   addImportExclusion?: boolean;
+}
+
+export interface UpdateMovieOptions {
+  moveFiles?: boolean;
 }
 
 export interface CalendarOptions {
@@ -52,10 +58,12 @@ export interface RadarrClient {
   lookupMovie(term: string): Promise<Movie[]>;
   lookupMovieByTmdbId(tmdbId: number): Promise<Movie>;
   addMovie(payload: AddMoviePayload): Promise<Movie>;
-  updateMovie(id: number, payload: Movie): Promise<Movie>;
+  updateMovie(id: number, payload: Movie, options?: UpdateMovieOptions): Promise<Movie>;
+  bulkEditMovies(payload: MovieEditorPayload): Promise<Movie[]>;
   deleteMovie(id: number, options?: DeleteMovieOptions): Promise<void>;
   listMovieFiles(movieId: number): Promise<MovieFile[]>;
   deleteMovieFile(id: number): Promise<void>;
+  renamePreview(movieIds: number[]): Promise<RenameMovieResource[]>;
   getCalendar(options?: CalendarOptions): Promise<Movie[]>;
   getQueue(options?: QueueOptions): Promise<PagedResponse<QueueRecord>>;
   deleteQueueItem(id: number, options?: DeleteQueueItemOptions): Promise<void>;
@@ -90,10 +98,13 @@ export function createRadarrClient(config: InstanceConfig): RadarrClient {
     lookupMovie: (term) => http.get('/movie/lookup', { term }),
     lookupMovieByTmdbId: (tmdbId) => http.get('/movie/lookup/tmdb', { tmdbId }),
     addMovie: (payload) => http.post('/movie', payload),
-    updateMovie: (id, payload) => http.put(`/movie/${id}`, payload),
+    updateMovie: (id, payload, options) =>
+      http.put(`/movie/${id}`, payload, { moveFiles: options?.moveFiles }),
+    bulkEditMovies: (payload) => http.put('/movie/editor', payload),
     deleteMovie: (id, options) => http.del(`/movie/${id}`, { ...options }),
     listMovieFiles: (movieId) => http.get('/moviefile', { movieId }),
     deleteMovieFile: (id) => http.del(`/moviefile/${id}`),
+    renamePreview: (movieIds) => http.get('/rename', { movieId: movieIds }),
     getCalendar: (options) => http.get('/calendar', { ...options }),
     getQueue: (options) => http.get('/queue', { ...options }),
     deleteQueueItem: (id, options) => http.del(`/queue/${id}`, { ...options }),

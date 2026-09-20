@@ -21,11 +21,11 @@ const request = {
 };
 
 describe('createOverseerrTools', () => {
-  it('registers all 25 tools with unique overseerr_ prefixed names', () => {
+  it('registers all 28 tools with unique overseerr_ prefixed names', () => {
     const names = createOverseerrTools({} as OverseerrClient).map((t) => t.name);
-    expect(names).toHaveLength(25);
+    expect(names).toHaveLength(28);
     expect(names.every((n) => n.startsWith('overseerr_'))).toBe(true);
-    expect(new Set(names).size).toBe(25);
+    expect(new Set(names).size).toBe(28);
   });
 
   it('searches for media', async () => {
@@ -355,5 +355,111 @@ describe('createOverseerrTools', () => {
       language: 'pt',
     });
     expect(getSimilarTv).toHaveBeenCalledWith(1399, undefined, 'pt');
+  });
+
+  it('lists radarr servers with apiKey stripped for security', async () => {
+    const listRadarrServers = vi.fn().mockResolvedValue([
+      {
+        id: 1,
+        name: 'Radarr Main',
+        hostname: '127.0.0.1',
+        port: 7878,
+        apiKey: 'super-secret-key-12345',
+        useSsl: false,
+        baseUrl: '/radarr',
+        activeProfileId: 1,
+        activeProfileName: '720p/1080p',
+        activeDirectory: '/mnt/archive/media/movies',
+        is4k: false,
+        minimumAvailability: 'In Cinema',
+        isDefault: true,
+        externalUrl: 'http://radarr.example.com',
+        syncEnabled: false,
+        preventSearch: false,
+      },
+    ]);
+    const get = toolsFor({ listRadarrServers });
+    const result = (await get('overseerr_list_radarr_servers').handler({})) as unknown[];
+    expect(listRadarrServers).toHaveBeenCalledWith();
+    expect(result).toHaveLength(1);
+    expect(result[0]).toHaveProperty('id');
+    expect(result[0]).toHaveProperty('name');
+    expect(result[0]).toHaveProperty('activeDirectory');
+    expect(result[0]).toHaveProperty('activeProfileId');
+    // SECURITY: apiKey must not be in the output
+    expect(result[0]).not.toHaveProperty('apiKey');
+    // SECURITY: connection details must not be in the output
+    expect(result[0]).not.toHaveProperty('hostname');
+    expect(result[0]).not.toHaveProperty('port');
+    expect(result[0]).not.toHaveProperty('baseUrl');
+    expect(result[0]).not.toHaveProperty('externalUrl');
+  });
+
+  it('gets radarr profiles', async () => {
+    const getRadarrProfiles = vi
+      .fn()
+      .mockResolvedValue([
+        { id: 1, name: '720p/1080p' },
+        { id: 2, name: '4K' },
+      ]);
+    const get = toolsFor({ getRadarrProfiles });
+    const result = await get('overseerr_get_radarr_profiles').handler({ radarrId: 1 });
+    expect(getRadarrProfiles).toHaveBeenCalledWith(1);
+    expect(result).toHaveLength(2);
+  });
+
+  it('updates a request with partial payload sending only provided fields', async () => {
+    const updateRequest = vi.fn().mockResolvedValue({
+      ...request,
+      rootFolder: '/mnt/archive/media/movies-anime',
+      profileId: 2,
+    });
+    const get = toolsFor({ updateRequest });
+    const result = await get('overseerr_update_request').handler({
+      requestId: 1,
+      mediaType: 'movie',
+      rootFolder: '/mnt/archive/media/movies-anime',
+      profileId: 2,
+    });
+    expect(updateRequest).toHaveBeenCalledWith(1, {
+      mediaType: 'movie',
+      rootFolder: '/mnt/archive/media/movies-anime',
+      profileId: 2,
+    });
+    expect(result).toHaveProperty('id');
+  });
+
+  it('updates a request with only mediaType and is4k', async () => {
+    const updateRequest = vi.fn().mockResolvedValue({
+      ...request,
+      is4k: true,
+    });
+    const get = toolsFor({ updateRequest });
+    await get('overseerr_update_request').handler({
+      requestId: 1,
+      mediaType: 'tv',
+      is4k: true,
+    });
+    expect(updateRequest).toHaveBeenCalledWith(1, {
+      mediaType: 'tv',
+      is4k: true,
+    });
+  });
+
+  it('updates a request with seasons for tv media', async () => {
+    const updateRequest = vi.fn().mockResolvedValue({
+      ...request,
+      seasons: [{ id: 1, seasonNumber: 1 }],
+    });
+    const get = toolsFor({ updateRequest });
+    await get('overseerr_update_request').handler({
+      requestId: 1,
+      mediaType: 'tv',
+      seasons: [1, 2, 3],
+    });
+    expect(updateRequest).toHaveBeenCalledWith(1, {
+      mediaType: 'tv',
+      seasons: [1, 2, 3],
+    });
   });
 });

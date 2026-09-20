@@ -5,6 +5,7 @@ import type {
   MovieDetails,
   OverseerrUser,
   PersonDetails,
+  RadarrSettings,
   SearchResult,
   TvDetails,
 } from './types.js';
@@ -249,5 +250,33 @@ export function summarizeCreditRole(credit: CreditRole): CreditRoleSummary {
     releaseDate: credit.releaseDate,
     firstAirDate: credit.firstAirDate,
     voteAverage: credit.voteAverage,
+  };
+}
+
+export interface RadarrServerSummary {
+  id: number;
+  name: string;
+  activeDirectory: string;
+  activeProfileId: number;
+  activeProfileName: string;
+  is4k: boolean;
+  isDefault: boolean;
+  minimumAvailability: string;
+  syncEnabled?: boolean;
+  preventSearch?: boolean;
+}
+
+export function summarizeRadarrSettings(server: RadarrSettings): RadarrServerSummary {
+  return {
+    id: server.id,
+    name: server.name,
+    activeDirectory: server.activeDirectory,
+    activeProfileId: server.activeProfileId,
+    activeProfileName: server.activeProfileName,
+    is4k: server.is4k,
+    isDefault: server.isDefault,
+    minimumAvailability: server.minimumAvailability,
+    syncEnabled: server.syncEnabled,
+    preventSearch: server.preventSearch,
   };
 }

@@ -8,5 +8,5 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-imports': 'error',
     },
   },
-  { ignores: ['dist/**'] },
+  { ignores: ['dist/**', '.claude/**'] },
 );

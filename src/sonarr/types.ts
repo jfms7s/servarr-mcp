@@ -24,6 +24,7 @@ export interface Series {
   qualityProfileId: number;
   rootFolderPath?: string;
   path?: string;
+  folder?: string;
   tvdbId: number;
   imdbId?: string;
   tags: number[];
@@ -32,6 +33,9 @@ export interface Series {
   statistics?: { episodeFileCount: number; episodeCount: number; sizeOnDisk: number };
   added?: string;
   ended?: boolean;
+  genres?: string[];
+  seriesType?: string;
+  originalLanguage?: { id: number; name: string };
 }
 
 export interface AddSeriesPayload {
@@ -114,6 +118,8 @@ export interface CommandPayload {
   seriesIds?: number[];
   episodeIds?: number[];
   seasonNumber?: number;
+  path?: string;
+  importMode?: string;
 }
 
 export interface CommandResource {
@@ -133,11 +139,18 @@ export interface QualityProfile {
   cutoff: number;
 }
 
+export interface UnmappedFolder {
+  name?: string;
+  path?: string;
+  relativePath?: string;
+}
+
 export interface RootFolder {
   id: number;
   path: string;
   accessible: boolean;
   freeSpace?: number;
+  unmappedFolders?: UnmappedFolder[];
 }
 
 export interface Tag {
@@ -196,4 +209,27 @@ export interface Release {
 export interface GrabReleasePayload {
   guid: string;
   indexerId: number;
+}
+
+export interface RenameEpisodeResource {
+  id: number;
+  seriesId: number;
+  seasonNumber: number;
+  episodeNumbers?: number[];
+  episodeFileId?: number;
+  existingPath?: string;
+  newPath?: string;
+}
+
+export interface SeriesBulkEditPayload {
+  seriesIds: number[];
+  monitored?: boolean;
+  monitorNewItems?: string;
+  qualityProfileId?: number;
+  seriesType?: string;
+  seasonFolder?: boolean;
+  rootFolderPath?: string;
+  tags?: number[];
+  applyTags?: string;
+  moveFiles?: boolean;
 }

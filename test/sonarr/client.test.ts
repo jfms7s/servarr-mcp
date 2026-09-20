@@ -176,4 +176,86 @@ describe('SonarrClient', () => {
     expect(body).toEqual({ guid: 'xyz', indexerId: 3 });
     expect(result).toMatchObject({ guid: 'xyz', title: 'Grabbed Release' });
   });
+
+  it('updates a series with moveFiles as a query parameter', async () => {
+    let params: URLSearchParams | undefined;
+    let body: unknown;
+    server.use(
+      http.put(url('/series/5'), async ({ request }) => {
+        params = new URL(request.url).searchParams;
+        body = await request.json();
+        return HttpResponse.json({ id: 5, title: 'Test', rootFolderPath: '/new', monitored: true, qualityProfileId: 1, tvdbId: 1, tags: [], seasons: [] });
+      }),
+    );
+    await client.updateSeries(
+      5,
+      { id: 5, title: 'Test', monitored: true, qualityProfileId: 1, tvdbId: 1, tags: [], seasons: [], year: 2020, status: 'continuing' },
+      { moveFiles: true },
+    );
+    expect(params?.get('moveFiles')).toBe('true');
+    expect(body).toMatchObject({ id: 5, title: 'Test' });
+  });
+
+  it('bulk edits series with only provided fields', async () => {
+    let body: unknown;
+    server.use(
+      http.put(url('/series/editor'), async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json([{ id: 1 }, { id: 2 }]);
+      }),
+    );
+    const result = await client.bulkEditSeries({
+      seriesIds: [1, 2],
+      monitored: true,
+      qualityProfileId: 3,
+    });
+    expect(body).toEqual({ seriesIds: [1, 2], monitored: true, qualityProfileId: 3 });
+    expect(result).toHaveLength(2);
+  });
+
+  it('gets rename preview for a series', async () => {
+    let params: URLSearchParams | undefined;
+    server.use(
+      http.get(url('/rename'), ({ request }) => {
+        params = new URL(request.url).searchParams;
+        return HttpResponse.json([{ id: 1, existingPath: '/old', newPath: '/new' }]);
+      }),
+    );
+    const result = await client.getRenamePreview(5);
+    expect(params?.get('seriesId')).toBe('5');
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: 1 });
+  });
+
+  it('gets rename preview for a specific season', async () => {
+    let params: URLSearchParams | undefined;
+    server.use(
+      http.get(url('/rename'), ({ request }) => {
+        params = new URL(request.url).searchParams;
+        return HttpResponse.json([]);
+      }),
+    );
+    await client.getRenamePreview(5, 2);
+    expect(params?.get('seriesId')).toBe('5');
+    expect(params?.get('seasonNumber')).toBe('2');
+  });
+
+  it('lists root folders with unmapped folders', async () => {
+    server.use(
+      http.get(url('/rootfolder'), () =>
+        HttpResponse.json([
+          {
+            id: 1,
+            path: '/tv',
+            accessible: true,
+            unmappedFolders: [{ name: 'NewSeries', path: '/tv/NewSeries', relativePath: 'NewSeries' }],
+          },
+        ]),
+      ),
+    );
+    const folders = await client.listRootFolders();
+    expect(folders).toHaveLength(1);
+    expect(folders[0]?.unmappedFolders).toHaveLength(1);
+    expect(folders[0]?.unmappedFolders?.[0]).toMatchObject({ name: 'NewSeries' });
+  });
 });

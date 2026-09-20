@@ -6,7 +6,9 @@ import type {
   QualityProfile,
   QueueRecord,
   Release,
+  RenameEpisodeResource,
   Series,
+  UnmappedFolder,
 } from './types.js';
 
 const MAX_OVERVIEW = 300;
@@ -36,6 +38,9 @@ export interface SeriesSummary {
   episodeCount?: number;
   sizeOnDisk?: number;
   overview?: string;
+  genres?: string[];
+  originalLanguage?: string;
+  seriesType?: string;
 }
 
 export function summarizeSeries(series: Series): SeriesSummary {
@@ -55,6 +60,9 @@ export function summarizeSeries(series: Series): SeriesSummary {
     episodeCount: series.statistics?.episodeCount,
     sizeOnDisk: series.statistics?.sizeOnDisk,
     overview: truncateOverview(series.overview),
+    genres: series.genres,
+    originalLanguage: series.originalLanguage?.name,
+    seriesType: series.seriesType,
   };
 }
 
@@ -253,5 +261,37 @@ export function summarizeRelease(release: Release, rank: number): ReleaseSummary
     fullSeason: release.fullSeason,
     approved: release.approved,
     rejections: release.rejections ?? [],
+  };
+}
+
+export interface RenamePreviewSummary {
+  episodeFileId?: number;
+  seasonNumber: number;
+  episodeNumbers?: number[];
+  existingPath?: string;
+  newPath?: string;
+}
+
+export function summarizeRenamePreview(resource: RenameEpisodeResource): RenamePreviewSummary {
+  return {
+    episodeFileId: resource.episodeFileId,
+    seasonNumber: resource.seasonNumber,
+    episodeNumbers: resource.episodeNumbers,
+    existingPath: resource.existingPath,
+    newPath: resource.newPath,
+  };
+}
+
+export interface UnmappedFolderSummary {
+  name?: string;
+  path?: string;
+  relativePath?: string;
+}
+
+export function summarizeUnmappedFolder(folder: UnmappedFolder): UnmappedFolderSummary {
+  return {
+    name: folder.name,
+    path: folder.path,
+    relativePath: folder.relativePath,
   };
 }

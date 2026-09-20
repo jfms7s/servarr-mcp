@@ -31,6 +31,8 @@ export interface MovieSummary {
   sizeOnDisk?: number;
   tags: number[];
   overview?: string;
+  genres?: string[];
+  originalLanguage?: string;
 }
 
 export function summarizeMovie(movie: Movie): MovieSummary {
@@ -49,6 +51,8 @@ export function summarizeMovie(movie: Movie): MovieSummary {
     sizeOnDisk: movie.sizeOnDisk,
     tags: movie.tags ?? [],
     overview: truncateOverview(movie.overview),
+    genres: movie.genres,
+    originalLanguage: movie.originalLanguage?.name,
   };
 }
 

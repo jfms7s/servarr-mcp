@@ -9,10 +9,12 @@ import type {
   OverseerrStatus,
   PersonCombinedCredits,
   PersonDetails,
+  RadarrSettings,
   RequestCounts,
   RequestListResponse,
   RtRating,
   SearchResponse,
+  ServiceProfile,
   TvDetails,
   UserListResponse,
 } from './types.js';
@@ -64,12 +66,26 @@ export interface OverseerrClient {
   getRequestCount(): Promise<RequestCounts>;
   createRequest(payload: CreateRequestPayload): Promise<MediaRequest>;
   updateRequestStatus(requestId: number, status: 'approve' | 'decline'): Promise<MediaRequest>;
+  updateRequest(requestId: number, payload: UpdateRequestPayload): Promise<MediaRequest>;
   retryRequest(requestId: number): Promise<MediaRequest>;
   deleteRequest(requestId: number): Promise<void>;
   listMedia(options?: ListMediaOptions): Promise<MediaListResponse>;
   deleteMedia(mediaId: number): Promise<void>;
   listUsers(options?: ListUsersOptions): Promise<UserListResponse>;
   getSystemStatus(): Promise<OverseerrStatus>;
+  listRadarrServers(): Promise<RadarrSettings[]>;
+  getRadarrProfiles(radarrId: number): Promise<ServiceProfile[]>;
+}
+
+export interface UpdateRequestPayload {
+  mediaType: 'movie' | 'tv';
+  seasons?: number[];
+  is4k?: boolean;
+  serverId?: number;
+  profileId?: number;
+  rootFolder?: string;
+  languageProfileId?: number;
+  userId?: number;
 }
 
 export function createOverseerrClient(config: InstanceConfig): OverseerrClient {
@@ -100,11 +116,14 @@ export function createOverseerrClient(config: InstanceConfig): OverseerrClient {
     getRequestCount: () => http.get('/request/count'),
     createRequest: (payload) => http.post('/request', payload),
     updateRequestStatus: (requestId, status) => http.post(`/request/${requestId}/${status}`),
+    updateRequest: (requestId, payload) => http.put(`/request/${requestId}`, payload),
     retryRequest: (requestId) => http.post(`/request/${requestId}/retry`),
     deleteRequest: (requestId) => http.del(`/request/${requestId}`),
     listMedia: (options) => http.get('/media', { ...options }),
     deleteMedia: (mediaId) => http.del(`/media/${mediaId}`),
     listUsers: (options) => http.get('/user', { ...options }),
     getSystemStatus: () => http.get('/status'),
+    listRadarrServers: () => http.get('/settings/radarr'),
+    getRadarrProfiles: (radarrId) => http.get(`/settings/radarr/${radarrId}/profiles`),
   };
 }

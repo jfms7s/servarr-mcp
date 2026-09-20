@@ -5,6 +5,17 @@ export interface PagedResponse<T> {
   records: T[];
 }
 
+export interface Language {
+  id: number;
+  name: string;
+}
+
+export interface UnmappedFolder {
+  name?: string;
+  path?: string;
+  relativePath?: string;
+}
+
 export interface Movie {
   id: number;
   title: string;
@@ -18,6 +29,7 @@ export interface Movie {
   qualityProfileId: number;
   rootFolderPath?: string;
   path?: string;
+  folderName?: string;
   tmdbId: number;
   imdbId?: string;
   tags: number[];
@@ -28,6 +40,8 @@ export interface Movie {
   added?: string;
   collection?: { title?: string; tmdbId?: number };
   ratings?: Record<string, { value?: number; votes?: number }>;
+  genres?: string[];
+  originalLanguage?: Language;
 }
 
 export interface AddMoviePayload {
@@ -99,6 +113,8 @@ export interface CommandPayload {
   name: string;
   movieId?: number;
   movieIds?: number[];
+  path?: string;
+  importMode?: string;
 }
 
 export interface CommandResource {
@@ -123,6 +139,7 @@ export interface RootFolder {
   path: string;
   accessible: boolean;
   freeSpace?: number;
+  unmappedFolders?: UnmappedFolder[];
 }
 
 export interface Tag {
@@ -180,4 +197,23 @@ export interface Release {
 export interface GrabReleasePayload {
   guid: string;
   indexerId: number;
+}
+
+export interface MovieEditorPayload {
+  movieIds: number[];
+  monitored?: boolean;
+  qualityProfileId?: number;
+  minimumAvailability?: string;
+  rootFolderPath?: string;
+  tags?: number[];
+  applyTags?: 'add' | 'remove' | 'replace';
+  moveFiles?: boolean;
+}
+
+export interface RenameMovieResource {
+  id: number;
+  movieId: number;
+  movieFileId: number;
+  existingPath?: string;
+  newPath?: string;
 }
