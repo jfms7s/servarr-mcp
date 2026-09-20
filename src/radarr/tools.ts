@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { assertMoveBatchSize, MAX_MOVE_BATCH } from '../mcp/bulk.js';
+import { isWithinRoot } from '../mcp/paths.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { RadarrClient } from './client.js';
 import {
@@ -67,7 +69,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         rootFolder: z
           .string()
           .optional()
-          .describe('Substring/prefix match against movie path to filter by root folder'),
+          .describe(
+            'Root folder to filter by. Matches whole path segments, so /media/movies does not match ' +
+              '/media/movies-anime',
+          ),
         hasFile: z.boolean().optional().describe('Filter by whether a file exists'),
         monitored: z.boolean().optional().describe('Filter by monitored state'),
         genre: z.string().optional().describe('Case-insensitive match against genres array'),
@@ -83,7 +88,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
         // Apply filters
         if (rootFolder) {
-          movies = movies.filter((m) => m.path?.includes(rootFolder));
+          movies = movies.filter((m) => isWithinRoot(m.path, rootFolder));
         }
         if (hasFile !== undefined) {
           movies = movies.filter((m) => m.hasFile === hasFile);
@@ -218,7 +223,9 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       description:
         'Bulk-edit multiple movies with a single API call. ' +
         'Only provided fields are sent to the API, others are left unchanged. ' +
-        'Use applyTags to control how tags are merged: add, remove, or replace.',
+        'Use applyTags to control how tags are merged: add, remove, or replace. ' +
+        `When moveFiles is true the files are moved before the call returns, so at most ${MAX_MOVE_BATCH} ids ` +
+        'are accepted per call; send larger sets as sequential batches, not in parallel.',
       inputSchema: {
         movieIds: z
           .array(z.number().int())
@@ -248,6 +255,8 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         tags,
         applyTags,
       }) => {
+        assertMoveBatchSize(movieIds, moveFiles, 'radarr_bulk_edit_movies');
+
         // Build payload with only defined fields
         const payload: Record<string, unknown> = { movieIds };
 

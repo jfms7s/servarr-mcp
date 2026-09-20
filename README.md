@@ -344,9 +344,11 @@ This server exposes 106 tools across the four products.
 
 Several tools exist to audit and correct how a library is filed on disk.
 
-`radarr_list_movies` and `sonarr_list_series` filter by `rootFolder`, `genre`, `titleContains` and monitored/file state, and return `genres` and `originalLanguage` in the summary. That makes it possible to answer questions like "which animation-genre films are filed under the live-action root" in a single call, instead of one lookup per title.
+`radarr_list_movies` and `sonarr_list_series` filter by `rootFolder`, `genre`, `titleContains` and monitored/file state, and return `genres` and `originalLanguage` in the summary. That makes it possible to answer questions like "which animation-genre films are filed under the live-action root" in a single call, instead of one lookup per title. `rootFolder` matches whole path segments: `/media/movies` selects that folder only, not `/media/movies-animation` or `/media/movies-anime`.
 
 To correct what you find, `radarr_update_movie` and `sonarr_update_series` accept a `rootFolderPath`, and `radarr_bulk_edit_movies` / `sonarr_bulk_edit_series` do the same for many items at once. Pass `moveFiles: true` to relocate the files on disk rather than only changing the record.
+
+Radarr and Sonarr move the files before the bulk editor returns, and a large batch can outlast the MCP client's request timeout. So the two bulk editors accept at most 10 ids per call when `moveFiles` is true, and reject a larger batch with an error before anything is sent. Send bigger sets as sequential batches of 10 or fewer, one call at a time. Batches that only change metadata (monitored state, quality profile, tags) are not limited.
 
 `radarr_list_unmapped_folders` and `sonarr_list_unmapped_folders` show folders present on disk that the application has no entry for; `radarr_import_folder` and `sonarr_import_folder` scan such a folder and import what they find. `radarr_get_rename_preview` and `sonarr_get_rename_preview` show the names a rename would produce before you run one, and the `find_duplicate_*` tools report titles present under more than one root folder.
 

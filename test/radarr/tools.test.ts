@@ -530,6 +530,48 @@ describe('createRadarrTools', () => {
     );
   });
 
+  it('list_movies rootFolder matches whole path segments, not sibling roots that share a prefix', async () => {
+    const at = (id: number, path: string) => ({ ...movie, id, title: `Movie ${id}`, path });
+    const listMovies = vi.fn().mockResolvedValue([
+      at(1, '/mnt/media/movies/Dune (2021)'),
+      at(2, '/mnt/media/movies-animation/Up (2009)'),
+      at(3, '/mnt/media/movies-anime/Akira (1988)'),
+    ]);
+    const get = toolsFor({ listMovies });
+
+    const result = (await get('radarr_list_movies').handler({
+      rootFolder: '/mnt/media/movies',
+    })) as unknown as { totalMatched: number; movies: { id: number }[] };
+
+    expect(result.totalMatched).toBe(1);
+    expect(result.movies.map((m) => m.id)).toEqual([1]);
+  });
+
+  it('bulk_edit_movies rejects a file-moving batch above the limit without calling Radarr', async () => {
+    const bulkEditMovies = vi.fn();
+    const get = toolsFor({ bulkEditMovies });
+
+    await expect(
+      get('radarr_bulk_edit_movies').handler({
+        movieIds: Array.from({ length: 11 }, (_, i) => i + 1),
+        rootFolderPath: '/mnt/media/movies-animation',
+        moveFiles: true,
+      }),
+    ).rejects.toThrow(/radarr_bulk_edit_movies.*10/);
+    expect(bulkEditMovies).not.toHaveBeenCalled();
+  });
+
+  it('bulk_edit_movies does not limit batches that only change metadata', async () => {
+    const bulkEditMovies = vi.fn().mockResolvedValue([]);
+    const get = toolsFor({ bulkEditMovies });
+
+    await get('radarr_bulk_edit_movies').handler({
+      movieIds: Array.from({ length: 50 }, (_, i) => i + 1),
+      monitored: false,
+    });
+    expect(bulkEditMovies).toHaveBeenCalledOnce();
+  });
+
   it('bulk_edit_movies omits undefined fields in payload', async () => {
     const bulkEditMovies = vi.fn().mockResolvedValue([
       { id: 1, title: 'Movie 1', monitored: false },
