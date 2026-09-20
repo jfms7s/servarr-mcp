@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
-import type { OverseerrClient } from './client.js';
+import type { OverseerrClient, UpdateRequestPayload } from './client.js';
 import {
   summarizeMediaInfo,
   summarizeMediaRequest,
@@ -10,6 +10,7 @@ import {
   summarizeUser,
   summarizePersonDetails,
   summarizeCreditRole,
+  summarizeRadarrSettings,
 } from './shape.js';
 
 export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] {
@@ -386,6 +387,62 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
           cast: credits.cast.map(summarizeCreditRole),
           crew: credits.crew.map(summarizeCreditRole),
         };
+      },
+    }),
+
+    defineTool({
+      name: 'overseerr_list_radarr_servers',
+      description:
+        'List all Radarr instances configured in Overseerr. Shows the activeDirectory (root folder) for each Radarr server, which is the default root folder where requests are routed — this field explains misrouting issues when multiple root folders are configured. Requires admin API key. NOTE: apiKey and connection details (hostname, port, baseUrl, externalUrl) are not returned for security reasons.',
+      inputSchema: {},
+      handler: async () => {
+        const servers = await client.listRadarrServers();
+        return servers.map(summarizeRadarrSettings);
+      },
+    }),
+
+    defineTool({
+      name: 'overseerr_get_radarr_profiles',
+      description:
+        'Get quality profiles available on a specific Radarr server instance. Use this to map profile IDs before calling overseerr_update_request to change the quality profile for a request.',
+      inputSchema: {
+        radarrId: z.number().int().describe('Radarr instance id from overseerr_list_radarr_servers'),
+      },
+      handler: async (args) => client.getRadarrProfiles(args.radarrId),
+    }),
+
+    defineTool({
+      name: 'overseerr_update_request',
+      description:
+        'Update a media request (e.g., change quality profile, root folder, 4K setting). The mediaType field is required. Only fields provided are sent to the API. IMPORTANT: changing rootFolder only affects where Radarr is told to put the item when the request is (re)processed. It does NOT move files for a request that is already available — use Radarr tools to move files after updating. Requires the MANAGE_REQUESTS permission.',
+      inputSchema: {
+        requestId: z.number().int().describe('Media request id'),
+        mediaType: z.enum(['movie', 'tv']).describe('Media type (required)'),
+        rootFolder: z.string().optional().describe('Root folder path for Radarr/Sonarr'),
+        profileId: z.number().int().optional().describe('Quality profile id'),
+        serverId: z.number().int().optional().describe('Radarr/Sonarr server id'),
+        is4k: z.boolean().optional(),
+        seasons: z
+          .array(z.number().int())
+          .optional()
+          .describe('For TV: array of season numbers to request'),
+        languageProfileId: z.number().int().optional(),
+        userId: z.number().int().optional().describe('Change request owner; requires admin'),
+      },
+      handler: async (args) => {
+        const payload: UpdateRequestPayload = {
+          mediaType: args.mediaType,
+        };
+        if (args.rootFolder !== undefined) payload.rootFolder = args.rootFolder;
+        if (args.profileId !== undefined) payload.profileId = args.profileId;
+        if (args.serverId !== undefined) payload.serverId = args.serverId;
+        if (args.is4k !== undefined) payload.is4k = args.is4k;
+        if (args.seasons !== undefined) payload.seasons = args.seasons;
+        if (args.languageProfileId !== undefined) payload.languageProfileId = args.languageProfileId;
+        if (args.userId !== undefined) payload.userId = args.userId;
+
+        const result = await client.updateRequest(args.requestId, payload);
+        return summarizeMediaRequest(result);
       },
     }),
   ];

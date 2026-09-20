@@ -19,6 +19,8 @@ const movie = {
   overview: 'C'.repeat(500),
   ratings: { tmdb: { value: 7.8 } },
   images: [{ coverType: 'poster', url: 'http://example/p.jpg' }],
+  genres: ['sci-fi', 'action'],
+  originalLanguage: { id: 1, name: 'English' },
 } as unknown as Movie;
 
 describe('summarizeMovie', () => {
@@ -43,6 +45,18 @@ describe('summarizeMovie', () => {
     const summary = summarizeMovie(movie);
     expect(summary).not.toHaveProperty('images');
     expect(summary.overview?.length).toBeLessThanOrEqual(303);
+  });
+
+  it('includes genres and extracts originalLanguage name', () => {
+    const summary = summarizeMovie(movie);
+    expect(summary.genres).toEqual(['sci-fi', 'action']);
+    expect(summary.originalLanguage).toBe('English');
+  });
+
+  it('handles missing originalLanguage gracefully', () => {
+    const movieNoLang = { ...movie, originalLanguage: undefined };
+    const summary = summarizeMovie(movieNoLang);
+    expect(summary.originalLanguage).toBeUndefined();
   });
 });
 

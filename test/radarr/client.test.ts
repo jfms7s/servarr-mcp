@@ -153,4 +153,64 @@ describe('RadarrClient', () => {
     await client.grabRelease({ guid: 'abc-123', indexerId: 1 });
     expect(body).toEqual({ guid: 'abc-123', indexerId: 1 });
   });
+
+  it('updates a movie with moveFiles query parameter', async () => {
+    let params: URLSearchParams | undefined;
+    server.use(
+      http.put(url('/movie/5'), ({ request }) => {
+        params = new URL(request.url).searchParams;
+        return HttpResponse.json({ id: 5, title: 'Dune' });
+      }),
+    );
+    const moviePayload = {
+      id: 5,
+      title: 'Dune',
+      tags: [],
+      monitored: true,
+      qualityProfileId: 1,
+      tmdbId: 1,
+      year: 2021,
+      status: 'released',
+      hasFile: true,
+    };
+    await client.updateMovie(5, moviePayload as Parameters<typeof client.updateMovie>[1], {
+      moveFiles: true,
+    });
+    expect(params?.get('moveFiles')).toBe('true');
+  });
+
+  it('bulk edits movies', async () => {
+    let body: unknown;
+    server.use(
+      http.put(url('/movie/editor'), async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json([
+          { id: 1, title: 'Movie 1' },
+          { id: 2, title: 'Movie 2' },
+        ]);
+      }),
+    );
+    await client.bulkEditMovies({ movieIds: [1, 2], monitored: false });
+    expect(body).toEqual({ movieIds: [1, 2], monitored: false });
+  });
+
+  it('gets rename preview for movies', async () => {
+    let params: URLSearchParams | undefined;
+    server.use(
+      http.get(url('/rename'), ({ request }) => {
+        params = new URL(request.url).searchParams;
+        return HttpResponse.json([
+          {
+            id: 1,
+            movieId: 5,
+            movieFileId: 10,
+            existingPath: '/movies/Dune/file.mkv',
+            newPath: '/movies/Dune [2021]/file.mkv',
+          },
+        ]);
+      }),
+    );
+    await client.renamePreview([5]);
+    expect(params?.getAll('movieId')).toEqual(['5']);
+  });
 });

@@ -372,4 +372,101 @@ describe('OverseerrClient', () => {
     await client.getSimilarTv(1399, undefined, 'pt');
     expect(seen).toBe('pt');
   });
+
+  it('lists radarr servers from /settings/radarr endpoint', async () => {
+    server.use(
+      http.get(url('/settings/radarr'), () =>
+        HttpResponse.json([
+          {
+            id: 1,
+            name: 'Radarr Main',
+            hostname: '127.0.0.1',
+            port: 7878,
+            apiKey: 'super-secret-key',
+            useSsl: false,
+            baseUrl: '/radarr',
+            activeProfileId: 1,
+            activeProfileName: '720p/1080p',
+            activeDirectory: '/mnt/archive/media/movies',
+            is4k: false,
+            minimumAvailability: 'In Cinema',
+            isDefault: true,
+            externalUrl: 'http://radarr.example.com',
+            syncEnabled: false,
+            preventSearch: false,
+          },
+        ]),
+      ),
+    );
+    const result = await client.listRadarrServers();
+    expect(result).toHaveLength(1);
+    expect(result[0]?.name).toBe('Radarr Main');
+    expect(result[0]?.activeDirectory).toBe('/mnt/archive/media/movies');
+  });
+
+  it('gets radarr profiles for a specific radarr server', async () => {
+    server.use(
+      http.get(url('/settings/radarr/1/profiles'), () =>
+        HttpResponse.json([
+          { id: 1, name: '720p/1080p' },
+          { id: 2, name: '4K' },
+        ]),
+      ),
+    );
+    const result = await client.getRadarrProfiles(1);
+    expect(result).toHaveLength(2);
+    expect(result[0]?.name).toBe('720p/1080p');
+  });
+
+  it('updates a request with PUT /request/{requestId}', async () => {
+    let seenBody: unknown = null;
+    server.use(
+      http.put(url('/request/1'), async ({ request }) => {
+        seenBody = await request.json();
+        return HttpResponse.json({
+          id: 1,
+          status: 1,
+          rootFolder: '/mnt/archive/media/movies-anime',
+          profileId: 2,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-15T00:00:00Z',
+        });
+      }),
+    );
+    const result = await client.updateRequest(1, {
+      mediaType: 'movie',
+      rootFolder: '/mnt/archive/media/movies-anime',
+      profileId: 2,
+    });
+    expect(seenBody).toEqual({
+      mediaType: 'movie',
+      rootFolder: '/mnt/archive/media/movies-anime',
+      profileId: 2,
+    });
+    expect(result.rootFolder).toBe('/mnt/archive/media/movies-anime');
+  });
+
+  it('sends only provided fields in update request payload', async () => {
+    let seenBody: unknown = null;
+    server.use(
+      http.put(url('/request/1'), async ({ request }) => {
+        seenBody = await request.json();
+        return HttpResponse.json({
+          id: 1,
+          status: 1,
+          is4k: true,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-15T00:00:00Z',
+        });
+      }),
+    );
+    await client.updateRequest(1, {
+      mediaType: 'tv',
+      is4k: true,
+    });
+    expect(seenBody).toEqual({
+      mediaType: 'tv',
+      is4k: true,
+    });
+  });
 });

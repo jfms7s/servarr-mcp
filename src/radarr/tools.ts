@@ -19,7 +19,35 @@ const COMMAND_NAMES = [
   'RescanMovie',
   'RenameFiles',
   'DownloadedMoviesScan',
+  'RenameMovie',
 ] as const;
+
+/**
+ * Extract folder name from a path, handling both Unix and Windows separators.
+ * Split on either separator, then use the root folder's separator style for the result.
+ */
+function getFolderNameAndJoinPath(currentPath: string | undefined, fallbackName: string | undefined, rootFolderPath: string): { folderName: string; newPath: string } {
+  const folderName = currentPath?.split(/[/\\]+/).filter(Boolean).pop() ?? fallbackName;
+
+  if (!folderName) {
+    throw new Error(
+      'Cannot determine folder name: current path is empty and folderName is not set. ' +
+        'Ensure the movie has a valid path before relocating.',
+    );
+  }
+
+  // Determine separator to use: if rootFolderPath contains backslash and no forward slash, use backslash; otherwise use forward slash
+  const usesBackslash = rootFolderPath.includes('\\') && !rootFolderPath.includes('/');
+  const separator = usesBackslash ? '\\' : '/';
+
+  // Normalize root folder path (remove trailing separators of either type)
+  const cleanRoot = rootFolderPath.replace(/[/\\]+$/, '');
+
+  return {
+    folderName,
+    newPath: `${cleanRoot}${separator}${folderName}`,
+  };
+}
 
 const page = {
   page: z.number().int().min(1).optional().describe('Page number, starting at 1'),
@@ -31,10 +59,60 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
     defineTool({
       name: 'radarr_list_movies',
       description:
-        'List all movies in the Radarr library, summarised. Returns id, title, year, ' +
-        'monitored state and whether a file exists. Use radarr_get_movie for the full record.',
-      inputSchema: {},
-      handler: async () => (await client.listMovies()).map(summarizeMovie),
+        'List movies in Radarr with optional filtering and pagination. ' +
+        'Results are returned as { totalMatched, offset, limit, movies } so pagination is visible. Default limit is 50 ' +
+        '(pass limit and offset for different ranges). Filters are applied client-side after ' +
+        'fetching all movies, so titleContains and genre matches are case-insensitive substring/array searches.',
+      inputSchema: {
+        rootFolder: z
+          .string()
+          .optional()
+          .describe('Substring/prefix match against movie path to filter by root folder'),
+        hasFile: z.boolean().optional().describe('Filter by whether a file exists'),
+        monitored: z.boolean().optional().describe('Filter by monitored state'),
+        genre: z.string().optional().describe('Case-insensitive match against genres array'),
+        titleContains: z
+          .string()
+          .optional()
+          .describe('Case-insensitive substring match against title'),
+        offset: z.number().int().min(0).optional().describe('Skip this many results (default 0)'),
+        limit: z.number().int().min(1).optional().describe('Maximum results to return (default 50)'),
+      },
+      handler: async ({ rootFolder, hasFile, monitored, genre, titleContains, offset, limit }) => {
+        let movies = await client.listMovies();
+
+        // Apply filters
+        if (rootFolder) {
+          movies = movies.filter((m) => m.path?.includes(rootFolder));
+        }
+        if (hasFile !== undefined) {
+          movies = movies.filter((m) => m.hasFile === hasFile);
+        }
+        if (monitored !== undefined) {
+          movies = movies.filter((m) => m.monitored === monitored);
+        }
+        if (genre) {
+          const lowerGenre = genre.toLowerCase();
+          movies = movies.filter((m) => m.genres?.some((g) => g.toLowerCase().includes(lowerGenre)));
+        }
+        if (titleContains) {
+          const lowerTitle = titleContains.toLowerCase();
+          movies = movies.filter((m) => m.title.toLowerCase().includes(lowerTitle));
+        }
+
+        const filteredMatched = movies.length;
+        const finalOffset = offset ?? 0;
+        const finalLimit = limit ?? 50;
+
+        movies = movies.slice(finalOffset, finalOffset + finalLimit);
+
+        return {
+          totalMatched: filteredMatched,
+          offset: finalOffset,
+          limit: finalLimit,
+          movies: movies.map(summarizeMovie),
+        };
+      },
     }),
 
     defineTool({
@@ -90,7 +168,9 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       name: 'radarr_update_movie',
       description:
         'Update a movie, changing only the provided fields (monitored, qualityProfileId, ' +
-        'minimumAvailability, tags). All other fields are read from the current record.',
+        'minimumAvailability, rootFolderPath, tags). All other fields are read from the current record. ' +
+        'When rootFolderPath is given, path is automatically updated to move the movie folder ' +
+        'to the new root (preserving the existing folder name). Set moveFiles=true to physically relocate files.',
       inputSchema: {
         movieId: z.number().int().describe('Radarr movie id'),
         monitored: z.boolean().optional().describe('Monitor the movie'),
@@ -99,36 +179,130 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           .enum(['tba', 'announced', 'inCinemas', 'released'])
           .optional()
           .describe('When Radarr may start searching'),
+        rootFolderPath: z.string().optional().describe('New root folder path from radarr_list_root_folders'),
+        moveFiles: z.boolean().optional().describe('Move existing files to new root folder (default false)'),
         tags: z.array(z.number().int()).optional().describe('Tag ids from radarr_list_tags'),
       },
-      handler: async ({ movieId, monitored, qualityProfileId, minimumAvailability, tags }) => {
+      handler: async ({
+        movieId,
+        monitored,
+        qualityProfileId,
+        minimumAvailability,
+        rootFolderPath,
+        moveFiles,
+        tags,
+      }) => {
         const current = await client.getMovie(movieId);
         const merged = {
           ...current,
           ...(monitored !== undefined && { monitored }),
           ...(qualityProfileId !== undefined && { qualityProfileId }),
           ...(minimumAvailability !== undefined && { minimumAvailability }),
+          ...(rootFolderPath !== undefined && { rootFolderPath }),
           ...(tags !== undefined && { tags }),
         };
-        const updated = await client.updateMovie(movieId, merged);
+
+        // When rootFolderPath changes, compute the new path by preserving the folder name
+        if (rootFolderPath !== undefined) {
+          const { newPath } = getFolderNameAndJoinPath(current.path, current.folderName, rootFolderPath);
+          merged.path = newPath;
+        }
+
+        const updated = await client.updateMovie(movieId, merged, { moveFiles: moveFiles ?? false });
         return summarizeMovie(updated);
+      },
+    }),
+
+    defineTool({
+      name: 'radarr_bulk_edit_movies',
+      description:
+        'Bulk-edit multiple movies with a single API call. ' +
+        'Only provided fields are sent to the API, others are left unchanged. ' +
+        'Use applyTags to control how tags are merged: add, remove, or replace.',
+      inputSchema: {
+        movieIds: z
+          .array(z.number().int())
+          .min(1)
+          .describe('Radarr movie ids to edit (minimum 1)'),
+        monitored: z.boolean().optional().describe('Set monitored state'),
+        qualityProfileId: z.number().int().optional().describe('From radarr_list_quality_profiles'),
+        minimumAvailability: z
+          .enum(['tba', 'announced', 'inCinemas', 'released'])
+          .optional()
+          .describe('When Radarr may start searching'),
+        rootFolderPath: z.string().optional().describe('New root folder path'),
+        moveFiles: z.boolean().optional().describe('Move existing files (default false)'),
+        tags: z.array(z.number().int()).optional().describe('Tag ids from radarr_list_tags'),
+        applyTags: z
+          .enum(['add', 'remove', 'replace'])
+          .optional()
+          .describe('How to apply tags: add, remove, or replace (default replace)'),
+      },
+      handler: async ({
+        movieIds,
+        monitored,
+        qualityProfileId,
+        minimumAvailability,
+        rootFolderPath,
+        moveFiles,
+        tags,
+        applyTags,
+      }) => {
+        // Build payload with only defined fields
+        const payload: Record<string, unknown> = { movieIds };
+
+        if (monitored !== undefined) payload.monitored = monitored;
+        if (qualityProfileId !== undefined) payload.qualityProfileId = qualityProfileId;
+        if (minimumAvailability !== undefined) payload.minimumAvailability = minimumAvailability;
+        if (rootFolderPath !== undefined) payload.rootFolderPath = rootFolderPath;
+        if (moveFiles !== undefined) payload.moveFiles = moveFiles;
+        if (tags !== undefined) payload.tags = tags;
+        if (applyTags !== undefined) payload.applyTags = applyTags;
+
+        const result = await client.bulkEditMovies(payload as unknown as Parameters<typeof client.bulkEditMovies>[0]);
+        return {
+          updated: result.length,
+          movies: result.map(summarizeMovie),
+        };
       },
     }),
 
     defineTool({
       name: 'radarr_delete_movie',
       description:
-        'Remove a movie from Radarr. Destructive: set deleteFiles to true only when the user ' +
-        'has explicitly asked for the file on disk to be deleted too.',
+        'Remove a movie from Radarr. ' +
+        'When deleteFiles=true without confirmDeleteFiles=true, returns what would be deleted as a safety check. ' +
+        'Set confirmDeleteFiles=true to confirm the destructive operation.',
       inputSchema: {
         movieId: z.number().int().describe('Radarr movie id'),
         deleteFiles: z.boolean().optional().describe('Also delete the movie file (default false)'),
+        confirmDeleteFiles: z
+          .boolean()
+          .optional()
+          .describe('Required when deleteFiles=true, prevents accidental deletion'),
         addImportExclusion: z
           .boolean()
           .optional()
           .describe('Prevent lists re-adding it (default false)'),
       },
-      handler: async ({ movieId, deleteFiles, addImportExclusion }) => {
+      handler: async ({ movieId, deleteFiles, confirmDeleteFiles, addImportExclusion }) => {
+        // Guard against destructive operations without confirmation
+        if (deleteFiles && !confirmDeleteFiles) {
+          const movie = await client.getMovie(movieId);
+          const files = await client.listMovieFiles(movieId);
+          return {
+            wouldDelete: {
+              title: movie.title,
+              year: movie.year,
+              path: movie.path,
+              files: files.map((f) => f.relativePath),
+              hasFile: movie.hasFile,
+              monitored: movie.monitored,
+            },
+            confirmRequired: true,
+          };
+        }
+
         await client.deleteMovie(movieId, {
           deleteFiles: deleteFiles ?? false,
           addImportExclusion: addImportExclusion ?? false,
@@ -365,6 +539,128 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
     }),
 
     defineTool({
+      name: 'radarr_list_unmapped_folders',
+      description:
+        'List folders in each root folder that Radarr has not yet mapped to any movie. ' +
+        'Use this to find media that needs to be imported or organized.',
+      inputSchema: {},
+      handler: async () => {
+        const rootFolders = await client.listRootFolders();
+        const result = [];
+        for (const rf of rootFolders) {
+          const unmapped = rf.unmappedFolders ?? [];
+          for (const folder of unmapped) {
+            result.push({
+              rootFolderId: rf.id,
+              rootFolderPath: rf.path,
+              folderName: folder.name,
+              folderPath: folder.path,
+              relativePath: folder.relativePath,
+            });
+          }
+        }
+        return result;
+      },
+    }),
+
+    defineTool({
+      name: 'radarr_get_rename_preview',
+      description:
+        'Preview how files would be renamed without actually renaming them. ' +
+        'If the result contains hundreds of files, only the first 100 are shown but the total count is reported. ' +
+        'Useful to verify rename patterns before applying them.',
+      inputSchema: {
+        movieIds: z
+          .array(z.number().int())
+          .min(1)
+          .describe('Movie ids to preview rename for'),
+      },
+      handler: async ({ movieIds }) => {
+        const previews = await client.renamePreview(movieIds);
+        const MAX_PREVIEW = 100;
+        const shown = previews.slice(0, MAX_PREVIEW).map((p) => ({
+          id: p.id,
+          movieId: p.movieId,
+          movieFileId: p.movieFileId,
+          existingPath: p.existingPath,
+          newPath: p.newPath,
+        }));
+        return {
+          total: previews.length,
+          shown: shown.length,
+          previews: shown,
+        };
+      },
+    }),
+
+    defineTool({
+      name: 'radarr_find_duplicate_movies',
+      description:
+        'Find movies that appear to be the same film in more than one place. ' +
+        'Reports exact duplicates (same tmdbId) and misplaced copies (same title+year under different root folders). ' +
+        'Returns a compact grouping suitable for cleanup decisions.',
+      inputSchema: {},
+      handler: async () => {
+        const movies = await client.listMovies();
+
+        // Group by tmdbId for exact duplicates
+        const byTmdbId = new Map<number, typeof movies>();
+        for (const movie of movies) {
+          const existing = byTmdbId.get(movie.tmdbId) ?? [];
+          existing.push(movie);
+          byTmdbId.set(movie.tmdbId, existing);
+        }
+
+        // Find exactDuplicates (same tmdbId, multiple entries)
+        const exactDuplicates = Array.from(byTmdbId.entries())
+          .filter(([, group]) => group.length > 1)
+          .map(([tmdbId, group]) => ({
+            tmdbId,
+            count: group.length,
+            movies: group.map((m) => ({
+              id: m.id,
+              title: m.title,
+              year: m.year,
+              path: m.path,
+              hasFile: m.hasFile,
+            })),
+          }));
+
+        // Group by normalized title+year for misplaced copies
+        const byTitle = new Map<string, typeof movies>();
+        for (const movie of movies) {
+          const key = `${movie.title.toLowerCase().replace(/[^a-z0-9]/g, '')}:${movie.year}`;
+          const existing = byTitle.get(key) ?? [];
+          existing.push(movie);
+          byTitle.set(key, existing);
+        }
+
+        const misplacedCopies = Array.from(byTitle.entries())
+          .filter(([, group]) => group.length > 1)
+          .filter(([, group]) => new Set(group.map((m) => m.tmdbId)).size > 1) // Different tmdbIds
+          .filter(([, group]) => new Set(group.map((m) => m.rootFolderPath)).size > 1) // Different root folders
+          .map(([, group]) => ({
+            title: group[0]!.title,
+            year: group[0]!.year,
+            count: group.length,
+            movies: group.map((m) => ({
+              id: m.id,
+              title: m.title,
+              tmdbId: m.tmdbId,
+              path: m.path,
+              hasFile: m.hasFile,
+            })),
+          }));
+
+        return {
+          total: movies.length,
+          exactDuplicates,
+          misplacedCopies,
+        };
+      },
+    }),
+
+    defineTool({
       name: 'radarr_list_quality_profiles',
       description:
         'List available quality profiles. Use these ids in radarr_add_movie and radarr_update_movie.',
@@ -406,6 +702,34 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       description: 'List disk space on each drive containing movies or root folders.',
       inputSchema: {},
       handler: () => client.getDiskSpace(),
+    }),
+
+    defineTool({
+      name: 'radarr_import_folder',
+      description:
+        'Scan a folder and import any movie file found into an existing movie entry in Radarr. ' +
+        'This is asynchronous — it returns a command id that can be polled with radarr_get_command. ' +
+        'Important: the movie must already exist in Radarr for the file to attach to it; otherwise the scan will not import it. ' +
+        'Use folderPath from radarr_list_unmapped_folders.',
+      inputSchema: {
+        path: z.string().describe('Absolute path to the folder to import, as returned by radarr_list_unmapped_folders (folderPath field)'),
+        importMode: z
+          .enum(['Auto', 'Move', 'Copy'])
+          .optional()
+          .describe('How to handle the file: Auto (default, let Radarr decide), Move (relocate to configured library), Copy (keep original, duplicate to library)'),
+      },
+      handler: async ({ path, importMode }) => {
+        const command = await client.runCommand({
+          name: 'DownloadedMoviesScan',
+          path,
+          ...(importMode && { importMode }),
+        });
+        return {
+          commandId: command.id,
+          status: command.status,
+          message: `Scanning ${path} for movies to import`,
+        };
+      },
     }),
   ];
 }
