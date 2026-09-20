@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { assertMoveBatchSize, MAX_MOVE_BATCH } from '../mcp/bulk.js';
+import { isWithinRoot } from '../mcp/paths.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { SonarrClient } from './client.js';
 import type { SeriesBulkEditPayload } from './types.js';
@@ -67,7 +69,13 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         '(pass limit and offset for different ranges). Filters are applied client-side after ' +
         'fetching all series, so titleContains and genre matches are case-insensitive substring/array searches.',
       inputSchema: {
-        rootFolder: z.string().optional().describe('Filter by root folder path (substring/prefix match)'),
+        rootFolder: z
+          .string()
+          .optional()
+          .describe(
+            'Root folder to filter by. Matches whole path segments, so /media/shows does not match ' +
+              '/media/shows-anime',
+          ),
         monitored: z.boolean().optional().describe('Filter by monitored state'),
         genre: z.string().optional().describe('Filter by genre (case-insensitive match against genres array)'),
         titleContains: z.string().optional().describe('Filter by title (case-insensitive substring match)'),
@@ -80,7 +88,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
         // Apply filters client-side
         const filtered = allSeries.filter((s) => {
-          if (rootFolder !== undefined && !s.rootFolderPath?.includes(rootFolder)) return false;
+          if (rootFolder !== undefined && !isWithinRoot(s.rootFolderPath, rootFolder)) return false;
           if (monitored !== undefined && s.monitored !== monitored) return false;
           if (genre !== undefined && !s.genres?.some((g) => g.toLowerCase().includes(genre.toLowerCase()))) return false;
           if (titleContains !== undefined && !s.title.toLowerCase().includes(titleContains.toLowerCase())) return false;
@@ -528,7 +536,8 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'Bulk edit multiple series at once. Only fields explicitly provided are updated; ' +
         'omitted fields are not changed. Supports changing root folder, quality profile, series type, ' +
         'monitored state, season folder setting, and tags. Set moveFiles to move existing files ' +
-        'when changing root folder.',
+        `when changing root folder; the files are moved before the call returns, so at most ${MAX_MOVE_BATCH} ` +
+        'ids are accepted per call when moveFiles is true. Send larger sets as sequential batches, not in parallel.',
       inputSchema: {
         seriesIds: z.array(z.number().int()).min(1).describe('Series ids to update'),
         monitored: z.boolean().optional().describe('Set monitored state'),
@@ -541,6 +550,8 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         moveFiles: z.boolean().optional().describe('Move files when changing rootFolderPath (default false)'),
       },
       handler: async (args) => {
+        assertMoveBatchSize(args.seriesIds, args.moveFiles, 'sonarr_bulk_edit_series');
+
         // Build payload with only defined fields to avoid blanking unspecified fields
         const payload: Partial<SeriesBulkEditPayload> = { seriesIds: args.seriesIds };
         if (args.monitored !== undefined) payload.monitored = args.monitored;

@@ -611,6 +611,44 @@ describe('createSonarrTools', () => {
     expect(result.series).toHaveLength(5);
   });
 
+  it('list_series rootFolder matches whole path segments, not sibling roots that share a prefix', async () => {
+    const at = (id: number, rootFolderPath: string) => ({
+      id,
+      title: `Show ${id}`,
+      rootFolderPath,
+      path: `${rootFolderPath}/Show ${id}`,
+      monitored: true,
+      qualityProfileId: 1,
+      tags: [],
+    });
+    const listSeries = vi.fn().mockResolvedValue([
+      at(1, '/mnt/media/shows'),
+      at(2, '/mnt/media/shows-anime'),
+    ]);
+    const get = toolsFor({ listSeries });
+
+    const result = (await get('sonarr_list_series').handler({
+      rootFolder: '/mnt/media/shows',
+    })) as unknown as { totalMatched: number; series: { id: number }[] };
+
+    expect(result.totalMatched).toBe(1);
+    expect(result.series.map((s) => s.id)).toEqual([1]);
+  });
+
+  it('bulk_edit_series rejects a file-moving batch above the limit without calling Sonarr', async () => {
+    const bulkEditSeries = vi.fn();
+    const get = toolsFor({ bulkEditSeries });
+
+    await expect(
+      get('sonarr_bulk_edit_series').handler({
+        seriesIds: Array.from({ length: 11 }, (_, i) => i + 1),
+        rootFolderPath: '/mnt/media/shows-anime',
+        moveFiles: true,
+      }),
+    ).rejects.toThrow(/sonarr_bulk_edit_series.*10/);
+    expect(bulkEditSeries).not.toHaveBeenCalled();
+  });
+
   it('bulk_edit_series omits undefined fields', async () => {
     const bulkEditSeries = vi.fn().mockResolvedValue([
       { id: 1, title: 'Series1', year: 2020, status: 'continuing', monitored: true, qualityProfileId: 1, tvdbId: 1, tags: [], seasons: [] },
