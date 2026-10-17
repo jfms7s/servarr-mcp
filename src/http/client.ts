@@ -3,11 +3,23 @@ import { ArrApiError } from './errors.js';
 export type QueryValue = string | number | boolean | undefined | null | Array<string | number>;
 export type QueryParams = Record<string, QueryValue>;
 
+/** How long a request may take, response body included, before it fails. */
+export const DEFAULT_TIMEOUT_MS = 30_000;
+/** Release and indexer searches fan out to every indexer, so they get longer. */
+export const SEARCH_TIMEOUT_MS = 90_000;
+/** Bulk editor PUTs can move many files before answering. */
+export const EDITOR_TIMEOUT_MS = 120_000;
+
+export interface RequestOptions {
+  /** Overrides the client's timeout for this call. */
+  timeoutMs?: number;
+}
+
 export interface ArrHttpClient {
-  get<T>(path: string, query?: QueryParams): Promise<T>;
-  post<T>(path: string, body?: unknown, query?: QueryParams): Promise<T>;
-  put<T>(path: string, body?: unknown, query?: QueryParams): Promise<T>;
-  del<T>(path: string, query?: QueryParams): Promise<T>;
+  get<T>(path: string, query?: QueryParams, options?: RequestOptions): Promise<T>;
+  post<T>(path: string, body?: unknown, query?: QueryParams, options?: RequestOptions): Promise<T>;
+  put<T>(path: string, body?: unknown, query?: QueryParams, options?: RequestOptions): Promise<T>;
+  del<T>(path: string, query?: QueryParams, options?: RequestOptions): Promise<T>;
 }
 
 export interface ArrClientOptions {
@@ -15,6 +27,8 @@ export interface ArrClientOptions {
   baseUrl: string;
   apiKey: string;
   apiBase: string;
+  /** Default per-request timeout; DEFAULT_TIMEOUT_MS when omitted. */
+  timeoutMs?: number;
 }
 
 const MAX_DETAIL = 200;
@@ -70,17 +84,35 @@ function extractDetail(status: number, product: string, raw: string): string {
   return truncate(raw);
 }
 
+function isTimeout(error: unknown): boolean {
+  const named = (value: unknown) => value instanceof Error && value.name === 'TimeoutError';
+  return named(error) || (error instanceof Error && named(error.cause));
+}
+
 export function createArrClient(options: ArrClientOptions): ArrHttpClient {
   const { product, baseUrl, apiKey, apiBase } = options;
+  const defaultTimeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   async function request<T>(
     method: string,
     path: string,
     body?: unknown,
     query?: QueryParams,
+    requestOptions?: RequestOptions,
   ): Promise<T> {
     const apiPath = `${apiBase}${path}`;
     const url = `${baseUrl}${apiPath}${buildQuery(query)}`;
+    const timeoutMs = requestOptions?.timeoutMs ?? defaultTimeoutMs;
+    // One signal bounds the whole exchange: the request and the body reads below.
+    const signal = AbortSignal.timeout(timeoutMs);
+    const timedOut = () =>
+      new ArrApiError({
+        product,
+        baseUrl,
+        method,
+        path: apiPath,
+        detail: `no response within ${timeoutMs / 1000} s`,
+      });
 
     const headers: Record<string, string> = { 'X-Api-Key': apiKey, Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -91,8 +123,10 @@ export function createArrClient(options: ArrClientOptions): ArrHttpClient {
         method,
         headers,
         body: body === undefined ? undefined : JSON.stringify(body),
+        signal,
       });
     } catch (cause) {
+      if (isTimeout(cause)) throw timedOut();
       const inner = cause instanceof Error && cause.cause instanceof Error ? cause.cause : cause;
       const detail = inner instanceof Error ? inner.message : String(inner);
       throw new ArrApiError({ product, baseUrl, method, path: apiPath, detail });
@@ -111,7 +145,13 @@ export function createArrClient(options: ArrClientOptions): ArrHttpClient {
 
     if (response.status === 204) return undefined as T;
 
-    const text = await response.text();
+    let text: string;
+    try {
+      text = await response.text();
+    } catch (cause) {
+      if (isTimeout(cause)) throw timedOut();
+      throw cause;
+    }
     if (!text.trim()) return undefined as T;
 
     try {
@@ -128,9 +168,9 @@ export function createArrClient(options: ArrClientOptions): ArrHttpClient {
   }
 
   return {
-    get: (path, query) => request('GET', path, undefined, query),
-    post: (path, body, query) => request('POST', path, body, query),
-    put: (path, body, query) => request('PUT', path, body, query),
-    del: (path, query) => request('DELETE', path, undefined, query),
+    get: (path, query, opts) => request('GET', path, undefined, query, opts),
+    post: (path, body, query, opts) => request('POST', path, body, query, opts),
+    put: (path, body, query, opts) => request('PUT', path, body, query, opts),
+    del: (path, query, opts) => request('DELETE', path, undefined, query, opts),
   };
 }
