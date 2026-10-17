@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { assertMoveBatchSize, MAX_MOVE_BATCH } from '../mcp/bulk.js';
+import { listWindow, pageOf } from '../mcp/paging.js';
 import { isWithinRoot } from '../mcp/paths.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { SonarrClient } from './client.js';
@@ -67,7 +68,8 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'List TV series in the Sonarr library with optional filters. Results are returned ' +
         'as { totalMatched, offset, limit, series } so pagination is visible. Default limit is 50 ' +
         '(pass limit and offset for different ranges). Filters are applied client-side after ' +
-        'fetching all series, so titleContains and genre matches are case-insensitive substring/array searches.',
+        'fetching all series, so titleContains and genre matches are case-insensitive substring/array searches. ' +
+        'Rows omit the plot overview unless includeOverview is true.',
       inputSchema: {
         rootFolder: z
           .string()
@@ -82,8 +84,9 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         seriesType: z.enum(['standard', 'daily', 'anime']).optional().describe('Filter by series type'),
         limit: z.number().int().min(1).optional().describe('Maximum results to return (default 50)'),
         offset: z.number().int().min(0).optional().describe('Skip this many results (default 0)'),
+        includeOverview: z.boolean().optional().describe('Include each row\'s plot overview (default false)'),
       },
-      handler: async ({ rootFolder, monitored, genre, titleContains, seriesType, limit = 50, offset = 0 }) => {
+      handler: async ({ rootFolder, monitored, genre, titleContains, seriesType, limit = 50, offset = 0, includeOverview = false }) => {
         const allSeries = await client.listSeries();
 
         // Apply filters client-side
@@ -97,7 +100,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         });
 
         const totalMatched = filtered.length;
-        const series = filtered.slice(offset, offset + limit).map(summarizeSeries);
+        const series = filtered.slice(offset, offset + limit).map((s) => summarizeSeries(s, { overview: includeOverview }));
 
         return { totalMatched, offset, limit, series };
       },
@@ -116,7 +119,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'Search TheTVDB for series matching a search term. Use this to find the tvdbId ' +
         'needed by sonarr_add_series. Does not modify the library.',
       inputSchema: { term: z.string().min(1).describe('Series title to search for') },
-      handler: async ({ term }) => (await client.lookupSeries(term)).map(summarizeSeries),
+      handler: async ({ term }) => (await client.lookupSeries(term)).map((s) => summarizeSeries(s)),
     }),
 
     defineTool({
@@ -231,13 +234,19 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       name: 'sonarr_get_calendar',
       description:
         'List episodes airing in a date range. Pass start and end for a predictable ' +
-        'window; if they are omitted Sonarr chooses its own short range around today.',
+        'window; if they are omitted Sonarr chooses its own short range around today. ' +
+        'Results are returned as { totalMatched, offset, limit, episodes }; default limit is 100 ' +
+        '(pass limit and offset for other ranges). Rows omit the plot overview.',
       inputSchema: {
         start: z.string().optional().describe('ISO date, inclusive'),
         end: z.string().optional().describe('ISO date, exclusive'),
+        ...listWindow,
       },
-      handler: async ({ start, end }) =>
-        (await client.getCalendar({ start, end, includeSeries: true })).map(summarizeEpisode),
+      handler: async ({ start, end, limit, offset }) => {
+        const calendar = await client.getCalendar({ start, end, includeSeries: true });
+        const { rows, ...window } = pageOf(calendar, { limit, offset });
+        return { ...window, episodes: rows.map((e) => summarizeEpisode(e, { overview: false })) };
+      },
     }),
 
     defineTool({
@@ -285,13 +294,19 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       name: 'sonarr_list_episodes',
       description:
         'List episodes for a series or season, summarised with file state and air dates. ' +
-        'Omit seasonNumber to list all seasons.',
+        'Omit seasonNumber to list all seasons. Results are returned as { totalMatched, offset, limit, episodes }; ' +
+        'default limit is 100 (pass limit and offset for other ranges). ' +
+        'Rows omit the plot overview unless includeOverview is true.',
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
         seasonNumber: z.number().int().optional().describe('Season number (all seasons if omitted)'),
+        ...listWindow,
+        includeOverview: z.boolean().optional().describe('Include each row\'s plot overview (default false)'),
       },
-      handler: async ({ seriesId, seasonNumber }) =>
-        (await client.listEpisodes(seriesId, seasonNumber)).map(summarizeEpisode),
+      handler: async ({ seriesId, seasonNumber, limit, offset, includeOverview = false }) => {
+        const { rows, ...window } = pageOf(await client.listEpisodes(seriesId, seasonNumber), { limit, offset });
+        return { ...window, episodes: rows.map((e) => summarizeEpisode(e, { overview: includeOverview })) };
+      },
     }),
 
     defineTool({
@@ -311,17 +326,22 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         monitored: z.boolean().describe('New monitored state'),
       },
       handler: async ({ episodeIds, monitored }) =>
-        (await client.monitorEpisodes(episodeIds, monitored)).map(summarizeEpisode),
+        (await client.monitorEpisodes(episodeIds, monitored)).map((e) => summarizeEpisode(e, { overview: false })),
     }),
 
     defineTool({
       name: 'sonarr_list_episode_files',
-      description: 'List episode files (downloaded episodes) for a series.',
+      description:
+        'List episode files (downloaded episodes) for a series. Results are returned as ' +
+        '{ totalMatched, offset, limit, files }; default limit is 100 (pass limit and offset for other ranges).',
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
+        ...listWindow,
       },
-      handler: async ({ seriesId }) =>
-        (await client.listEpisodeFiles(seriesId)).map(summarizeEpisodeFile),
+      handler: async ({ seriesId, limit, offset }) => {
+        const { rows, ...window } = pageOf(await client.listEpisodeFiles(seriesId), { limit, offset });
+        return { ...window, files: rows.map(summarizeEpisodeFile) };
+      },
     }),
 
     defineTool({
@@ -367,11 +387,11 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_wanted_missing',
-      description: 'List wanted but missing episodes (not downloaded yet).',
+      description: 'List wanted but missing episodes (not downloaded yet). Rows omit the plot overview.',
       inputSchema: { ...page },
       handler: async ({ page: pageNum, pageSize }) => {
         const response = await client.getWantedMissing({ page: pageNum, pageSize, includeSeries: true });
-        return { ...response, records: response.records.map(summarizeEpisode) };
+        return { ...response, records: response.records.map((e) => summarizeEpisode(e, { overview: false })) };
       },
     }),
 
@@ -566,7 +586,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         const result = await client.bulkEditSeries(payload as unknown as SeriesBulkEditPayload);
         return {
           updated: result.length,
-          series: result.map(summarizeSeries),
+          series: result.map((s) => summarizeSeries(s, { overview: false })),
         };
       },
     }),

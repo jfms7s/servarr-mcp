@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { assertMoveBatchSize, MAX_MOVE_BATCH } from '../mcp/bulk.js';
+import { listWindow, pageOf } from '../mcp/paging.js';
 import { isWithinRoot } from '../mcp/paths.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { RadarrClient } from './client.js';
@@ -64,7 +65,8 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         'List movies in Radarr with optional filtering and pagination. ' +
         'Results are returned as { totalMatched, offset, limit, movies } so pagination is visible. Default limit is 50 ' +
         '(pass limit and offset for different ranges). Filters are applied client-side after ' +
-        'fetching all movies, so titleContains and genre matches are case-insensitive substring/array searches.',
+        'fetching all movies, so titleContains and genre matches are case-insensitive substring/array searches. ' +
+        'Rows omit the plot overview unless includeOverview is true.',
       inputSchema: {
         rootFolder: z
           .string()
@@ -82,8 +84,9 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           .describe('Case-insensitive substring match against title'),
         offset: z.number().int().min(0).optional().describe('Skip this many results (default 0)'),
         limit: z.number().int().min(1).optional().describe('Maximum results to return (default 50)'),
+        includeOverview: z.boolean().optional().describe('Include each row\'s plot overview (default false)'),
       },
-      handler: async ({ rootFolder, hasFile, monitored, genre, titleContains, offset, limit }) => {
+      handler: async ({ rootFolder, hasFile, monitored, genre, titleContains, offset, limit, includeOverview }) => {
         let movies = await client.listMovies();
 
         // Apply filters
@@ -115,7 +118,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           totalMatched: filteredMatched,
           offset: finalOffset,
           limit: finalLimit,
-          movies: movies.map(summarizeMovie),
+          movies: movies.map((m) => summarizeMovie(m, { overview: includeOverview ?? false })),
         };
       },
     }),
@@ -133,7 +136,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         'Search TMDB for movies matching a search term. Use this to find the tmdbId needed ' +
         'by radarr_add_movie. Does not modify the library.',
       inputSchema: { term: z.string().min(1).describe('Movie title to search for') },
-      handler: async ({ term }) => (await client.lookupMovie(term)).map(summarizeMovie),
+      handler: async ({ term }) => (await client.lookupMovie(term)).map((m) => summarizeMovie(m)),
     }),
 
     defineTool({
@@ -271,7 +274,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         const result = await client.bulkEditMovies(payload as unknown as Parameters<typeof client.bulkEditMovies>[0]);
         return {
           updated: result.length,
-          movies: result.map(summarizeMovie),
+          movies: result.map((m) => summarizeMovie(m, { overview: false })),
         };
       },
     }),
@@ -346,13 +349,17 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       description:
         'List movies with releases in a date range. Pass start and end for a predictable ' +
         'window; if they are omitted Radarr chooses its own short range around today. ' +
-        'Use this to see upcoming releases.',
+        'Use this to see upcoming releases. Results are returned as { totalMatched, offset, limit, movies }; ' +
+        'default limit is 100 (pass limit and offset for other ranges). Rows omit the plot overview.',
       inputSchema: {
         start: z.string().optional().describe('ISO date, inclusive'),
         end: z.string().optional().describe('ISO date, exclusive'),
+        ...listWindow,
       },
-      handler: async ({ start, end }) =>
-        (await client.getCalendar({ start, end })).map(summarizeMovie),
+      handler: async ({ start, end, limit, offset }) => {
+        const { rows, ...window } = pageOf(await client.getCalendar({ start, end }), { limit, offset });
+        return { ...window, movies: rows.map((m) => summarizeMovie(m, { overview: false })) };
+      },
     }),
 
     defineTool({
@@ -407,11 +414,11 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_get_wanted_missing',
-      description: 'List wanted but missing movies (monitored but not downloaded yet).',
+      description: 'List wanted but missing movies (monitored but not downloaded yet). Rows omit the plot overview.',
       inputSchema: { ...page },
       handler: async ({ page: pageNum, pageSize }) => {
         const response = await client.getWantedMissing({ page: pageNum, pageSize });
-        return { ...response, records: response.records.map(summarizeMovie) };
+        return { ...response, records: response.records.map((m) => summarizeMovie(m, { overview: false })) };
       },
     }),
 

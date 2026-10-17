@@ -11,7 +11,18 @@ import {
   summarizePersonDetails,
   summarizeCreditRole,
   summarizeRadarrSettings,
+  type CreditRoleSummary,
 } from './shape.js';
+
+const DEFAULT_CREDITS_LIMIT = 50;
+
+// Newest first by release (movie) or first-air (TV) date. ISO dates compare
+// as strings; undated credits (announced, not yet scheduled) sort last.
+function byNewest(a: CreditRoleSummary, b: CreditRoleSummary): number {
+  const aDate = a.releaseDate ?? a.firstAirDate ?? '';
+  const bDate = b.releaseDate ?? b.firstAirDate ?? '';
+  return bDate.localeCompare(aDate);
+}
 
 export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] {
   return [
@@ -376,16 +387,30 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_person_credits',
-      description: 'Get a person\'s combined movie and TV credits (cast and crew roles).',
+      description:
+        'Get a person\'s combined movie and TV credits (cast and crew roles), newest first. ' +
+        `Returns at most limit (default ${DEFAULT_CREDITS_LIMIT}) cast and limit crew rows, with castTotal and crewTotal ` +
+        'giving the full counts.',
       inputSchema: {
         personId: z.number().int().describe('TMDB person id'),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe(`Maximum cast rows and maximum crew rows to return (default ${DEFAULT_CREDITS_LIMIT})`),
       },
       handler: async (args) => {
         const credits = await client.getPersonCredits(args.personId);
+        const limit = args.limit ?? DEFAULT_CREDITS_LIMIT;
+        const newest = (roles: typeof credits.cast) =>
+          roles.map(summarizeCreditRole).sort(byNewest).slice(0, limit);
         return {
           id: credits.id,
-          cast: credits.cast.map(summarizeCreditRole),
-          crew: credits.crew.map(summarizeCreditRole),
+          castTotal: credits.cast.length,
+          crewTotal: credits.crew.length,
+          cast: newest(credits.cast),
+          crew: newest(credits.crew),
         };
       },
     }),

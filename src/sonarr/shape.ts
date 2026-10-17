@@ -23,6 +23,14 @@ function truncateOverview(overview: string | undefined): string | undefined {
   return overview.length > MAX_OVERVIEW ? `${overview.slice(0, MAX_OVERVIEW)}...` : overview;
 }
 
+// Lists pass { overview: false }: a plot summary is the bulk of a list row
+// (about 300 of 700 characters) and rarely what a list query is after.
+// Lookups, add and update keep it -- they are few rows, and the overview
+// helps pick the right title.
+export interface SummaryOptions {
+  overview?: boolean;
+}
+
 export interface SeriesSummary {
   id: number;
   title: string;
@@ -44,7 +52,7 @@ export interface SeriesSummary {
   seriesType?: string;
 }
 
-export function summarizeSeries(series: Series): SeriesSummary {
+export function summarizeSeries(series: Series, options: SummaryOptions = {}): SeriesSummary {
   return {
     id: series.id,
     title: series.title,
@@ -60,7 +68,7 @@ export function summarizeSeries(series: Series): SeriesSummary {
     episodeFileCount: series.statistics?.episodeFileCount,
     episodeCount: series.statistics?.episodeCount,
     sizeOnDisk: series.statistics?.sizeOnDisk,
-    overview: truncateOverview(series.overview),
+    ...(options.overview !== false && { overview: truncateOverview(series.overview) }),
     genres: series.genres,
     originalLanguage: series.originalLanguage?.name,
     seriesType: series.seriesType,
@@ -80,7 +88,7 @@ export interface EpisodeSummary {
   overview?: string;
 }
 
-export function summarizeEpisode(episode: Episode): EpisodeSummary {
+export function summarizeEpisode(episode: Episode, options: SummaryOptions = {}): EpisodeSummary {
   return {
     id: episode.id,
     seriesId: episode.seriesId,
@@ -91,7 +99,7 @@ export function summarizeEpisode(episode: Episode): EpisodeSummary {
     hasFile: episode.hasFile,
     monitored: episode.monitored,
     seriesTitle: episode.series?.title,
-    overview: truncateOverview(episode.overview),
+    ...(options.overview !== false && { overview: truncateOverview(episode.overview) }),
   };
 }
 

@@ -4,7 +4,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { ArrApiError } from '../../src/http/errors.js';
-import { createServer } from '../../src/mcp/server.js';
+import { createServer, toolResult } from '../../src/mcp/server.js';
 import { defineTool } from '../../src/mcp/types.js';
 
 async function connect(tools: Parameters<typeof createServer>[0]) {
@@ -90,5 +90,35 @@ describe('createServer', () => {
     const client = await connect([echoTool]);
     const result = await client.callTool({ name: 'sonarr_echo', arguments: { seriesId: 'three' } });
     expect(result.isError).toBe(true);
+  });
+});
+
+describe('toolResult', () => {
+  it('returns small values unchanged as pretty-printed json', () => {
+    const value = { a: 1, b: ['x'] };
+    const result = toolResult(value);
+    expect(result).toEqual({ content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] });
+    expect(result).not.toHaveProperty('isError');
+  });
+
+  it('returns an error instead of a result over 50,000 characters', () => {
+    const result = toolResult({ blob: 'x'.repeat(60_000) });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toMatch(/^Result too large \(60016 characters, limit 50000\)/);
+    expect(result.content[0]?.text).toContain('limit/offset');
+  });
+
+  it('names the tool in the error when called through the server', async () => {
+    const client = await connect([
+      defineTool({
+        name: 'sonarr_huge',
+        description: 'Returns too much',
+        inputSchema: {},
+        handler: async () => ({ blob: 'x'.repeat(60_000) }),
+      }),
+    ]);
+    const result = await client.callTool({ name: 'sonarr_huge', arguments: {} });
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain('sonarr_huge');
   });
 });
