@@ -17,6 +17,14 @@ function truncateOverview(overview: string | undefined): string | undefined {
   return overview.length > MAX_OVERVIEW ? `${overview.slice(0, MAX_OVERVIEW)}...` : overview;
 }
 
+// Lists pass { overview: false }: a plot summary is the bulk of a list row
+// (about 300 of 700 characters) and rarely what a list query is after.
+// Lookups, add and update keep it -- they are few rows, and the overview
+// helps pick the right title.
+export interface SummaryOptions {
+  overview?: boolean;
+}
+
 export interface MovieSummary {
   id: number;
   title: string;
@@ -36,7 +44,7 @@ export interface MovieSummary {
   originalLanguage?: string;
 }
 
-export function summarizeMovie(movie: Movie): MovieSummary {
+export function summarizeMovie(movie: Movie, options: SummaryOptions = {}): MovieSummary {
   return {
     id: movie.id,
     title: movie.title,
@@ -51,7 +59,7 @@ export function summarizeMovie(movie: Movie): MovieSummary {
     runtime: movie.runtime,
     sizeOnDisk: movie.sizeOnDisk,
     tags: movie.tags ?? [],
-    overview: truncateOverview(movie.overview),
+    ...(options.overview !== false && { overview: truncateOverview(movie.overview) }),
     genres: movie.genres,
     originalLanguage: movie.originalLanguage?.name,
   };

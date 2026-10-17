@@ -218,22 +218,22 @@ This server exposes 106 tools across the four products.
 
 | Tool | Purpose |
 |------|---------|
-| `sonarr_list_series` | List series, filterable by root folder, genre, series type, title and monitored state; paginated (default 50) |
+| `sonarr_list_series` | List series, filterable by root folder, genre, series type, title and monitored state; paginated (default 50); `includeOverview` adds plot summaries |
 | `sonarr_get_series` | Get the full record for one series, including all seasons |
 | `sonarr_lookup_series` | Search TheTVDB for series matching a search term |
 | `sonarr_add_series` | Add a new series to Sonarr |
 | `sonarr_delete_series` | **Destructive:** Remove a series from Sonarr; deleting files requires an explicit confirm flag |
 | `sonarr_update_series` | Update series settings, including **root folder** and series type, optionally moving files on disk |
-| `sonarr_list_episodes` | List episodes for a series or season |
+| `sonarr_list_episodes` | List episodes for a series or season; paginated (`limit` default 100, `offset`); `includeOverview` adds plot summaries |
 | `sonarr_get_episode` | Get the full record for one episode |
 | `sonarr_monitor_episodes` | Set monitored state for one or more episodes |
-| `sonarr_list_episode_files` | List downloaded episode files for a series |
+| `sonarr_list_episode_files` | List downloaded episode files for a series; paginated (`limit` default 100, `offset`) |
 | `sonarr_delete_episode_file` | **Destructive:** Permanently delete an episode file |
 | `sonarr_get_queue` | List items currently downloading or awaiting import |
 | `sonarr_delete_queue_item` | **Destructive:** Remove an item from the download queue |
 | `sonarr_search_releases` | Interactive search for an episode or season pack, with Sonarr's rank and rejection reasons |
 | `sonarr_grab_release` | Download a specific release from a search; Sonarr tracks and imports it |
-| `sonarr_get_calendar` | List episodes airing in a date range |
+| `sonarr_get_calendar` | List episodes airing in a date range; paginated (`limit` default 100, `offset`) |
 | `sonarr_get_history` | List download, import, and grab event history |
 | `sonarr_get_wanted_missing` | List wanted but missing episodes |
 | `sonarr_get_blocklist` | List releases on the blocklist |
@@ -256,7 +256,7 @@ This server exposes 106 tools across the four products.
 
 | Tool | Purpose |
 |------|---------|
-| `radarr_list_movies` | List movies, filterable by root folder, genre, title, file and monitored state; paginated (default 50) |
+| `radarr_list_movies` | List movies, filterable by root folder, genre, title, file and monitored state; paginated (default 50); `includeOverview` adds plot summaries |
 | `radarr_get_movie` | Get the full record for one movie |
 | `radarr_lookup_movie` | Search TMDB for movies matching a search term |
 | `radarr_add_movie` | Add a new movie to Radarr |
@@ -264,7 +264,7 @@ This server exposes 106 tools across the four products.
 | `radarr_delete_movie` | **Destructive:** Remove a movie from Radarr; deleting files requires an explicit confirm flag |
 | `radarr_list_movie_files` | List downloaded movie files for a movie |
 | `radarr_delete_movie_file` | **Destructive:** Permanently delete a movie file |
-| `radarr_get_calendar` | List movies with releases in a date range |
+| `radarr_get_calendar` | List movies with releases in a date range; paginated (`limit` default 100, `offset`) |
 | `radarr_get_queue` | List items currently downloading or awaiting import |
 | `radarr_delete_queue_item` | **Destructive:** Remove an item from the download queue |
 | `radarr_search_releases` | Interactive search for a movie, with Radarr's rank and rejection reasons |
@@ -324,7 +324,7 @@ This server exposes 106 tools across the four products.
 | `overseerr_get_movie_ratings` | Get Rotten Tomatoes and IMDB ratings for a movie |
 | `overseerr_get_tv_ratings` | Get Rotten Tomatoes ratings for a TV show |
 | `overseerr_get_person` | Get biography and details for a person |
-| `overseerr_get_person_credits` | Get a person's combined movie and TV credits |
+| `overseerr_get_person_credits` | Get a person's combined movie and TV credits, newest first; at most `limit` (default 50) cast and crew rows each, with totals |
 | `overseerr_list_requests` | List media requests with optional filtering and sorting |
 | `overseerr_get_request` | Get one media request by id |
 | `overseerr_get_request_count` | Get counts of requests by status |
