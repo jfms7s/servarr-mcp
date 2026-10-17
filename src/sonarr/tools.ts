@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { assertMoveBatchSize, MAX_MOVE_BATCH } from '../mcp/bulk.js';
+import { assertMoveBatchSize, assertMoveFilesChosen, MAX_MOVE_BATCH } from '../mcp/bulk.js';
 import { CACHED_LIBRARY_NOTE, refreshInput } from '../mcp/library.js';
 import { listWindow, pageOf } from '../mcp/paging.js';
 import { isWithinRoot, normalizeTitle } from '../mcp/paths.js';
@@ -220,7 +220,9 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       name: 'sonarr_run_command',
       description:
         'Trigger a Sonarr background command, for example searching for a series or ' +
-        'rescanning its folder. Returns a command id; poll it with sonarr_get_command.',
+        'rescanning its folder. Returns a command id; poll it with sonarr_get_command. ' +
+        'MissingEpisodeSearch searches (and may download) every missing monitored episode, so without ' +
+        'confirm=true it only returns { wouldRun: { command, missingCount }, confirmRequired: true } and runs nothing.',
       inputSchema: {
         name: z.enum(COMMAND_NAMES).describe('Command to run'),
         seriesId: z.number().int().optional().describe('Target series, for series-scoped commands'),
@@ -229,8 +231,15 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
           .array(z.number().int())
           .optional()
           .describe('Target episodes, for EpisodeSearch'),
+        confirm: z.boolean().optional().describe('Required to run MissingEpisodeSearch, prevents an accidental library-wide search'),
       },
-      handler: (args) => client.runCommand(args),
+      handler: async ({ confirm, ...command }) => {
+        if (command.name === 'MissingEpisodeSearch' && confirm !== true) {
+          const missing = await client.getWantedMissing({ page: 1, pageSize: 1 });
+          return { wouldRun: { command: command.name, missingCount: missing.totalRecords }, confirmRequired: true };
+        }
+        return client.runCommand(command);
+      },
     }),
 
     defineTool({
@@ -257,8 +266,9 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       description:
         'Update a series, changing only the provided fields (monitored, qualityProfileId, ' +
         'seasonFolder, tags, rootFolderPath, seriesType). When rootFolderPath is provided, ' +
-        'the series path is automatically updated to <rootFolderPath>/<folderName>. ' +
-        'Set moveFiles to move existing episode files to the new location.',
+        'the series path is automatically updated to <rootFolderPath>/<folderName>, and moveFiles is ' +
+        'required: true moves the episode files with the record, false repoints the record only (the files ' +
+        'stay put and Sonarr reports the episodes missing after a rescan).',
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
         monitored: z.boolean().optional().describe('Monitor the series'),
@@ -267,9 +277,13 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         tags: z.array(z.number().int()).optional().describe('Tag ids from sonarr_list_tags'),
         rootFolderPath: z.string().optional().describe('Root folder path from sonarr_list_root_folders. Updates the series path automatically.'),
         seriesType: z.enum(['standard', 'daily', 'anime']).optional().describe('Series type affects episode numbering for anime'),
-        moveFiles: z.boolean().optional().describe('Move existing files to new location when changing rootFolderPath (default false)'),
+        moveFiles: z
+          .boolean()
+          .optional()
+          .describe('Required with rootFolderPath: true moves the files, false repoints the record only'),
       },
       handler: async ({ seriesId, monitored, qualityProfileId, seasonFolder, tags, rootFolderPath, seriesType, moveFiles }) => {
+        assertMoveFilesChosen(rootFolderPath, moveFiles, 'sonarr_update_series');
         const current = await client.getSeries(seriesId);
         const merged = {
           ...current,
@@ -558,8 +572,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       description:
         'Bulk edit multiple series at once. Only fields explicitly provided are updated; ' +
         'omitted fields are not changed. Supports changing root folder, quality profile, series type, ' +
-        'monitored state, season folder setting, and tags. Set moveFiles to move existing files ' +
-        `when changing root folder; the files are moved before the call returns, so at most ${MAX_MOVE_BATCH} ` +
+        'monitored state, season folder setting, and tags. When rootFolderPath is given, moveFiles is ' +
+        'required: true moves the files with the records, false repoints the records only (the files stay put ' +
+        'and Sonarr reports the episodes missing after a rescan). ' +
+        `With moveFiles true the files are moved before the call returns, so at most ${MAX_MOVE_BATCH} ` +
         'ids are accepted per call when moveFiles is true. Send larger sets as sequential batches, not in parallel.',
       inputSchema: {
         seriesIds: z.array(z.number().int()).min(1).describe('Series ids to update'),
@@ -570,9 +586,13 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         rootFolderPath: z.string().optional().describe('Root folder path from sonarr_list_root_folders'),
         tags: z.array(z.number().int()).optional().describe('Tag ids from sonarr_list_tags'),
         applyTags: z.enum(['add', 'remove', 'replace']).optional().describe('How to apply tags (default replace)'),
-        moveFiles: z.boolean().optional().describe('Move files when changing rootFolderPath (default false)'),
+        moveFiles: z
+          .boolean()
+          .optional()
+          .describe('Required with rootFolderPath: true moves the files, false repoints the records only'),
       },
       handler: async (args) => {
+        assertMoveFilesChosen(args.rootFolderPath, args.moveFiles, 'sonarr_bulk_edit_series');
         assertMoveBatchSize(args.seriesIds, args.moveFiles, 'sonarr_bulk_edit_series');
 
         // Build payload with only defined fields to avoid blanking unspecified fields

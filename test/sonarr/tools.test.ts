@@ -395,13 +395,14 @@ describe('createSonarrTools', () => {
     await get('sonarr_update_series').handler({
       seriesId: 5,
       rootFolderPath: '/newroot/',
+      moveFiles: false,
     });
     expect(updateSeries).toHaveBeenCalledWith(
       5,
       expect.objectContaining({
         path: '/newroot/Test Series',
       }),
-      { moveFiles: undefined },
+      { moveFiles: false },
     );
   });
 
@@ -433,13 +434,14 @@ describe('createSonarrTools', () => {
     await get('sonarr_update_series').handler({
       seriesId: 5,
       rootFolderPath: '/anime',
+      moveFiles: false,
     });
     expect(updateSeries).toHaveBeenCalledWith(
       5,
       expect.objectContaining({
         path: '/anime/Test Series',
       }),
-      { moveFiles: undefined },
+      { moveFiles: false },
     );
   });
 
@@ -472,13 +474,14 @@ describe('createSonarrTools', () => {
     await get('sonarr_update_series').handler({
       seriesId: 5,
       rootFolderPath: '/anime',
+      moveFiles: false,
     });
     expect(updateSeries).toHaveBeenCalledWith(
       5,
       expect.objectContaining({
         path: '/anime/Test Series (2020)',
       }),
-      { moveFiles: undefined },
+      { moveFiles: false },
     );
   });
 
@@ -499,6 +502,7 @@ describe('createSonarrTools', () => {
       tool.handler({
         seriesId: 5,
         rootFolderPath: '/anime',
+        moveFiles: false,
       }),
     ).rejects.toThrow(/Cannot determine folder name/);
   });
@@ -915,6 +919,7 @@ describe('createSonarrTools', () => {
     const get = toolsFor({ getSeries, updateSeries });
     await get('sonarr_update_series').handler({
       seriesId: 5,
+      moveFiles: false,
       rootFolderPath: 'E:\\TV2',
     });
     expect(updateSeries).toHaveBeenCalledWith(
@@ -922,7 +927,7 @@ describe('createSonarrTools', () => {
       expect.objectContaining({
         path: 'E:\\TV2\\Test Series',
       }),
-      { moveFiles: undefined },
+      { moveFiles: false },
     );
   });
 
@@ -954,6 +959,7 @@ describe('createSonarrTools', () => {
     const get = toolsFor({ getSeries, updateSeries });
     await get('sonarr_update_series').handler({
       seriesId: 5,
+      moveFiles: false,
       rootFolderPath: '/new/tv',
     });
     expect(updateSeries).toHaveBeenCalledWith(
@@ -961,7 +967,7 @@ describe('createSonarrTools', () => {
       expect.objectContaining({
         path: '/new/tv/Test Series',
       }),
-      { moveFiles: undefined },
+      { moveFiles: false },
     );
   });
 

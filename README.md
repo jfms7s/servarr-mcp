@@ -223,7 +223,7 @@ This server exposes 106 tools across the four products.
 | `sonarr_lookup_series` | Search TheTVDB for series matching a search term |
 | `sonarr_add_series` | Add a new series to Sonarr |
 | `sonarr_delete_series` | **Destructive:** Remove a series from Sonarr; deleting files requires an explicit confirm flag |
-| `sonarr_update_series` | Update series settings, including **root folder** and series type, optionally moving files on disk |
+| `sonarr_update_series` | Update series settings, including **root folder** and series type, with an explicit choice to move the files on disk or not |
 | `sonarr_list_episodes` | List episodes for a series or season; paginated (`limit` default 100, `offset`); `includeOverview` adds plot summaries |
 | `sonarr_get_episode` | Get the full record for one episode |
 | `sonarr_monitor_episodes` | Set monitored state for one or more episodes |
@@ -238,7 +238,7 @@ This server exposes 106 tools across the four products.
 | `sonarr_get_wanted_missing` | List wanted but missing episodes |
 | `sonarr_get_blocklist` | List releases on the blocklist |
 | `sonarr_delete_blocklist_item` | **Destructive:** Remove a release from the blocklist |
-| `sonarr_run_command` | Trigger a background command (search, rescan, refresh) |
+| `sonarr_run_command` | Trigger a background command (search, rescan, refresh); the library-wide missing search needs `confirm: true` |
 | `sonarr_get_command` | Poll the status of a background command |
 | `sonarr_list_quality_profiles` | List available quality profiles |
 | `sonarr_bulk_edit_series` | Change root folder, quality profile, series type, monitored state or tags on many series at once |
@@ -260,7 +260,7 @@ This server exposes 106 tools across the four products.
 | `radarr_get_movie` | Get the full record for one movie |
 | `radarr_lookup_movie` | Search TMDB for movies matching a search term |
 | `radarr_add_movie` | Add a new movie to Radarr |
-| `radarr_update_movie` | Update movie settings, including **root folder**, optionally moving files on disk |
+| `radarr_update_movie` | Update movie settings, including **root folder**, with an explicit choice to move the files on disk or not |
 | `radarr_delete_movie` | **Destructive:** Remove a movie from Radarr; deleting files requires an explicit confirm flag |
 | `radarr_list_movie_files` | List downloaded movie files for a movie |
 | `radarr_delete_movie_file` | **Destructive:** Permanently delete a movie file |
@@ -274,7 +274,7 @@ This server exposes 106 tools across the four products.
 | `radarr_get_blocklist` | List releases on the blocklist |
 | `radarr_delete_blocklist_item` | **Destructive:** Remove a release from the blocklist |
 | `radarr_list_collections` | List all movie collections |
-| `radarr_run_command` | Trigger a background command (search, rescan, refresh) |
+| `radarr_run_command` | Trigger a background command (search, rescan, refresh); the library-wide missing search needs `confirm: true` |
 | `radarr_get_command` | Poll the status of a background command |
 | `radarr_list_quality_profiles` | List available quality profiles |
 | `radarr_bulk_edit_movies` | Change root folder, quality profile, monitored state or tags on many movies at once |
@@ -348,15 +348,15 @@ Several tools exist to audit and correct how a library is filed on disk.
 
 Radarr and Sonarr cannot page their library endpoints, so these two tools and the `find_duplicate_*` tools download the whole library and filter it in memory. To keep a paged or multi-filter exploration to one download, that download is reused for 30 s. Every write made through this server (adds, updates, bulk edits, deletes, file deletes, imports, and refresh, rescan and rename commands) discards it, so those changes show up on the next call. Changes made elsewhere (the arr UI, Overseerr, import lists, finished downloads) can take up to 30 s to appear. Pass `refresh: true` to download the library again.
 
-To correct what you find, `radarr_update_movie` and `sonarr_update_series` accept a `rootFolderPath`, and `radarr_bulk_edit_movies` / `sonarr_bulk_edit_series` do the same for many items at once. Pass `moveFiles: true` to relocate the files on disk rather than only changing the record.
+To correct what you find, `radarr_update_movie` and `sonarr_update_series` accept a `rootFolderPath`, and `radarr_bulk_edit_movies` / `sonarr_bulk_edit_series` do the same for many items at once. Whenever `rootFolderPath` is given, all four require `moveFiles` and reject the call with an error before anything is sent if it is missing. Pass `moveFiles: true` to move the files on disk with the records. Pass `moveFiles: false` only if the files are already at the new root or you will move them yourself: it repoints the records and leaves the files where they are, so Radarr or Sonarr reports every affected item missing after its next rescan. Edits that don't change the root folder don't need `moveFiles`.
 
-Radarr and Sonarr move the files before the bulk editor returns, and a large batch can outlast the MCP client's request timeout. So the two bulk editors accept at most 10 ids per call when `moveFiles` is true, and reject a larger batch with an error before anything is sent. Send bigger sets as sequential batches of 10 or fewer, one call at a time. Batches that only change metadata (monitored state, quality profile, tags) are not limited.
+Radarr and Sonarr move the files before the bulk editor returns, and a large batch can outlast the MCP client's request timeout. So the two bulk editors accept at most 10 ids per call when `moveFiles` is true, and reject a larger batch with an error before anything is sent. Send bigger sets as sequential batches of 10 or fewer, one call at a time. Batches that don't move files (`moveFiles: false`, or edits to monitored state, quality profile or tags without a root-folder change) are not limited.
 
 `radarr_list_unmapped_folders` and `sonarr_list_unmapped_folders` show folders present on disk that the application has no entry for; `radarr_import_folder` and `sonarr_import_folder` scan such a folder and import what they find. `radarr_get_rename_preview` and `sonarr_get_rename_preview` show the names a rename would produce before you run one, and the `find_duplicate_*` tools report titles present under more than one root folder.
 
 Routing is decided upstream: `overseerr_list_radarr_servers` reports the `activeDirectory` each Radarr server defaults to, which is usually what determines where new requests land. Note that `overseerr_update_request` changes where a request will be sent — it does not move media that has already been downloaded. Use the Radarr or Sonarr tools for that.
 
-**Safety note:** deleting files through `radarr_delete_movie` or `sonarr_delete_series` requires `confirmDeleteFiles: true`. Called without it, these tools return a description of what would be lost and delete nothing. The bulk editors deliberately do not expose file deletion at all.
+**Safety note:** deleting files through `radarr_delete_movie` or `sonarr_delete_series` requires `confirmDeleteFiles: true`. Called without it, these tools return a description of what would be lost and delete nothing. The bulk editors deliberately do not expose file deletion at all. The library-wide searches `radarr_run_command` with `MissingMoviesSearch` and `sonarr_run_command` with `MissingEpisodeSearch` search, and may download, every missing monitored item at once, so they need `confirm: true`. Called without it, they return `{ wouldRun: { command, missingCount }, confirmRequired: true }` and start nothing. Searches for specific ids are not gated.
 
 ## Finding Your API Key
 
