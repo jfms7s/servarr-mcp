@@ -1,4 +1,5 @@
 import type { InstanceConfig } from '../config.js';
+import { LIBRARY_TTL_MS, cached, invalidating } from '../http/cache.js';
 import { EDITOR_TIMEOUT_MS, SEARCH_TIMEOUT_MS, createArrClient } from '../http/client.js';
 import type {
   AddMoviePayload,
@@ -52,8 +53,26 @@ export interface HistoryOptions extends PageParams {
   eventType?: number;
 }
 
+export interface ListMoviesOptions {
+  /** Skip the cached library and download it again. */
+  refresh?: boolean;
+}
+
+/** Commands that change what GET /movie returns once they run. */
+const LIBRARY_COMMANDS = new Set(
+  ['RefreshMovie', 'RescanMovie', 'RenameFiles', 'RenameMovie', 'DownloadedMoviesScan'].map((n) =>
+    n.toLowerCase(),
+  ),
+);
+const changesLibrary = (name: string | undefined) =>
+  name !== undefined && LIBRARY_COMMANDS.has(name.toLowerCase());
+
 export interface RadarrClient {
-  listMovies(): Promise<Movie[]>;
+  /**
+   * The whole library, cached for LIBRARY_TTL_MS. Every write through this client
+   * invalidates it; changes made elsewhere show up once the TTL passes or with refresh.
+   */
+  listMovies(options?: ListMoviesOptions): Promise<Movie[]>;
   getMovie(id: number): Promise<Movie>;
   lookupMovie(term: string): Promise<Movie[]>;
   lookupMovieByTmdbId(tmdbId: number): Promise<Movie>;
@@ -91,20 +110,25 @@ export function createRadarrClient(config: InstanceConfig): RadarrClient {
     apiKey: config.apiKey,
     apiBase: '/api/v3',
   });
+  const library = cached(() => http.get<Movie[]>('/movie'), LIBRARY_TTL_MS);
+  const write = <T>(run: () => Promise<T>) => invalidating(library, run);
 
   return {
-    listMovies: () => http.get('/movie'),
+    listMovies: (options) => {
+      if (options?.refresh) library.invalidate();
+      return library.get();
+    },
     getMovie: (id) => http.get(`/movie/${id}`),
     lookupMovie: (term) => http.get('/movie/lookup', { term }),
     lookupMovieByTmdbId: (tmdbId) => http.get('/movie/lookup/tmdb', { tmdbId }),
-    addMovie: (payload) => http.post('/movie', payload),
+    addMovie: (payload) => write(() => http.post('/movie', payload)),
     updateMovie: (id, payload, options) =>
-      http.put(`/movie/${id}`, payload, { moveFiles: options?.moveFiles }),
+      write(() => http.put(`/movie/${id}`, payload, { moveFiles: options?.moveFiles })),
     bulkEditMovies: (payload) =>
-      http.put('/movie/editor', payload, undefined, { timeoutMs: EDITOR_TIMEOUT_MS }),
-    deleteMovie: (id, options) => http.del(`/movie/${id}`, { ...options }),
+      write(() => http.put('/movie/editor', payload, undefined, { timeoutMs: EDITOR_TIMEOUT_MS })),
+    deleteMovie: (id, options) => write(() => http.del(`/movie/${id}`, { ...options })),
     listMovieFiles: (movieId) => http.get('/moviefile', { movieId }),
-    deleteMovieFile: (id) => http.del(`/moviefile/${id}`),
+    deleteMovieFile: (id) => write(() => http.del(`/moviefile/${id}`)),
     renamePreview: (movieIds) => http.get('/rename', { movieId: movieIds }),
     getCalendar: (options) => http.get('/calendar', { ...options }),
     getQueue: (options) => http.get('/queue', { ...options }),
@@ -114,8 +138,17 @@ export function createRadarrClient(config: InstanceConfig): RadarrClient {
     getBlocklist: (options) => http.get('/blocklist', { ...options }),
     deleteBlocklistItem: (id) => http.del(`/blocklist/${id}`),
     listCollections: () => http.get('/collection'),
-    runCommand: (payload) => http.post('/command', payload),
-    getCommand: (id) => http.get(`/command/${id}`),
+    runCommand: (payload) => {
+      const run = () => http.post<CommandResource>('/command', payload);
+      return changesLibrary(payload.name) ? write(run) : run();
+    },
+    getCommand: async (id) => {
+      const command = await http.get<CommandResource>(`/command/${id}`);
+      // Commands run in the background, so the library changes when they finish, not
+      // when they are queued.
+      if (command.status === 'completed' && changesLibrary(command.name)) library.invalidate();
+      return command;
+    },
     searchReleases: (movieId) =>
       http.get('/release', { movieId }, { timeoutMs: SEARCH_TIMEOUT_MS }),
     grabRelease: (payload) => http.post('/release', payload),

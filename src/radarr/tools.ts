@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { assertMoveBatchSize, MAX_MOVE_BATCH } from '../mcp/bulk.js';
+import { CACHED_LIBRARY_NOTE, refreshInput } from '../mcp/library.js';
 import { listWindow, pageOf } from '../mcp/paging.js';
 import { isWithinRoot } from '../mcp/paths.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
@@ -66,7 +67,8 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         'Results are returned as { totalMatched, offset, limit, movies } so pagination is visible. Default limit is 50 ' +
         '(pass limit and offset for different ranges). Filters are applied client-side after ' +
         'fetching all movies, so titleContains and genre matches are case-insensitive substring/array searches. ' +
-        'Rows omit the plot overview unless includeOverview is true.',
+        'Rows omit the plot overview unless includeOverview is true.' +
+        CACHED_LIBRARY_NOTE,
       inputSchema: {
         rootFolder: z
           .string()
@@ -85,9 +87,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         offset: z.number().int().min(0).optional().describe('Skip this many results (default 0)'),
         limit: z.number().int().min(1).optional().describe('Maximum results to return (default 50)'),
         includeOverview: z.boolean().optional().describe('Include each row\'s plot overview (default false)'),
+        refresh: refreshInput,
       },
-      handler: async ({ rootFolder, hasFile, monitored, genre, titleContains, offset, limit, includeOverview }) => {
-        let movies = await client.listMovies();
+      handler: async ({ rootFolder, hasFile, monitored, genre, titleContains, offset, limit, includeOverview, refresh }) => {
+        let movies = await client.listMovies({ refresh });
 
         // Apply filters
         if (rootFolder) {
@@ -614,10 +617,11 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       description:
         'Find movies that appear to be the same film in more than one place. ' +
         'Reports exact duplicates (same tmdbId) and misplaced copies (same title+year under different root folders). ' +
-        'Returns a compact grouping suitable for cleanup decisions.',
-      inputSchema: {},
-      handler: async () => {
-        const movies = await client.listMovies();
+        'Returns a compact grouping suitable for cleanup decisions.' +
+        CACHED_LIBRARY_NOTE,
+      inputSchema: { refresh: refreshInput },
+      handler: async ({ refresh }) => {
+        const movies = await client.listMovies({ refresh });
 
         // Group by tmdbId for exact duplicates
         const byTmdbId = new Map<number, typeof movies>();

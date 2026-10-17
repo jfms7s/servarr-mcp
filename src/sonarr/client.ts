@@ -1,4 +1,5 @@
 import type { InstanceConfig } from '../config.js';
+import { LIBRARY_TTL_MS, cached, invalidating } from '../http/cache.js';
 import { EDITOR_TIMEOUT_MS, SEARCH_TIMEOUT_MS, createArrClient } from '../http/client.js';
 import type {
   AddSeriesPayload,
@@ -57,8 +58,26 @@ export interface WantedOptions extends PageParams {
   includeSeries?: boolean;
 }
 
+export interface ListSeriesOptions {
+  /** Skip the cached library and download it again. */
+  refresh?: boolean;
+}
+
+/** Commands that change what GET /series returns once they run. */
+const LIBRARY_COMMANDS = new Set(
+  ['RefreshSeries', 'RescanSeries', 'RenameFiles', 'DownloadedEpisodesScan'].map((n) =>
+    n.toLowerCase(),
+  ),
+);
+const changesLibrary = (name: string | undefined) =>
+  name !== undefined && LIBRARY_COMMANDS.has(name.toLowerCase());
+
 export interface SonarrClient {
-  listSeries(): Promise<Series[]>;
+  /**
+   * The whole library, cached for LIBRARY_TTL_MS. Every write through this client
+   * invalidates it; changes made elsewhere show up once the TTL passes or with refresh.
+   */
+  listSeries(options?: ListSeriesOptions): Promise<Series[]>;
   getSeries(id: number): Promise<Series>;
   lookupSeries(term: string): Promise<Series[]>;
   addSeries(payload: AddSeriesPayload): Promise<Series>;
@@ -97,23 +116,29 @@ export function createSonarrClient(config: InstanceConfig): SonarrClient {
     apiKey: config.apiKey,
     apiBase: '/api/v3',
   });
+  const library = cached(() => http.get<Series[]>('/series'), LIBRARY_TTL_MS);
+  const write = <T>(run: () => Promise<T>) => invalidating(library, run);
 
   return {
-    listSeries: () => http.get('/series'),
+    listSeries: (options) => {
+      if (options?.refresh) library.invalidate();
+      return library.get();
+    },
     getSeries: (id) => http.get(`/series/${id}`),
     lookupSeries: (term) => http.get('/series/lookup', { term }),
-    addSeries: (payload) => http.post('/series', payload),
+    addSeries: (payload) => write(() => http.post('/series', payload)),
     updateSeries: (id, payload, options) =>
-      http.put(`/series/${id}`, payload, { moveFiles: options?.moveFiles }),
+      write(() => http.put(`/series/${id}`, payload, { moveFiles: options?.moveFiles })),
     bulkEditSeries: (payload) =>
-      http.put('/series/editor', payload, undefined, { timeoutMs: EDITOR_TIMEOUT_MS }),
-    deleteSeries: (id, options) => http.del(`/series/${id}`, { ...options }),
+      write(() => http.put('/series/editor', payload, undefined, { timeoutMs: EDITOR_TIMEOUT_MS })),
+    deleteSeries: (id, options) => write(() => http.del(`/series/${id}`, { ...options })),
     listEpisodes: (seriesId, seasonNumber) => http.get('/episode', { seriesId, seasonNumber }),
     getEpisode: (id) => http.get(`/episode/${id}`),
+    // Series statistics count monitored episodes, so this changes GET /series too.
     monitorEpisodes: (episodeIds, monitored) =>
-      http.put('/episode/monitor', { episodeIds, monitored }),
+      write(() => http.put('/episode/monitor', { episodeIds, monitored })),
     listEpisodeFiles: (seriesId) => http.get('/episodefile', { seriesId }),
-    deleteEpisodeFile: (id) => http.del(`/episodefile/${id}`),
+    deleteEpisodeFile: (id) => write(() => http.del(`/episodefile/${id}`)),
     getCalendar: (options) => http.get('/calendar', { ...options }),
     getQueue: (options) => http.get('/queue', { ...options }),
     deleteQueueItem: (id, options) => http.del(`/queue/${id}`, { ...options }),
@@ -123,8 +148,17 @@ export function createSonarrClient(config: InstanceConfig): SonarrClient {
     deleteBlocklistItem: (id) => http.del(`/blocklist/${id}`),
     getRenamePreview: (seriesId, seasonNumber) =>
       http.get('/rename', { seriesId, seasonNumber }),
-    runCommand: (payload) => http.post('/command', payload),
-    getCommand: (id) => http.get(`/command/${id}`),
+    runCommand: (payload) => {
+      const run = () => http.post<CommandResource>('/command', payload);
+      return changesLibrary(payload.name) ? write(run) : run();
+    },
+    getCommand: async (id) => {
+      const command = await http.get<CommandResource>(`/command/${id}`);
+      // Commands run in the background, so the library changes when they finish, not
+      // when they are queued.
+      if (command.status === 'completed' && changesLibrary(command.name)) library.invalidate();
+      return command;
+    },
     listQualityProfiles: () => http.get('/qualityprofile'),
     listRootFolders: () => http.get('/rootfolder'),
     listTags: () => http.get('/tag'),
