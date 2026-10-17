@@ -1,5 +1,5 @@
 import type { InstanceConfig } from '../config.js';
-import { createArrClient } from '../http/client.js';
+import { EDITOR_TIMEOUT_MS, SEARCH_TIMEOUT_MS, createArrClient } from '../http/client.js';
 import type {
   AddMoviePayload,
   BlocklistRecord,
@@ -100,7 +100,8 @@ export function createRadarrClient(config: InstanceConfig): RadarrClient {
     addMovie: (payload) => http.post('/movie', payload),
     updateMovie: (id, payload, options) =>
       http.put(`/movie/${id}`, payload, { moveFiles: options?.moveFiles }),
-    bulkEditMovies: (payload) => http.put('/movie/editor', payload),
+    bulkEditMovies: (payload) =>
+      http.put('/movie/editor', payload, undefined, { timeoutMs: EDITOR_TIMEOUT_MS }),
     deleteMovie: (id, options) => http.del(`/movie/${id}`, { ...options }),
     listMovieFiles: (movieId) => http.get('/moviefile', { movieId }),
     deleteMovieFile: (id) => http.del(`/moviefile/${id}`),
@@ -115,7 +116,8 @@ export function createRadarrClient(config: InstanceConfig): RadarrClient {
     listCollections: () => http.get('/collection'),
     runCommand: (payload) => http.post('/command', payload),
     getCommand: (id) => http.get(`/command/${id}`),
-    searchReleases: (movieId) => http.get('/release', { movieId }),
+    searchReleases: (movieId) =>
+      http.get('/release', { movieId }, { timeoutMs: SEARCH_TIMEOUT_MS }),
     grabRelease: (payload) => http.post('/release', payload),
     listQualityProfiles: () => http.get('/qualityprofile'),
     listRootFolders: () => http.get('/rootfolder'),

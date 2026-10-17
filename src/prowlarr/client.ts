@@ -1,5 +1,5 @@
 import type { InstanceConfig } from '../config.js';
-import { createArrClient } from '../http/client.js';
+import { SEARCH_TIMEOUT_MS, createArrClient } from '../http/client.js';
 import type {
   Application,
   CommandResource,
@@ -61,7 +61,7 @@ export function createProwlarrClient(config: InstanceConfig): ProwlarrClient {
   });
 
   return {
-    search: (options) => http.get('/search', { ...options }),
+    search: (options) => http.get('/search', { ...options }, { timeoutMs: SEARCH_TIMEOUT_MS }),
     grabRelease: (payload) => http.post('/search', payload),
     listIndexers: () => http.get('/indexer'),
     getIndexer: (id) => http.get(`/indexer/${id}`),

@@ -1,5 +1,5 @@
 import type { InstanceConfig } from '../config.js';
-import { createArrClient } from '../http/client.js';
+import { EDITOR_TIMEOUT_MS, SEARCH_TIMEOUT_MS, createArrClient } from '../http/client.js';
 import type {
   AddSeriesPayload,
   BlocklistRecord,
@@ -105,7 +105,8 @@ export function createSonarrClient(config: InstanceConfig): SonarrClient {
     addSeries: (payload) => http.post('/series', payload),
     updateSeries: (id, payload, options) =>
       http.put(`/series/${id}`, payload, { moveFiles: options?.moveFiles }),
-    bulkEditSeries: (payload) => http.put('/series/editor', payload),
+    bulkEditSeries: (payload) =>
+      http.put('/series/editor', payload, undefined, { timeoutMs: EDITOR_TIMEOUT_MS }),
     deleteSeries: (id, options) => http.del(`/series/${id}`, { ...options }),
     listEpisodes: (seriesId, seasonNumber) => http.get('/episode', { seriesId, seasonNumber }),
     getEpisode: (id) => http.get(`/episode/${id}`),
@@ -130,7 +131,8 @@ export function createSonarrClient(config: InstanceConfig): SonarrClient {
     getSystemStatus: () => http.get('/system/status'),
     getHealth: () => http.get('/health'),
     getDiskSpace: () => http.get('/diskspace'),
-    searchReleases: (params) => http.get('/release', { ...params }),
+    searchReleases: (params) =>
+      http.get('/release', { ...params }, { timeoutMs: SEARCH_TIMEOUT_MS }),
     grabRelease: (payload) => http.post('/release', payload),
   };
 }
