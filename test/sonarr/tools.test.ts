@@ -13,6 +13,15 @@ function toolsFor(overrides: Partial<SonarrClient>) {
   };
 }
 
+const anime = {
+  year: 2013,
+  status: 'continuing',
+  monitored: true,
+  qualityProfileId: 1,
+  tags: [],
+  seasons: [],
+};
+
 describe('createSonarrTools', () => {
   it('registers all 33 tools with unique sonarr_ prefixed names', () => {
     const names = createSonarrTools({} as SonarrClient).map((t) => t.name);
@@ -766,6 +775,35 @@ describe('createSonarrTools', () => {
     expect(result.total).toBe(2);
     expect(result.exactDuplicates).toHaveLength(1);
     expect(result.exactDuplicates[0]?.count).toBe(2);
+    expect(result.misplacedCopies).toHaveLength(0);
+  });
+
+  it('find_duplicate_series does not group unrelated non-Latin titles from the same year', async () => {
+    const listSeries = vi.fn().mockResolvedValue([
+      { ...anime, id: 1, title: '進撃の巨人', tvdbId: 267440, path: '/tv/進撃の巨人', rootFolderPath: '/tv' },
+      { ...anime, id: 2, title: '鬼滅の刃', tvdbId: 348545, path: '/anime/鬼滅の刃', rootFolderPath: '/anime' },
+    ]);
+    const get = toolsFor({ listSeries });
+    const result = (await get('sonarr_find_duplicate_series').handler({})) as {
+      exactDuplicates: unknown[];
+      misplacedCopies: unknown[];
+    };
+    expect(result.exactDuplicates).toHaveLength(0);
+    expect(result.misplacedCopies).toEqual([]);
+  });
+
+  it('find_duplicate_series still groups copies of the same non-Latin title in different roots', async () => {
+    const listSeries = vi.fn().mockResolvedValue([
+      { ...anime, id: 1, title: '進撃の巨人', tvdbId: 267440, path: '/tv/進撃の巨人', rootFolderPath: '/tv' },
+      { ...anime, id: 2, title: '進撃の巨人', tvdbId: 999999, path: '/anime/進撃の巨人', rootFolderPath: '/anime' },
+    ]);
+    const get = toolsFor({ listSeries });
+    const result = (await get('sonarr_find_duplicate_series').handler({})) as {
+      misplacedCopies: Array<{ count: number; title: string }>;
+    };
+    expect(result.misplacedCopies).toHaveLength(1);
+    expect(result.misplacedCopies[0]?.count).toBe(2);
+    expect(result.misplacedCopies[0]?.title).toBe('進撃の巨人');
   });
 
   it('find_duplicate_series detects misplaced copies by title+year in different folders', async () => {

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { assertMoveBatchSize, MAX_MOVE_BATCH } from '../mcp/bulk.js';
 import { CACHED_LIBRARY_NOTE, refreshInput } from '../mcp/library.js';
 import { listWindow, pageOf } from '../mcp/paging.js';
-import { isWithinRoot } from '../mcp/paths.js';
+import { isWithinRoot, normalizeTitle, rootFolderOf } from '../mcp/paths.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { RadarrClient } from './client.js';
 import {
@@ -621,7 +621,11 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         CACHED_LIBRARY_NOTE,
       inputSchema: { refresh: refreshInput },
       handler: async ({ refresh }) => {
-        const movies = await client.listMovies({ refresh });
+        const [movies, rootFolders] = await Promise.all([
+          client.listMovies({ refresh }),
+          client.listRootFolders(),
+        ]);
+        const rootPaths = rootFolders.map((root) => root.path);
 
         // Group by tmdbId for exact duplicates
         const byTmdbId = new Map<number, typeof movies>();
@@ -646,19 +650,26 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
             })),
           }));
 
-        // Group by normalized title+year for misplaced copies
+        // Group by normalized title+year for misplaced copies. Titles that normalize to nothing
+        // carry no key and are skipped.
         const byTitle = new Map<string, typeof movies>();
         for (const movie of movies) {
-          const key = `${movie.title.toLowerCase().replace(/[^a-z0-9]/g, '')}:${movie.year}`;
+          const title = normalizeTitle(movie.title);
+          if (title === '') continue;
+          const key = `${title}:${movie.year}`;
           const existing = byTitle.get(key) ?? [];
           existing.push(movie);
           byTitle.set(key, existing);
         }
 
+        // Radarr's movie list often carries only `path`, so derive each movie's root folder from
+        // the configured root folders before comparing.
+        const rootOf = (m: (typeof movies)[number]) => rootFolderOf(m.path, rootPaths, m.rootFolderPath);
+
         const misplacedCopies = Array.from(byTitle.entries())
           .filter(([, group]) => group.length > 1)
           .filter(([, group]) => new Set(group.map((m) => m.tmdbId)).size > 1) // Different tmdbIds
-          .filter(([, group]) => new Set(group.map((m) => m.rootFolderPath)).size > 1) // Different root folders
+          .filter(([, group]) => new Set(group.map(rootOf)).size > 1) // Different root folders
           .map(([, group]) => ({
             title: group[0]!.title,
             year: group[0]!.year,

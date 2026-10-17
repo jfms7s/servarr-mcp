@@ -40,6 +40,7 @@ beforeEach(() => {
       movieGets += 1;
       return HttpResponse.json([movie(1), movie(2), movie(3)]);
     }),
+    http.get(url('/rootfolder'), () => HttpResponse.json([{ id: 1, path: '/movies', accessible: true }])),
   );
 });
 afterEach(() => vi.useRealTimers());
