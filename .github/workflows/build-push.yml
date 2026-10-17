@@ -104,3 +104,21 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/servarr-mcp:latest
             ghcr.io/${{ github.repository_owner }}/servarr-mcp:${{ github.sha }}
             ${{ startsWith(github.ref, 'refs/tags/') && format('ghcr.io/{0}/servarr-mcp:{1}', github.repository_owner, github.ref_name) || '' }}
+
+  # eng-metrics-lab (report-only): duplication, complexity and dead code; the collector picks up the artifact.
+  quality:
+    runs-on: ubuntu-latest
+    permissions: {contents: read, packages: read}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with: {node-version: 22, cache: npm}
+      - run: npm ci --ignore-scripts
+      - name: Dead code (knip, eng-metrics-lab)
+        run: mkdir -p .quality && npx --yes knip@5.88.1 --reporter json --no-exit-code > .quality/deadcode-ts.json
+        continue-on-error: true
+      - name: Code quality (report-only)
+        uses: jfms7s/eng-metrics-lab/action@v0
+        continue-on-error: true
