@@ -5,6 +5,7 @@ import type {
   Indexer,
   Release,
 } from './types.js';
+import { redactHistoryData } from '../mcp/redact.js';
 
 export interface ReleaseSummary {
   guid: string;
@@ -85,7 +86,7 @@ export function summarizeHistoryRecord(record: HistoryRecord): HistorySummary {
     eventType: record.eventType,
     date: record.date,
     successful: record.successful,
-    data: record.data,
+    data: redactHistoryData(record.data),
   };
 }
 

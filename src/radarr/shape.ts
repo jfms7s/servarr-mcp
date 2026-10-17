@@ -8,6 +8,7 @@ import type {
   QueueRecord,
   Release,
 } from './types.js';
+import { redactHistoryData } from '../mcp/redact.js';
 
 const MAX_OVERVIEW = 300;
 
@@ -146,7 +147,7 @@ export function summarizeHistoryRecord(record: HistoryRecord): HistorySummary {
     sourceTitle: record.sourceTitle,
     eventType: record.eventType,
     date: record.date,
-    data: record.data,
+    data: redactHistoryData(record.data),
   };
 }
 

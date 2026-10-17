@@ -66,6 +66,21 @@ describe('summarizeMovieFile', () => {
 });
 
 describe('summarizeHistoryRecord', () => {
+  it('drops URL keys and credentials from data but keeps the diagnostics', () => {
+    const record = { id: 6, movieId: 3, sourceTitle: 'Dune.2021', eventType: 'grabbed', date: '2026-04-22T10:00:00Z', data: {"downloadUrl": "http://prowlarr:9696/1/download?apikey=SECRET&link=x", "indexer": "X (Prowlarr)", "releaseGroup": "GRP", "droppedPath": "/downloads/x"} } as unknown as HistoryRecord;
+
+    const result = summarizeHistoryRecord(record);
+    const text = JSON.stringify(result);
+
+    expect(text).not.toContain('SECRET');
+    expect(Object.keys(result.data ?? {}).some((key) => /url$/i.test(key))).toBe(false);
+    expect(result.data).toMatchObject({
+      indexer: 'X (Prowlarr)',
+      releaseGroup: 'GRP',
+      droppedPath: '/downloads/x',
+    });
+  });
+
   it('drops the embedded movie object', () => {
     const record = {
       id: 5,
