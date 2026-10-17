@@ -24,6 +24,10 @@ const movie = {
   tags: [],
 };
 
+function roots(...paths: string[]) {
+  return vi.fn().mockResolvedValue(paths.map((path, i) => ({ id: i + 1, path, accessible: true, freeSpace: 0 })));
+}
+
 describe('createRadarrTools', () => {
   it('registers all 31 tools with unique radarr_ prefixed names', () => {
     const names = createRadarrTools({} as RadarrClient).map((t) => t.name);
@@ -781,7 +785,7 @@ describe('createRadarrTools', () => {
         hasFile: false,
       },
     ]);
-    const get = toolsFor({ listMovies });
+    const get = toolsFor({ listMovies, listRootFolders: roots('/movies', '/backup') });
     const result = (await get('radarr_find_duplicate_movies').handler({})) as {
       total: number;
       exactDuplicates: Array<{ count: number }>;
@@ -822,7 +826,7 @@ describe('createRadarrTools', () => {
         hasFile: false,
       },
     ]);
-    const get = toolsFor({ listMovies });
+    const get = toolsFor({ listMovies, listRootFolders: roots('/movies', '/backup') });
     const result = (await get('radarr_find_duplicate_movies').handler({})) as {
       total: number;
       exactDuplicates: unknown[];
@@ -863,7 +867,7 @@ describe('createRadarrTools', () => {
         hasFile: false,
       },
     ]);
-    const get = toolsFor({ listMovies });
+    const get = toolsFor({ listMovies, listRootFolders: roots('/movies') });
     const result = (await get('radarr_find_duplicate_movies').handler({})) as {
       total: number;
       exactDuplicates: unknown[];
@@ -872,6 +876,60 @@ describe('createRadarrTools', () => {
     expect(result.total).toBe(2);
     expect(result.exactDuplicates).toHaveLength(0);
     expect(result.misplacedCopies).toHaveLength(0);
+  });
+
+  it('find_duplicate_movies does not group unrelated non-Latin titles from the same year', async () => {
+    const listMovies = vi.fn().mockResolvedValue([
+      { ...movie, id: 1, title: '千と千尋の神隠し', year: 2001, tmdbId: 129, path: '/movies/千と千尋の神隠し', rootFolderPath: '/movies' },
+      { ...movie, id: 2, title: '劇場版 名探偵コナン', year: 2001, tmdbId: 30140, path: '/anime/劇場版 名探偵コナン', rootFolderPath: '/anime' },
+    ]);
+    const get = toolsFor({ listMovies, listRootFolders: roots('/movies', '/anime') });
+    const result = (await get('radarr_find_duplicate_movies').handler({})) as {
+      exactDuplicates: unknown[];
+      misplacedCopies: unknown[];
+    };
+    expect(result.exactDuplicates).toHaveLength(0);
+    expect(result.misplacedCopies).toEqual([]);
+  });
+
+  it('find_duplicate_movies still groups copies of the same non-Latin title in different roots', async () => {
+    const listMovies = vi.fn().mockResolvedValue([
+      { ...movie, id: 1, title: '千と千尋の神隠し', year: 2001, tmdbId: 129, path: '/movies/千と千尋の神隠し', rootFolderPath: '/movies' },
+      { ...movie, id: 2, title: '千と千尋の神隠し', year: 2001, tmdbId: 999999, path: '/anime/千と千尋の神隠し', rootFolderPath: '/anime' },
+    ]);
+    const get = toolsFor({ listMovies, listRootFolders: roots('/movies', '/anime') });
+    const result = (await get('radarr_find_duplicate_movies').handler({})) as {
+      misplacedCopies: Array<{ count: number; title: string }>;
+    };
+    expect(result.misplacedCopies).toHaveLength(1);
+    expect(result.misplacedCopies[0]?.count).toBe(2);
+    expect(result.misplacedCopies[0]?.title).toBe('千と千尋の神隠し');
+  });
+
+  it('find_duplicate_movies skips titles that normalize to nothing', async () => {
+    const listMovies = vi.fn().mockResolvedValue([
+      { ...movie, id: 1, title: '!!!', tmdbId: 1, path: '/movies/!!!', rootFolderPath: '/movies' },
+      { ...movie, id: 2, title: '???', tmdbId: 2, path: '/backup/???', rootFolderPath: '/backup' },
+    ]);
+    const get = toolsFor({ listMovies, listRootFolders: roots('/movies', '/backup') });
+    const result = (await get('radarr_find_duplicate_movies').handler({})) as { misplacedCopies: unknown[] };
+    expect(result.misplacedCopies).toEqual([]);
+  });
+
+  it('find_duplicate_movies derives the root from path and the root folders when rootFolderPath is missing', async () => {
+    const listMovies = vi.fn().mockResolvedValue([
+      { ...movie, id: 1, tmdbId: 438631, path: '/movies/Dune (2021)' },
+      { ...movie, id: 2, tmdbId: 999999, path: '/movies-4k/Dune (2021)' },
+    ]);
+    const listRootFolders = roots('/movies', '/movies-4k');
+    const get = toolsFor({ listMovies, listRootFolders });
+    const result = (await get('radarr_find_duplicate_movies').handler({})) as {
+      misplacedCopies: Array<{ count: number; movies: Array<{ id: number }> }>;
+    };
+    expect(listRootFolders).toHaveBeenCalledTimes(1);
+    expect(result.misplacedCopies).toHaveLength(1);
+    expect(result.misplacedCopies[0]?.count).toBe(2);
+    expect(result.misplacedCopies[0]?.movies.map((m) => m.id)).toEqual([1, 2]);
   });
 
   it('list_unmapped_folders returns flat array with rootFolderId', async () => {

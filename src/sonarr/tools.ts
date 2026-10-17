@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { assertMoveBatchSize, MAX_MOVE_BATCH } from '../mcp/bulk.js';
 import { CACHED_LIBRARY_NOTE, refreshInput } from '../mcp/library.js';
 import { listWindow, pageOf } from '../mcp/paging.js';
-import { isWithinRoot } from '../mcp/paths.js';
+import { isWithinRoot, normalizeTitle } from '../mcp/paths.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { SonarrClient } from './client.js';
 import type { SeriesBulkEditPayload } from './types.js';
@@ -645,8 +645,8 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       name: 'sonarr_find_duplicate_series',
       description:
         'Find potential duplicate series in the library. Detects series with the same tvdbId ' +
-        '(exact duplicate) and same normalized title + year under different root folders ' +
-        '(likely misplaced copies). Helps identify library organization issues.' +
+        '(exact duplicate) and different series (distinct tvdbIds) with the same normalized title + year ' +
+        'under different root folders (likely misplaced copies). Helps identify library organization issues.' +
         CACHED_LIBRARY_NOTE,
       inputSchema: { refresh: refreshInput },
       handler: async ({ refresh }) => {
@@ -672,19 +672,22 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
             };
           });
 
-        // Find series with same normalized title+year in different root folders
-        type TitleYearKey = string;
-        const titleYearMap = new Map<TitleYearKey, typeof allSeries>();
+        // Find different series (distinct tvdbIds) with the same normalized title+year in different
+        // root folders. Titles that normalize to nothing carry no key and are skipped.
+        const titleYearMap = new Map<string, typeof allSeries>();
         for (const series of allSeries) {
-          const key = `${series.title.toLowerCase().replace(/[^a-z0-9]/g, '')}:${series.year}`;
-          if (!titleYearMap.has(key)) {
-            titleYearMap.set(key, []);
-          }
-          titleYearMap.get(key)!.push(series);
+          const title = normalizeTitle(series.title);
+          if (title === '') continue;
+          const key = `${title}:${series.year}`;
+          const group = titleYearMap.get(key) ?? [];
+          group.push(series);
+          titleYearMap.set(key, group);
         }
 
         const misplacedCopies = Array.from(titleYearMap.values())
-          .filter((group) => group.length > 1 && new Set(group.map((s) => s.rootFolderPath)).size > 1)
+          .filter((group) => group.length > 1)
+          .filter((group) => new Set(group.map((s) => s.tvdbId)).size > 1)
+          .filter((group) => new Set(group.map((s) => s.rootFolderPath)).size > 1)
           .map((group) => {
             const first = group[0]!;
             return {
