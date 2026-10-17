@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { assertMoveBatchSize, MAX_MOVE_BATCH } from '../mcp/bulk.js';
+import { CACHED_LIBRARY_NOTE, refreshInput } from '../mcp/library.js';
 import { listWindow, pageOf } from '../mcp/paging.js';
 import { isWithinRoot } from '../mcp/paths.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
@@ -69,7 +70,8 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'as { totalMatched, offset, limit, series } so pagination is visible. Default limit is 50 ' +
         '(pass limit and offset for different ranges). Filters are applied client-side after ' +
         'fetching all series, so titleContains and genre matches are case-insensitive substring/array searches. ' +
-        'Rows omit the plot overview unless includeOverview is true.',
+        'Rows omit the plot overview unless includeOverview is true.' +
+        CACHED_LIBRARY_NOTE,
       inputSchema: {
         rootFolder: z
           .string()
@@ -85,9 +87,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         limit: z.number().int().min(1).optional().describe('Maximum results to return (default 50)'),
         offset: z.number().int().min(0).optional().describe('Skip this many results (default 0)'),
         includeOverview: z.boolean().optional().describe('Include each row\'s plot overview (default false)'),
+        refresh: refreshInput,
       },
-      handler: async ({ rootFolder, monitored, genre, titleContains, seriesType, limit = 50, offset = 0, includeOverview = false }) => {
-        const allSeries = await client.listSeries();
+      handler: async ({ rootFolder, monitored, genre, titleContains, seriesType, limit = 50, offset = 0, includeOverview = false, refresh }) => {
+        const allSeries = await client.listSeries({ refresh });
 
         // Apply filters client-side
         const filtered = allSeries.filter((s) => {
@@ -643,10 +646,11 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       description:
         'Find potential duplicate series in the library. Detects series with the same tvdbId ' +
         '(exact duplicate) and same normalized title + year under different root folders ' +
-        '(likely misplaced copies). Helps identify library organization issues.',
-      inputSchema: {},
-      handler: async () => {
-        const allSeries = await client.listSeries();
+        '(likely misplaced copies). Helps identify library organization issues.' +
+        CACHED_LIBRARY_NOTE,
+      inputSchema: { refresh: refreshInput },
+      handler: async ({ refresh }) => {
+        const allSeries = await client.listSeries({ refresh });
 
         // Find series with duplicate tvdbIds (exact duplicates)
         const tvdbMap = new Map<number, typeof allSeries>();
