@@ -198,6 +198,7 @@ describe('createRadarrTools', () => {
     await get('radarr_update_movie').handler({
       movieId: 5,
       rootFolderPath: '/new/root/',
+      moveFiles: false,
     });
     // Should normalize the trailing slash to avoid double slashes
     expect(updateMovie).toHaveBeenCalledWith(
@@ -667,6 +668,7 @@ describe('createRadarrTools', () => {
     await get('radarr_update_movie').handler({
       movieId: 5,
       rootFolderPath: 'E:\\Movies2',
+      moveFiles: false,
     });
     expect(updateMovie).toHaveBeenCalledWith(
       5,
@@ -710,6 +712,7 @@ describe('createRadarrTools', () => {
     await get('radarr_update_movie').handler({
       movieId: 5,
       rootFolderPath: '/new/movies',
+      moveFiles: false,
     });
     expect(updateMovie).toHaveBeenCalledWith(
       5,

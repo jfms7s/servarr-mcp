@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { assertMoveBatchSize, MAX_MOVE_BATCH } from '../mcp/bulk.js';
+import { assertMoveBatchSize, assertMoveFilesChosen, MAX_MOVE_BATCH } from '../mcp/bulk.js';
 import { CACHED_LIBRARY_NOTE, refreshInput } from '../mcp/library.js';
 import { listWindow, pageOf } from '../mcp/paging.js';
 import { isWithinRoot, normalizeTitle, rootFolderOf } from '../mcp/paths.js';
@@ -180,8 +180,9 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       description:
         'Update a movie, changing only the provided fields (monitored, qualityProfileId, ' +
         'minimumAvailability, rootFolderPath, tags). All other fields are read from the current record. ' +
-        'When rootFolderPath is given, path is automatically updated to move the movie folder ' +
-        'to the new root (preserving the existing folder name). Set moveFiles=true to physically relocate files.',
+        'When rootFolderPath is given, path is automatically updated to the new root (preserving the ' +
+        'existing folder name), and moveFiles is required: true moves the files with the record, false ' +
+        'repoints the record only (the files stay put and Radarr reports the movie missing after a rescan).',
       inputSchema: {
         movieId: z.number().int().describe('Radarr movie id'),
         monitored: z.boolean().optional().describe('Monitor the movie'),
@@ -191,7 +192,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           .optional()
           .describe('When Radarr may start searching'),
         rootFolderPath: z.string().optional().describe('New root folder path from radarr_list_root_folders'),
-        moveFiles: z.boolean().optional().describe('Move existing files to new root folder (default false)'),
+        moveFiles: z
+          .boolean()
+          .optional()
+          .describe('Required with rootFolderPath: true moves the files, false repoints the record only'),
         tags: z.array(z.number().int()).optional().describe('Tag ids from radarr_list_tags'),
       },
       handler: async ({
@@ -203,6 +207,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         moveFiles,
         tags,
       }) => {
+        assertMoveFilesChosen(rootFolderPath, moveFiles, 'radarr_update_movie');
         const current = await client.getMovie(movieId);
         const merged = {
           ...current,
@@ -230,6 +235,8 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         'Bulk-edit multiple movies with a single API call. ' +
         'Only provided fields are sent to the API, others are left unchanged. ' +
         'Use applyTags to control how tags are merged: add, remove, or replace. ' +
+        'When rootFolderPath is given, moveFiles is required: true moves the files with the records, false ' +
+        'repoints the records only (the files stay put and Radarr reports the movies missing after a rescan). ' +
         `When moveFiles is true the files are moved before the call returns, so at most ${MAX_MOVE_BATCH} ids ` +
         'are accepted per call; send larger sets as sequential batches, not in parallel.',
       inputSchema: {
@@ -244,7 +251,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           .optional()
           .describe('When Radarr may start searching'),
         rootFolderPath: z.string().optional().describe('New root folder path'),
-        moveFiles: z.boolean().optional().describe('Move existing files (default false)'),
+        moveFiles: z
+          .boolean()
+          .optional()
+          .describe('Required with rootFolderPath: true moves the files, false repoints the records only'),
         tags: z.array(z.number().int()).optional().describe('Tag ids from radarr_list_tags'),
         applyTags: z
           .enum(['add', 'remove', 'replace'])
@@ -261,6 +271,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         tags,
         applyTags,
       }) => {
+        assertMoveFilesChosen(rootFolderPath, moveFiles, 'radarr_bulk_edit_movies');
         assertMoveBatchSize(movieIds, moveFiles, 'radarr_bulk_edit_movies');
 
         // Build payload with only defined fields
@@ -458,12 +469,21 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       name: 'radarr_run_command',
       description:
         'Trigger a Radarr background command, for example searching for a movie or rescanning ' +
-        'its folder. Returns a command id; poll it with radarr_get_command.',
+        'its folder. Returns a command id; poll it with radarr_get_command. ' +
+        'MissingMoviesSearch searches (and may download) every missing monitored movie, so without ' +
+        'confirm=true it only returns { wouldRun: { command, missingCount }, confirmRequired: true } and runs nothing.',
       inputSchema: {
         name: z.enum(COMMAND_NAMES).describe('Command to run'),
         movieIds: z.array(z.number().int()).optional().describe('Target movie ids'),
+        confirm: z.boolean().optional().describe('Required to run MissingMoviesSearch, prevents an accidental library-wide search'),
       },
-      handler: (args) => client.runCommand(args),
+      handler: async ({ confirm, ...command }) => {
+        if (command.name === 'MissingMoviesSearch' && confirm !== true) {
+          const missing = await client.getWantedMissing({ page: 1, pageSize: 1 });
+          return { wouldRun: { command: command.name, missingCount: missing.totalRecords }, confirmRequired: true };
+        }
+        return client.runCommand(command);
+      },
     }),
 
     defineTool({
