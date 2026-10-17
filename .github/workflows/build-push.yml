@@ -10,20 +10,21 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
 
       - run: npm run typecheck
 
@@ -48,6 +49,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - id: diff
         env:
@@ -64,8 +66,14 @@ jobs:
       && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
       && needs.changes.outputs.build == 'true'
     runs-on: ubuntu-latest
+    # The only job that may write packages: it logs in to GHCR and pushes the image.
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Log in to GHCR
         uses: docker/login-action@v4
