@@ -10,6 +10,7 @@ import type {
   Series,
   UnmappedFolder,
 } from './types.js';
+import { redactHistoryData } from '../mcp/redact.js';
 
 const MAX_OVERVIEW = 300;
 
@@ -193,10 +194,10 @@ export function summarizeHistoryRecord(record: HistoryRecord): HistorySummary {
     sourceTitle: record.sourceTitle,
     eventType: record.eventType,
     date: record.date,
-    // Kept: a flat string map holding the event's own detail (why an import
-    // was rejected, where a file landed). It is the substance of a history
-    // row, and it is bounded -- unlike the series/episode objects dropped here.
-    data: record.data,
+    // Kept but filtered: the event's own detail (why an import was rejected,
+    // where a file landed) is the substance of a history row, but its URL
+    // fields embed indexer API keys, so those are dropped and credentials scrubbed.
+    data: redactHistoryData(record.data),
   };
 }
 
