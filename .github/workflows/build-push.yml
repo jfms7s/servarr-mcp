@@ -1,9 +1,11 @@
 name: Build and push image
 
+# `test` runs on every push and pull request; images are built only from main and v* tags.
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     tags: ["v*"]
+  pull_request: {}
   workflow_dispatch: {}
 
 permissions:
@@ -31,8 +33,36 @@ jobs:
 
       - run: npm run build
 
+      - run: bash scripts/ci/needs-build.test.sh
+
+  # Whether build-push has anything to build: a push to main that only touches Markdown runs the
+  # tests but builds no image. Tags and manual runs always build.
+  changes:
+    if: >-
+      github.event_name != 'pull_request'
+      && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.diff.outputs.build }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: bash scripts/ci/needs-build.sh >> "$GITHUB_OUTPUT"
+
   build-push:
-    needs: test
+    needs: [test, changes]
+    if: >-
+      github.event_name != 'pull_request'
+      && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+      && needs.changes.outputs.build == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
