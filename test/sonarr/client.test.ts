@@ -258,4 +258,82 @@ describe('SonarrClient', () => {
     expect(folders[0]?.unmappedFolders).toHaveLength(1);
     expect(folders[0]?.unmappedFolders?.[0]).toMatchObject({ name: 'NewSeries' });
   });
+
+  describe('destructive requests on the wire', () => {
+    /** Records method, path and every query value of each request that reaches msw. */
+    function capture(method: 'delete' | 'put', path: string) {
+      const seen: { method: string; path: string; query: Record<string, string> }[] = [];
+      server.use(
+        http[method](url(path), ({ request }) => {
+          const target = new URL(request.url);
+          seen.push({
+            method: request.method,
+            path: target.pathname,
+            query: Object.fromEntries(target.searchParams),
+          });
+          return new HttpResponse(null, { status: 200 });
+        }),
+      );
+      return seen;
+    }
+
+    it('deleteQueueItem sends removeFromClient=false and blocklist=false explicitly', async () => {
+      const seen = capture('delete', '/queue/4');
+      await client.deleteQueueItem(4, { removeFromClient: false, blocklist: false });
+      expect(seen).toEqual([
+        {
+          method: 'DELETE',
+          path: '/api/v3/queue/4',
+          query: { removeFromClient: 'false', blocklist: 'false' },
+        },
+      ]);
+    });
+
+    it('deleteEpisodeFile hits DELETE /episodefile/{id} with no query', async () => {
+      const seen = capture('delete', '/episodefile/9');
+      await client.deleteEpisodeFile(9);
+      expect(seen).toEqual([{ method: 'DELETE', path: '/api/v3/episodefile/9', query: {} }]);
+    });
+
+    it('deleteBlocklistItem hits DELETE /blocklist/{id} with no query', async () => {
+      const seen = capture('delete', '/blocklist/5');
+      await client.deleteBlocklistItem(5);
+      expect(seen).toEqual([{ method: 'DELETE', path: '/api/v3/blocklist/5', query: {} }]);
+    });
+
+    it('deleteSeries sends deleteFiles=false and addImportListExclusion=false explicitly', async () => {
+      const seen = capture('delete', '/series/3');
+      await client.deleteSeries(3, { deleteFiles: false, addImportListExclusion: false });
+      expect(seen).toEqual([
+        {
+          method: 'DELETE',
+          path: '/api/v3/series/3',
+          query: { deleteFiles: 'false', addImportListExclusion: 'false' },
+        },
+      ]);
+    });
+
+    it('updateSeries sends moveFiles=false explicitly and nothing when it is omitted', async () => {
+      const seen = capture('put', '/series/5');
+      const payload = { id: 5, title: 'Andor' } as Parameters<typeof client.updateSeries>[1];
+      await client.updateSeries(5, payload, { moveFiles: false });
+      await client.updateSeries(5, payload);
+      expect(seen).toEqual([
+        { method: 'PUT', path: '/api/v3/series/5', query: { moveFiles: 'false' } },
+        { method: 'PUT', path: '/api/v3/series/5', query: {} },
+      ]);
+    });
+
+    it('bulkEditSeries hits PUT /series/editor with no query', async () => {
+      const seen = capture('put', '/series/editor');
+      await client.bulkEditSeries({ seriesIds: [1], monitored: false });
+      expect(seen).toEqual([{ method: 'PUT', path: '/api/v3/series/editor', query: {} }]);
+    });
+
+    it('monitorEpisodes hits PUT /episode/monitor with no query', async () => {
+      const seen = capture('put', '/episode/monitor');
+      await client.monitorEpisodes([1], false);
+      expect(seen).toEqual([{ method: 'PUT', path: '/api/v3/episode/monitor', query: {} }]);
+    });
+  });
 });

@@ -213,4 +213,76 @@ describe('RadarrClient', () => {
     await client.renamePreview([5]);
     expect(params?.getAll('movieId')).toEqual(['5']);
   });
+
+  describe('destructive requests on the wire', () => {
+    /** Records method, path and every query value of each request that reaches msw. */
+    function capture(method: 'delete' | 'put', path: string) {
+      const seen: { method: string; path: string; query: Record<string, string> }[] = [];
+      server.use(
+        http[method](url(path), ({ request }) => {
+          const target = new URL(request.url);
+          seen.push({
+            method: request.method,
+            path: target.pathname,
+            query: Object.fromEntries(target.searchParams),
+          });
+          return new HttpResponse(null, { status: 200 });
+        }),
+      );
+      return seen;
+    }
+
+    it('deleteQueueItem sends removeFromClient=false and blocklist=false explicitly', async () => {
+      const seen = capture('delete', '/queue/4');
+      await client.deleteQueueItem(4, { removeFromClient: false, blocklist: false });
+      expect(seen).toEqual([
+        {
+          method: 'DELETE',
+          path: '/api/v3/queue/4',
+          query: { removeFromClient: 'false', blocklist: 'false' },
+        },
+      ]);
+    });
+
+    it('deleteMovieFile hits DELETE /moviefile/{id} with no query', async () => {
+      const seen = capture('delete', '/moviefile/9');
+      await client.deleteMovieFile(9);
+      expect(seen).toEqual([{ method: 'DELETE', path: '/api/v3/moviefile/9', query: {} }]);
+    });
+
+    it('deleteBlocklistItem hits DELETE /blocklist/{id} with no query', async () => {
+      const seen = capture('delete', '/blocklist/5');
+      await client.deleteBlocklistItem(5);
+      expect(seen).toEqual([{ method: 'DELETE', path: '/api/v3/blocklist/5', query: {} }]);
+    });
+
+    it('deleteMovie sends deleteFiles=false and addImportExclusion=false explicitly', async () => {
+      const seen = capture('delete', '/movie/3');
+      await client.deleteMovie(3, { deleteFiles: false, addImportExclusion: false });
+      expect(seen).toEqual([
+        {
+          method: 'DELETE',
+          path: '/api/v3/movie/3',
+          query: { deleteFiles: 'false', addImportExclusion: 'false' },
+        },
+      ]);
+    });
+
+    it('updateMovie sends moveFiles=false explicitly and nothing when it is omitted', async () => {
+      const seen = capture('put', '/movie/5');
+      const payload = { id: 5, title: 'Dune' } as Parameters<typeof client.updateMovie>[1];
+      await client.updateMovie(5, payload, { moveFiles: false });
+      await client.updateMovie(5, payload);
+      expect(seen).toEqual([
+        { method: 'PUT', path: '/api/v3/movie/5', query: { moveFiles: 'false' } },
+        { method: 'PUT', path: '/api/v3/movie/5', query: {} },
+      ]);
+    });
+
+    it('bulkEditMovies hits PUT /movie/editor with no query', async () => {
+      const seen = capture('put', '/movie/editor');
+      await client.bulkEditMovies({ movieIds: [1], monitored: false });
+      expect(seen).toEqual([{ method: 'PUT', path: '/api/v3/movie/editor', query: {} }]);
+    });
+  });
 });
