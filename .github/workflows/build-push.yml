@@ -107,6 +107,7 @@ jobs:
 
   # eng-metrics-lab (report-only): duplication, complexity and dead code; the collector picks up the artifact.
   quality:
+    if: github.ref_type != 'tag'
     runs-on: ubuntu-latest
     permissions: {contents: read, packages: read}
     steps:
