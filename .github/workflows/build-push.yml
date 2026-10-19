@@ -30,7 +30,18 @@ jobs:
 
       - run: npm run lint
 
-      - run: npm test
+      - name: Test with coverage (eng-metrics-lab)
+        run: |
+          npx vitest run --coverage.enabled --coverage.provider=v8 --coverage.reporter=lcovonly --coverage.reportsDirectory="$RUNNER_TEMP/cov" '--coverage.include=src/**'
+          mkdir -p .quality
+          mv "$RUNNER_TEMP/cov/lcov.info" .quality/coverage-ts.lcov
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-fragments
+          path: .quality/coverage-ts.lcov
+          include-hidden-files: true
+          retention-days: 7
 
       - run: npm run build
 
@@ -107,7 +118,8 @@ jobs:
 
   # eng-metrics-lab (report-only): duplication, complexity and dead code; the collector picks up the artifact.
   quality:
-    if: github.ref_type != 'tag'
+    needs: [test]
+    if: ${{ always() && github.ref_type != 'tag' }}
     runs-on: ubuntu-latest
     permissions: {contents: read, packages: read}
     steps:
@@ -119,6 +131,11 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Dead code (knip, eng-metrics-lab)
         run: mkdir -p .quality && npx --yes knip@5.88.1 --reporter json --no-exit-code > .quality/deadcode-ts.json
+        continue-on-error: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-fragments
+          path: .quality
         continue-on-error: true
       - name: Code quality (report-only)
         uses: jfms7s/eng-metrics-lab/action@v0
