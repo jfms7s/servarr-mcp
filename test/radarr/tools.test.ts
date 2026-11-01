@@ -25,7 +25,11 @@ const movie = {
 };
 
 function roots(...paths: string[]) {
-  return vi.fn().mockResolvedValue(paths.map((path, i) => ({ id: i + 1, path, accessible: true, freeSpace: 0 })));
+  return vi
+    .fn()
+    .mockResolvedValue(
+      paths.map((path, i) => ({ id: i + 1, path, accessible: true, freeSpace: 0 })),
+    );
 }
 
 describe('createRadarrTools', () => {
@@ -72,7 +76,10 @@ describe('createRadarrTools', () => {
     const getMovie = vi.fn().mockResolvedValue(raw);
     const get = toolsFor({ getMovie });
 
-    const summary = (await get('radarr_get_movie').handler({ movieId: 4 })) as Record<string, unknown>;
+    const summary = (await get('radarr_get_movie').handler({ movieId: 4 })) as Record<
+      string,
+      unknown
+    >;
     expect(getMovie).toHaveBeenCalledWith(4);
     expect(summary).not.toHaveProperty('images');
     expect(summary).not.toHaveProperty('alternateTitles');
@@ -85,7 +92,10 @@ describe('createRadarrTools', () => {
       movieFile: { id: 9, relativePath: 'Arrival.mkv', size: 456, quality: 'Bluray-1080p' },
     });
 
-    const full = (await get('radarr_get_movie').handler({ movieId: 4, full: true })) as Record<string, unknown>;
+    const full = (await get('radarr_get_movie').handler({ movieId: 4, full: true })) as Record<
+      string,
+      unknown
+    >;
     expect(full).toBe(raw);
     expect(full).toHaveProperty('images');
     expect(full).toHaveProperty('alternateTitles');
@@ -94,11 +104,21 @@ describe('createRadarrTools', () => {
   it('shapes root folders with an unmapped folder count', async () => {
     const get = toolsFor({
       listRootFolders: vi.fn().mockResolvedValue([
-        { id: 1, path: '/movies', accessible: true, freeSpace: 5, unmappedFolders: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] },
+        {
+          id: 1,
+          path: '/movies',
+          accessible: true,
+          freeSpace: 5,
+          unmappedFolders: [{ name: 'a' }, { name: 'b' }, { name: 'c' }],
+        },
       ]),
     });
-    const result = (await get('radarr_list_root_folders').handler({})) as Array<Record<string, unknown>>;
-    expect(result).toEqual([{ id: 1, path: '/movies', accessible: true, freeSpace: 5, unmappedFolderCount: 3 }]);
+    const result = (await get('radarr_list_root_folders').handler({})) as Array<
+      Record<string, unknown>
+    >;
+    expect(result).toEqual([
+      { id: 1, path: '/movies', accessible: true, freeSpace: 5, unmappedFolderCount: 3 },
+    ]);
     expect(result[0]).not.toHaveProperty('unmappedFolders');
   });
 
@@ -586,11 +606,13 @@ describe('createRadarrTools', () => {
 
   it('list_movies rootFolder matches whole path segments, not sibling roots that share a prefix', async () => {
     const at = (id: number, path: string) => ({ ...movie, id, title: `Movie ${id}`, path });
-    const listMovies = vi.fn().mockResolvedValue([
-      at(1, '/mnt/media/movies/Dune (2021)'),
-      at(2, '/mnt/media/movies-animation/Up (2009)'),
-      at(3, '/mnt/media/movies-anime/Akira (1988)'),
-    ]);
+    const listMovies = vi
+      .fn()
+      .mockResolvedValue([
+        at(1, '/mnt/media/movies/Dune (2021)'),
+        at(2, '/mnt/media/movies-animation/Up (2009)'),
+        at(3, '/mnt/media/movies-anime/Akira (1988)'),
+      ]);
     const get = toolsFor({ listMovies });
 
     const result = (await get('radarr_list_movies').handler({
@@ -774,8 +796,20 @@ describe('createRadarrTools', () => {
 
   it('get_rename_preview returns { total, shown, previews } envelope', async () => {
     const renamePreview = vi.fn().mockResolvedValue([
-      { id: 1, movieId: 1, movieFileId: 1, existingPath: '/old/file1.mkv', newPath: '/new/file1.mkv' },
-      { id: 2, movieId: 1, movieFileId: 2, existingPath: '/old/file2.mkv', newPath: '/new/file2.mkv' },
+      {
+        id: 1,
+        movieId: 1,
+        movieFileId: 1,
+        existingPath: '/old/file1.mkv',
+        newPath: '/new/file1.mkv',
+      },
+      {
+        id: 2,
+        movieId: 1,
+        movieFileId: 2,
+        existingPath: '/old/file2.mkv',
+        newPath: '/new/file2.mkv',
+      },
     ]);
     const get = toolsFor({ renamePreview });
     const result = (await get('radarr_get_rename_preview').handler({ movieIds: [1] })) as {
@@ -932,8 +966,24 @@ describe('createRadarrTools', () => {
 
   it('find_duplicate_movies does not group unrelated non-Latin titles from the same year', async () => {
     const listMovies = vi.fn().mockResolvedValue([
-      { ...movie, id: 1, title: '千と千尋の神隠し', year: 2001, tmdbId: 129, path: '/movies/千と千尋の神隠し', rootFolderPath: '/movies' },
-      { ...movie, id: 2, title: '劇場版 名探偵コナン', year: 2001, tmdbId: 30140, path: '/anime/劇場版 名探偵コナン', rootFolderPath: '/anime' },
+      {
+        ...movie,
+        id: 1,
+        title: '千と千尋の神隠し',
+        year: 2001,
+        tmdbId: 129,
+        path: '/movies/千と千尋の神隠し',
+        rootFolderPath: '/movies',
+      },
+      {
+        ...movie,
+        id: 2,
+        title: '劇場版 名探偵コナン',
+        year: 2001,
+        tmdbId: 30140,
+        path: '/anime/劇場版 名探偵コナン',
+        rootFolderPath: '/anime',
+      },
     ]);
     const get = toolsFor({ listMovies, listRootFolders: roots('/movies', '/anime') });
     const result = (await get('radarr_find_duplicate_movies').handler({})) as {
@@ -946,8 +996,24 @@ describe('createRadarrTools', () => {
 
   it('find_duplicate_movies still groups copies of the same non-Latin title in different roots', async () => {
     const listMovies = vi.fn().mockResolvedValue([
-      { ...movie, id: 1, title: '千と千尋の神隠し', year: 2001, tmdbId: 129, path: '/movies/千と千尋の神隠し', rootFolderPath: '/movies' },
-      { ...movie, id: 2, title: '千と千尋の神隠し', year: 2001, tmdbId: 999999, path: '/anime/千と千尋の神隠し', rootFolderPath: '/anime' },
+      {
+        ...movie,
+        id: 1,
+        title: '千と千尋の神隠し',
+        year: 2001,
+        tmdbId: 129,
+        path: '/movies/千と千尋の神隠し',
+        rootFolderPath: '/movies',
+      },
+      {
+        ...movie,
+        id: 2,
+        title: '千と千尋の神隠し',
+        year: 2001,
+        tmdbId: 999999,
+        path: '/anime/千と千尋の神隠し',
+        rootFolderPath: '/anime',
+      },
     ]);
     const get = toolsFor({ listMovies, listRootFolders: roots('/movies', '/anime') });
     const result = (await get('radarr_find_duplicate_movies').handler({})) as {
@@ -964,7 +1030,9 @@ describe('createRadarrTools', () => {
       { ...movie, id: 2, title: '???', tmdbId: 2, path: '/backup/???', rootFolderPath: '/backup' },
     ]);
     const get = toolsFor({ listMovies, listRootFolders: roots('/movies', '/backup') });
-    const result = (await get('radarr_find_duplicate_movies').handler({})) as { misplacedCopies: unknown[] };
+    const result = (await get('radarr_find_duplicate_movies').handler({})) as {
+      misplacedCopies: unknown[];
+    };
     expect(result.misplacedCopies).toEqual([]);
   });
 
@@ -999,7 +1067,9 @@ describe('createRadarrTools', () => {
         id: 2,
         path: '/archive',
         accessible: true,
-        unmappedFolders: [{ name: 'OldMovie', path: '/archive/OldMovie', relativePath: 'OldMovie' }],
+        unmappedFolders: [
+          { name: 'OldMovie', path: '/archive/OldMovie', relativePath: 'OldMovie' },
+        ],
       },
     ]);
     const get = toolsFor({ listRootFolders });
@@ -1060,10 +1130,14 @@ describe('createRadarrTools', () => {
 });
 
 describe('Radarr file moves are queued, not synchronous', () => {
-  const commands = (...list: Array<[number, string]>) => list.map(([id, name]) => ({ id, name, status: 'queued' }));
+  const commands = (...list: Array<[number, string]>) =>
+    list.map(([id, name]) => ({ id, name, status: 'queued' }));
 
   it('radarr_bulk_edit_movies with moveFiles returns the queued move command id', async () => {
-    const bulkEditMovies = vi.fn().mockResolvedValue([{ id: 1, title: 'One' }, { id: 2, title: 'Two' }]);
+    const bulkEditMovies = vi.fn().mockResolvedValue([
+      { id: 1, title: 'One' },
+      { id: 2, title: 'Two' },
+    ]);
     const listCommands = vi
       .fn()
       .mockResolvedValueOnce(commands([10, 'RssSync']))
@@ -1084,9 +1158,16 @@ describe('Radarr file moves are queued, not synchronous', () => {
     const listCommands = vi.fn().mockResolvedValue(commands([10, 'RssSync']));
     const get = toolsFor({ bulkEditMovies, listCommands });
 
-    const result = await get('radarr_bulk_edit_movies').handler({ movieIds: [1], rootFolderPath: '/archive', moveFiles: true });
+    const result = await get('radarr_bulk_edit_movies').handler({
+      movieIds: [1],
+      rootFolderPath: '/archive',
+      moveFiles: true,
+    });
 
-    expect(result).toMatchObject({ moveCommandId: null, moveCommandNote: expect.stringMatching(/no move command/i) });
+    expect(result).toMatchObject({
+      moveCommandId: null,
+      moveCommandNote: expect.stringMatching(/no move command/i),
+    });
   });
 
   it('radarr_bulk_edit_movies does not read the command queue when files are not moved', async () => {
@@ -1094,7 +1175,10 @@ describe('Radarr file moves are queued, not synchronous', () => {
     const listCommands = vi.fn();
     const get = toolsFor({ bulkEditMovies, listCommands });
 
-    const result = await get('radarr_bulk_edit_movies').handler({ movieIds: [1], monitored: false });
+    const result = await get('radarr_bulk_edit_movies').handler({
+      movieIds: [1],
+      monitored: false,
+    });
 
     expect(listCommands).not.toHaveBeenCalled();
     expect(result).not.toHaveProperty('moveCommandId');
@@ -1120,12 +1204,28 @@ describe('Radarr file moves are queued, not synchronous', () => {
   });
 
   it('radarr_update_movie with moveFiles returns the queued move command id', async () => {
-    const getMovie = vi.fn().mockResolvedValue({ id: 4, title: 'Arrival', path: '/movies/Arrival', folderName: 'Arrival', monitored: true, tags: [] });
-    const updateMovie = vi.fn().mockImplementation((_id: number, payload: unknown) => Promise.resolve(payload));
-    const listCommands = vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce(commands([5, 'MoveMovie']));
+    const getMovie = vi.fn().mockResolvedValue({
+      id: 4,
+      title: 'Arrival',
+      path: '/movies/Arrival',
+      folderName: 'Arrival',
+      monitored: true,
+      tags: [],
+    });
+    const updateMovie = vi
+      .fn()
+      .mockImplementation((_id: number, payload: unknown) => Promise.resolve(payload));
+    const listCommands = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(commands([5, 'MoveMovie']));
     const get = toolsFor({ getMovie, updateMovie, listCommands });
 
-    const result = await get('radarr_update_movie').handler({ movieId: 4, rootFolderPath: '/archive', moveFiles: true });
+    const result = await get('radarr_update_movie').handler({
+      movieId: 4,
+      rootFolderPath: '/archive',
+      moveFiles: true,
+    });
 
     expect(result).toMatchObject({ id: 4, moveCommandId: 5 });
     expect(updateMovie).toHaveBeenCalledWith(4, expect.anything(), { moveFiles: true });
@@ -1156,7 +1256,12 @@ describe('Radarr file moves are queued, not synchronous', () => {
       confirmRequired: boolean;
     };
     expect(result.confirmRequired).toBe(true);
-    expect(result.wouldDelete).toMatchObject({ id: 9, movieId: 2, path: '/media/a.mkv', quality: 'Bluray-1080p' });
+    expect(result.wouldDelete).toMatchObject({
+      id: 9,
+      movieId: 2,
+      path: '/media/a.mkv',
+      quality: 'Bluray-1080p',
+    });
     expect(getMovieFile).toHaveBeenCalledWith(9);
     expect(deleteMovieFile).not.toHaveBeenCalled();
   });
@@ -1171,15 +1276,21 @@ describe('Radarr file moves are queued, not synchronous', () => {
 
   it('list_movies rootFolder also matches a subfolder of a root', async () => {
     const at = (id: number, path: string) => ({ ...movie, id, title: `Movie ${id}`, path });
-    const listMovies = vi.fn().mockResolvedValue([at(1, '/media/movies/Anime/Akira'), at(2, '/media/movies/Other')]);
+    const listMovies = vi
+      .fn()
+      .mockResolvedValue([at(1, '/media/movies/Anime/Akira'), at(2, '/media/movies/Other')]);
     const get = toolsFor({ listMovies });
 
-    const sub = (await get('radarr_list_movies').handler({ rootFolder: '/media/movies/Anime' })) as unknown as {
+    const sub = (await get('radarr_list_movies').handler({
+      rootFolder: '/media/movies/Anime',
+    })) as unknown as {
       movies: { id: number }[];
     };
     expect(sub.movies.map((m) => m.id)).toEqual([1]);
 
-    const root = (await get('radarr_list_movies').handler({ rootFolder: '/media/movies' })) as unknown as {
+    const root = (await get('radarr_list_movies').handler({
+      rootFolder: '/media/movies',
+    })) as unknown as {
       movies: { id: number }[];
     };
     expect(root.movies.map((m) => m.id)).toEqual([1, 2]);

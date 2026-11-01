@@ -95,4 +95,3 @@ export interface SystemStatus {
   isDocker?: boolean;
   startTime?: string;
 }
-

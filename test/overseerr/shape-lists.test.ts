@@ -63,7 +63,10 @@ describe('summarizeMediaInfo', () => {
       id: 550,
       tmdbId: 550,
       status: 5,
-      requests: [{ id: 1, status: 2 }, { id: 2, status: 2 }],
+      requests: [
+        { id: 1, status: 2 },
+        { id: 2, status: 2 },
+      ],
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-15T00:00:00Z',
     } as unknown as MediaInfo;

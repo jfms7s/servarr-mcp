@@ -6,7 +6,11 @@
  */
 export const MAX_MOVE_BATCH = 10;
 
-export function assertMoveBatchSize(ids: readonly number[], moveFiles: boolean | undefined, toolName: string): void {
+export function assertMoveBatchSize(
+  ids: readonly number[],
+  moveFiles: boolean | undefined,
+  toolName: string,
+): void {
   if (!moveFiles || ids.length <= MAX_MOVE_BATCH) return;
 
   throw new Error(
@@ -55,7 +59,9 @@ function commandName(name: string): string {
   return name.replace(/Command$/, '');
 }
 
-async function highestCommandId(listCommands: () => Promise<CommandSummary[]>): Promise<number | undefined> {
+async function highestCommandId(
+  listCommands: () => Promise<CommandSummary[]>,
+): Promise<number | undefined> {
   try {
     return Math.max(0, ...(await listCommands()).map((command) => command.id));
   } catch {
@@ -77,7 +83,8 @@ export async function trackMoveCommand<T>(
 ): Promise<TrackedMove<T>> {
   const baseline = await highestCommandId(listCommands);
   const result = await run();
-  if (baseline === undefined) return { result, moveCommandId: null, moveCommandNote: NO_MOVE_COMMAND };
+  if (baseline === undefined)
+    return { result, moveCommandId: null, moveCommandNote: NO_MOVE_COMMAND };
 
   let commands: CommandSummary[];
   try {

@@ -102,7 +102,20 @@ describe('summarizeEpisodeFile', () => {
 
 describe('summarizeHistoryRecord', () => {
   it('drops URL keys and credentials from data but keeps the diagnostics', () => {
-    const record = { id: 6, episodeId: 12, seriesId: 1, sourceTitle: 'Andor.S02E01', eventType: 'grabbed', date: '2026-04-22T10:00:00Z', data: {"downloadUrl": "http://prowlarr:9696/1/download?apikey=SECRET&link=x", "indexer": "X (Prowlarr)", "releaseGroup": "GRP", "droppedPath": "/downloads/x"} } as unknown as HistoryRecord;
+    const record = {
+      id: 6,
+      episodeId: 12,
+      seriesId: 1,
+      sourceTitle: 'Andor.S02E01',
+      eventType: 'grabbed',
+      date: '2026-04-22T10:00:00Z',
+      data: {
+        downloadUrl: 'http://prowlarr:9696/1/download?apikey=SECRET&link=x',
+        indexer: 'X (Prowlarr)',
+        releaseGroup: 'GRP',
+        droppedPath: '/downloads/x',
+      },
+    } as unknown as HistoryRecord;
 
     const result = summarizeHistoryRecord(record);
     const text = JSON.stringify(result);
@@ -198,25 +211,27 @@ describe('summarizeRelease', () => {
 
     const result = summarizeRelease(release, 1);
 
-    expect(Object.keys(result).sort()).toEqual([
-      'ageDays',
-      'approved',
-      'customFormatScore',
-      'fullSeason',
-      'guid',
-      'indexer',
-      'indexerId',
-      'leechers',
-      'protocol',
-      'quality',
-      'rank',
-      'rejections',
-      'releaseGroup',
-      'seeders',
-      'sizeGb',
-      'title',
-      'languages',
-    ].sort());
+    expect(Object.keys(result).sort()).toEqual(
+      [
+        'ageDays',
+        'approved',
+        'customFormatScore',
+        'fullSeason',
+        'guid',
+        'indexer',
+        'indexerId',
+        'leechers',
+        'protocol',
+        'quality',
+        'rank',
+        'rejections',
+        'releaseGroup',
+        'seeders',
+        'sizeGb',
+        'title',
+        'languages',
+      ].sort(),
+    );
     expect(result.sizeGb).toBe(5);
     expect(result.quality).toBe('WEBDL-1080p');
     expect(result.languages).toEqual(['English']);

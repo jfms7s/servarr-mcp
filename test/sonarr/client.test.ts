@@ -118,7 +118,10 @@ describe('SonarrClient', () => {
     server.use(
       http.post(url('/command'), async ({ request }) => {
         body = await request.json();
-        return HttpResponse.json({ id: 1, name: 'SeriesSearch', status: 'queued' }, { status: 201 });
+        return HttpResponse.json(
+          { id: 1, name: 'SeriesSearch', status: 'queued' },
+          { status: 201 },
+        );
       }),
     );
     const command = await client.runCommand({ name: 'SeriesSearch', seriesId: 3 });
@@ -134,15 +137,21 @@ describe('SonarrClient', () => {
         return HttpResponse.json([{ id: 9, name: 'BulkMoveSeries', status: 'started' }]);
       }),
     );
-    await expect(client.listCommands()).resolves.toEqual([{ id: 9, name: 'BulkMoveSeries', status: 'started' }]);
+    await expect(client.listCommands()).resolves.toEqual([
+      { id: 9, name: 'BulkMoveSeries', status: 'started' },
+    ]);
     expect(requested?.pathname).toBe('/api/v3/command');
     expect(requested?.search).toBe('');
   });
 
   it('reads system status, health and disk space', async () => {
     server.use(
-      http.get(url('/system/status'), () => HttpResponse.json({ appName: 'Sonarr', version: '4.0' })),
-      http.get(url('/health'), () => HttpResponse.json([{ source: 'x', type: 'warning', message: 'm' }])),
+      http.get(url('/system/status'), () =>
+        HttpResponse.json({ appName: 'Sonarr', version: '4.0' }),
+      ),
+      http.get(url('/health'), () =>
+        HttpResponse.json([{ source: 'x', type: 'warning', message: 'm' }]),
+      ),
       http.get(url('/diskspace'), () => HttpResponse.json([{ path: '/tv', freeSpace: 1 }])),
     );
     await expect(client.getSystemStatus()).resolves.toMatchObject({ appName: 'Sonarr' });
@@ -197,12 +206,31 @@ describe('SonarrClient', () => {
       http.put(url('/series/5'), async ({ request }) => {
         params = new URL(request.url).searchParams;
         body = await request.json();
-        return HttpResponse.json({ id: 5, title: 'Test', rootFolderPath: '/new', monitored: true, qualityProfileId: 1, tvdbId: 1, tags: [], seasons: [] });
+        return HttpResponse.json({
+          id: 5,
+          title: 'Test',
+          rootFolderPath: '/new',
+          monitored: true,
+          qualityProfileId: 1,
+          tvdbId: 1,
+          tags: [],
+          seasons: [],
+        });
       }),
     );
     await client.updateSeries(
       5,
-      { id: 5, title: 'Test', monitored: true, qualityProfileId: 1, tvdbId: 1, tags: [], seasons: [], year: 2020, status: 'continuing' },
+      {
+        id: 5,
+        title: 'Test',
+        monitored: true,
+        qualityProfileId: 1,
+        tvdbId: 1,
+        tags: [],
+        seasons: [],
+        year: 2020,
+        status: 'continuing',
+      },
       { moveFiles: true },
     );
     expect(params?.get('moveFiles')).toBe('true');
@@ -261,7 +289,9 @@ describe('SonarrClient', () => {
             id: 1,
             path: '/tv',
             accessible: true,
-            unmappedFolders: [{ name: 'NewSeries', path: '/tv/NewSeries', relativePath: 'NewSeries' }],
+            unmappedFolders: [
+              { name: 'NewSeries', path: '/tv/NewSeries', relativePath: 'NewSeries' },
+            ],
           },
         ]),
       ),

@@ -4,7 +4,9 @@ import { createOverseerrTools } from '../../src/overseerr/tools.js';
 
 function creditsTool(credits: unknown) {
   const getPersonCredits = vi.fn().mockResolvedValue(credits);
-  const tools = createOverseerrTools({ getPersonCredits } as Partial<OverseerrClient> as OverseerrClient);
+  const tools = createOverseerrTools({
+    getPersonCredits,
+  } as Partial<OverseerrClient> as OverseerrClient);
   const tool = tools.find((t) => t.name === 'overseerr_get_person_credits');
   if (!tool) throw new Error('no overseerr_get_person_credits tool');
   return tool;
@@ -23,7 +25,8 @@ function roles(n: number, kind: 'cast' | 'crew') {
   });
 }
 
-const dateOf = (r: { releaseDate?: string; firstAirDate?: string }) => r.releaseDate ?? r.firstAirDate ?? '';
+const dateOf = (r: { releaseDate?: string; firstAirDate?: string }) =>
+  r.releaseDate ?? r.firstAirDate ?? '';
 
 describe('overseerr_get_person_credits', () => {
   it('returns at most 50 cast and 50 crew rows by default, newest first, with totals', async () => {

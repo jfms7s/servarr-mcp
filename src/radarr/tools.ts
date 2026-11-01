@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { assertMoveBatchSize, assertMoveFilesChosen, MAX_MOVE_BATCH, trackMoveCommand } from '../arr/bulk.js';
+import {
+  assertMoveBatchSize,
+  assertMoveFilesChosen,
+  MAX_MOVE_BATCH,
+  trackMoveCommand,
+} from '../arr/bulk.js';
 import { CACHED_LIBRARY_NOTE, refreshInput } from '../arr/library.js';
 import { listWindow, page, pageOf } from '../arr/paging.js';
 import { isWithinRoot, normalizeTitle, rootFolderOf, relocatePath } from '../arr/paths.js';
@@ -62,11 +67,29 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           .optional()
           .describe('Case-insensitive substring match against title'),
         offset: z.number().int().min(0).optional().describe('Skip this many results (default 0)'),
-        limit: z.number().int().min(1).optional().describe('Maximum results to return (default 50)'),
-        includeOverview: z.boolean().optional().describe('Include each row\'s plot overview (default false)'),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe('Maximum results to return (default 50)'),
+        includeOverview: z
+          .boolean()
+          .optional()
+          .describe("Include each row's plot overview (default false)"),
         refresh: refreshInput,
       },
-      handler: async ({ rootFolder, hasFile, monitored, genre, titleContains, offset, limit, includeOverview, refresh }) => {
+      handler: async ({
+        rootFolder,
+        hasFile,
+        monitored,
+        genre,
+        titleContains,
+        offset,
+        limit,
+        includeOverview,
+        refresh,
+      }) => {
         let movies = await client.listMovies({ refresh });
 
         // Apply filters
@@ -81,7 +104,9 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         }
         if (genre) {
           const lowerGenre = genre.toLowerCase();
-          movies = movies.filter((m) => m.genres?.some((g) => g.toLowerCase().includes(lowerGenre)));
+          movies = movies.filter((m) =>
+            m.genres?.some((g) => g.toLowerCase().includes(lowerGenre)),
+          );
         }
         if (titleContains) {
           const lowerTitle = titleContains.toLowerCase();
@@ -111,7 +136,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         'its file (id, relative path, size, quality) when it has one. full=true returns the raw Radarr record.',
       inputSchema: {
         movieId: z.number().int().describe('Radarr movie id'),
-        full: z.boolean().optional().describe('Return the raw Radarr record instead of the summary (default false)'),
+        full: z
+          .boolean()
+          .optional()
+          .describe('Return the raw Radarr record instead of the summary (default false)'),
       },
       handler: async ({ movieId, full }) => {
         const movie = await client.getMovie(movieId);
@@ -182,11 +210,16 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           .enum(['tba', 'announced', 'inCinemas', 'released'])
           .optional()
           .describe('When Radarr may start searching'),
-        rootFolderPath: z.string().optional().describe('New root folder path from radarr_list_root_folders'),
+        rootFolderPath: z
+          .string()
+          .optional()
+          .describe('New root folder path from radarr_list_root_folders'),
         moveFiles: z
           .boolean()
           .optional()
-          .describe('Required with rootFolderPath: true moves the files, false repoints the record only'),
+          .describe(
+            'Required with rootFolderPath: true moves the files, false repoints the record only',
+          ),
         tags: z.array(z.number().int()).optional().describe('Tag ids from radarr_list_tags'),
       },
       handler: async ({
@@ -218,8 +251,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         if (moveFiles !== true) {
           return summarizeMovie(await client.updateMovie(movieId, merged, { moveFiles: false }));
         }
-        const { result, ...move } = await trackMoveCommand(() => client.listCommands(), RADARR_MOVE_COMMANDS, () =>
-          client.updateMovie(movieId, merged, { moveFiles: true }),
+        const { result, ...move } = await trackMoveCommand(
+          () => client.listCommands(),
+          RADARR_MOVE_COMMANDS,
+          () => client.updateMovie(movieId, merged, { moveFiles: true }),
         );
         return { ...summarizeMovie(result), ...move };
       },
@@ -239,10 +274,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         `At most ${MAX_MOVE_BATCH} ids are accepted per call when moveFiles is true; send larger sets as ` +
         'sequential batches, and poll each moveCommandId until it completes before the next batch or a retry.',
       inputSchema: {
-        movieIds: z
-          .array(z.number().int())
-          .min(1)
-          .describe('Radarr movie ids to edit (minimum 1)'),
+        movieIds: z.array(z.number().int()).min(1).describe('Radarr movie ids to edit (minimum 1)'),
         monitored: z.boolean().optional().describe('Set monitored state'),
         qualityProfileId: z.number().int().optional().describe('From radarr_list_quality_profiles'),
         minimumAvailability: z
@@ -253,7 +285,9 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         moveFiles: z
           .boolean()
           .optional()
-          .describe('Required with rootFolderPath: true moves the files, false repoints the records only'),
+          .describe(
+            'Required with rootFolderPath: true moves the files, false repoints the records only',
+          ),
         tags: z.array(z.number().int()).optional().describe('Tag ids from radarr_list_tags'),
         applyTags: z
           .enum(['add', 'remove', 'replace'])
@@ -290,7 +324,11 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           movies: result.map((m) => summarizeMovie(m, { overview: false })),
         });
         if (moveFiles !== true) return summarize(await edit());
-        const { result, ...move } = await trackMoveCommand(() => client.listCommands(), RADARR_MOVE_COMMANDS, edit);
+        const { result, ...move } = await trackMoveCommand(
+          () => client.listCommands(),
+          RADARR_MOVE_COMMANDS,
+          edit,
+        );
         return { ...summarize(result), ...move };
       },
     }),
@@ -317,7 +355,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       handler: async ({ movieId, deleteFiles, confirmDeleteFiles, addImportExclusion }) => {
         // Guard against destructive operations without confirmation
         if (deleteFiles && !confirmDeleteFiles) {
-          const [movie, files] = await Promise.all([client.getMovie(movieId), client.listMovieFiles(movieId)]);
+          const [movie, files] = await Promise.all([
+            client.getMovie(movieId),
+            client.listMovieFiles(movieId),
+          ]);
           return {
             wouldDelete: {
               title: movie.title,
@@ -357,7 +398,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         'Without confirm=true, deletes nothing and returns the file that would be deleted as a safety check.',
       inputSchema: {
         movieFileId: z.number().int().describe('Radarr movie file id'),
-        confirm: z.boolean().optional().describe('Required to delete, prevents accidental deletion'),
+        confirm: z
+          .boolean()
+          .optional()
+          .describe('Required to delete, prevents accidental deletion'),
       },
       handler: async ({ movieFileId, confirm }) => {
         if (confirm !== true) {
@@ -393,7 +437,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         ...listWindow,
       },
       handler: async ({ start, end, limit, offset }) => {
-        const { rows, ...window } = pageOf(await client.getCalendar({ start, end }), { limit, offset });
+        const { rows, ...window } = pageOf(await client.getCalendar({ start, end }), {
+          limit,
+          offset,
+        });
         return { ...window, movies: rows.map((m) => summarizeMovie(m, { overview: false })) };
       },
     }),
@@ -419,7 +466,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         'request removal from the torrent/usenet client, and blocklist to prevent re-importing.',
       inputSchema: {
         id: z.number().int().describe('Queue item id'),
-        removeFromClient: z.boolean().optional().describe('Remove from download client (default false)'),
+        removeFromClient: z
+          .boolean()
+          .optional()
+          .describe('Remove from download client (default false)'),
         blocklist: z.boolean().optional().describe('Add to blocklist (default false)'),
       },
       handler: async ({ id, removeFromClient, blocklist }) => {
@@ -454,11 +504,15 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
     defineTool({
       name: 'radarr_get_wanted_missing',
       effect: 'read',
-      description: 'List wanted but missing movies (monitored but not downloaded yet). Rows omit the plot overview.',
+      description:
+        'List wanted but missing movies (monitored but not downloaded yet). Rows omit the plot overview.',
       inputSchema: { ...page },
       handler: async ({ page: pageNum, pageSize }) => {
         const response = await client.getWantedMissing({ page: pageNum, pageSize });
-        return { ...response, records: response.records.map((m) => summarizeMovie(m, { overview: false })) };
+        return {
+          ...response,
+          records: response.records.map((m) => summarizeMovie(m, { overview: false })),
+        };
       },
     }),
 
@@ -505,12 +559,20 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       inputSchema: {
         name: z.enum(COMMAND_NAMES).describe('Command to run'),
         movieIds: z.array(z.number().int()).optional().describe('Target movie ids'),
-        confirm: z.boolean().optional().describe('Required to run MissingMoviesSearch, prevents an accidental library-wide search'),
+        confirm: z
+          .boolean()
+          .optional()
+          .describe(
+            'Required to run MissingMoviesSearch, prevents an accidental library-wide search',
+          ),
       },
       handler: async ({ confirm, ...command }) => {
         if (command.name === 'MissingMoviesSearch' && confirm !== true) {
           const missing = await client.getWantedMissing({ page: 1, pageSize: 1 });
-          return { wouldRun: { command: command.name, missingCount: missing.totalRecords }, confirmRequired: true };
+          return {
+            wouldRun: { command: command.name, missingCount: missing.totalRecords },
+            confirmRequired: true,
+          };
         }
         return client.runCommand(command);
       },
@@ -533,8 +595,8 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       effect: 'read',
       description:
         'Search for releases to download a movie. Runs a live interactive search across indexers ' +
-        '(can take several seconds); results are in Radarr\'s preference order with `rank`. ' +
-        '`rejections` are Radarr\'s verbatim reasons for not choosing a release automatically. ' +
+        "(can take several seconds); results are in Radarr's preference order with `rank`. " +
+        "`rejections` are Radarr's verbatim reasons for not choosing a release automatically. " +
         'Use guid + indexerId with radarr_grab_release to download a release.',
       inputSchema: {
         movieId: z.number().int().describe('Radarr movie id'),
@@ -591,7 +653,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         'Download a release from a previous search. Note two caveats: ' +
         '(a) Radarr grabs from its cached search results, which expire after about 30 minutes — ' +
         'if the grab fails, run radarr_search_releases again first. ' +
-        '(b) Grabbing a rejected release overrides Radarr\'s decision to DOWNLOAD it, not necessarily ' +
+        "(b) Grabbing a rejected release overrides Radarr's decision to DOWNLOAD it, not necessarily " +
         'its decision to IMPORT it — the rejection reasons (e.g. not an upgrade, quality not wanted in profile) ' +
         'can still block import, leaving the item stuck in the queue. ' +
         'This starts a real download that Radarr tracks and imports (unlike prowlarr_grab_release, ' +
@@ -620,7 +682,9 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       inputSchema: {},
       handler: async () => {
         const rootFolders = await client.listRootFolders();
-        return rootFolders.flatMap((rf) => (rf.unmappedFolders ?? []).map((folder) => summarizeUnmappedFolder(rf, folder)));
+        return rootFolders.flatMap((rf) =>
+          (rf.unmappedFolders ?? []).map((folder) => summarizeUnmappedFolder(rf, folder)),
+        );
       },
     }),
 
@@ -632,10 +696,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         'At most 100 previews are returned; `total` gives the full count. ' +
         'Useful to verify rename patterns before applying them.',
       inputSchema: {
-        movieIds: z
-          .array(z.number().int())
-          .min(1)
-          .describe('Movie ids to preview rename for'),
+        movieIds: z.array(z.number().int()).min(1).describe('Movie ids to preview rename for'),
       },
       handler: async ({ movieIds }) => {
         const previews = await client.renamePreview(movieIds);
@@ -702,7 +763,8 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
         // Radarr's movie list often carries only `path`, so derive each movie's root folder from
         // the configured root folders before comparing.
-        const rootOf = (m: (typeof movies)[number]) => rootFolderOf(m.path, rootPaths, m.rootFolderPath);
+        const rootOf = (m: (typeof movies)[number]) =>
+          rootFolderOf(m.path, rootPaths, m.rootFolderPath);
 
         const misplacedCopies = Array.from(byTitle.entries())
           .filter(([, group]) => group.length > 1)
@@ -789,11 +851,17 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         'Important: the movie must already exist in Radarr for the file to attach to it; otherwise the scan will not import it. ' +
         'Use folderPath from radarr_list_unmapped_folders.',
       inputSchema: {
-        path: z.string().describe('Absolute path to the folder to import, as returned by radarr_list_unmapped_folders (folderPath field)'),
+        path: z
+          .string()
+          .describe(
+            'Absolute path to the folder to import, as returned by radarr_list_unmapped_folders (folderPath field)',
+          ),
         importMode: z
           .enum(['Auto', 'Move', 'Copy'])
           .optional()
-          .describe('How to handle the file: Auto (default, let Radarr decide), Move (relocate to configured library), Copy (keep original, duplicate to library)'),
+          .describe(
+            'How to handle the file: Auto (default, let Radarr decide), Move (relocate to configured library), Copy (keep original, duplicate to library)',
+          ),
       },
       handler: async ({ path, importMode }) => {
         const command = await client.runCommand({

@@ -35,7 +35,9 @@ server.events.on('request:start', ({ request }) => {
 
 const base = 'http://sonarr.test:8989/api/v3';
 const ok = () => new HttpResponse(null, { status: 200 });
-const tools = createSonarrTools(createSonarrClient({ baseUrl: 'http://sonarr.test:8989', apiKey: 'k' }));
+const tools = createSonarrTools(
+  createSonarrClient({ baseUrl: 'http://sonarr.test:8989', apiKey: 'k' }),
+);
 
 /** Calls a tool the way the MCP server does: arguments validated against its input schema first. */
 function call(name: string, args: Record<string, unknown>) {
@@ -66,7 +68,14 @@ describe('Sonarr destructive tools on the wire (defaults only)', () => {
   it('sonarr_delete_episode_file without confirm only reads the file', async () => {
     server.use(
       http.get(`${base}/episodefile/9`, () =>
-        HttpResponse.json({ id: 9, seriesId: 2, seasonNumber: 1, relativePath: 'a.mkv', path: '/m/a.mkv', size: 1 }),
+        HttpResponse.json({
+          id: 9,
+          seriesId: 2,
+          seasonNumber: 1,
+          relativePath: 'a.mkv',
+          path: '/m/a.mkv',
+          size: 1,
+        }),
       ),
     );
     await call('sonarr_delete_episode_file', { episodeFileId: 9 });
@@ -97,11 +106,22 @@ describe('Sonarr destructive tools on the wire (defaults only)', () => {
       http.put(`${base}/episode/monitor`, async ({ request }) => {
         body = await request.json();
         return HttpResponse.json([
-          { id: 11, seriesId: 3, seasonNumber: 1, episodeNumber: 1, title: 'Pilot', monitored: false, hasFile: false },
+          {
+            id: 11,
+            seriesId: 3,
+            seasonNumber: 1,
+            episodeNumber: 1,
+            title: 'Pilot',
+            monitored: false,
+            hasFile: false,
+          },
         ]);
       }),
     );
-    const result = await call('sonarr_monitor_episodes', { episodeIds: [11, 12], monitored: false });
+    const result = await call('sonarr_monitor_episodes', {
+      episodeIds: [11, 12],
+      monitored: false,
+    });
     expect(wire).toEqual([{ method: 'PUT', path: '/api/v3/episode/monitor', query: {} }]);
     expect(body).toEqual({ episodeIds: [11, 12], monitored: false });
     expect(result).toEqual([expect.objectContaining({ id: 11, monitored: false })]);

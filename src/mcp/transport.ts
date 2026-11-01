@@ -23,7 +23,10 @@ const bodyParserError: ErrorRequestHandler = (error: unknown, _request, response
     jsonrpc: '2.0',
     error: parseFailed
       ? { code: -32700, message: 'Parse error' }
-      : { code: -32600, message: status === 413 ? 'Invalid Request: body too large' : 'Invalid Request' },
+      : {
+          code: -32600,
+          message: status === 413 ? 'Invalid Request: body too large' : 'Invalid Request',
+        },
     id: null,
   });
 };

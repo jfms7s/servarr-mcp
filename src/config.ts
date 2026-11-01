@@ -53,8 +53,10 @@ function readInstance(
   const apiKey = env[`${prefix}_API_KEY`]?.trim();
 
   if (!rawUrl && !apiKey) return undefined;
-  if (!rawUrl) throw new ConfigError(`${product}: ${prefix}_API_KEY is set but ${prefix}_URL is not`);
-  if (!apiKey) throw new ConfigError(`${product}: ${prefix}_URL is set but ${prefix}_API_KEY is not`);
+  if (!rawUrl)
+    throw new ConfigError(`${product}: ${prefix}_API_KEY is set but ${prefix}_URL is not`);
+  if (!apiKey)
+    throw new ConfigError(`${product}: ${prefix}_URL is set but ${prefix}_API_KEY is not`);
 
   // Neither message echoes the value: it may carry credentials.
   let url: URL;

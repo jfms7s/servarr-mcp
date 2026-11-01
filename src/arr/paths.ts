@@ -13,7 +13,11 @@ export function relocatePath(
   root: string,
   noun: 'series' | 'movie',
 ): string {
-  const folderName = currentPath?.split(/[/\\]+/).filter(Boolean).pop() ?? fallbackName;
+  const folderName =
+    currentPath
+      ?.split(/[/\\]+/)
+      .filter(Boolean)
+      .pop() ?? fallbackName;
   if (!folderName) {
     throw new Error(
       'Cannot determine folder name: current path is empty and folderName is not set. ' +
@@ -45,7 +49,10 @@ export function isWithinRoot(path: string | undefined, root: string): boolean {
  * characters). An empty result means the title carries no usable key.
  */
 export function normalizeTitle(title: string): string {
-  return title.normalize('NFKD').toLocaleLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+  return title
+    .normalize('NFKD')
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]/gu, '');
 }
 
 /**

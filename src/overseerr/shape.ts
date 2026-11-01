@@ -139,7 +139,13 @@ export interface TvDetailsSummary {
   voteAverage?: number;
   voteCount?: number;
   genres?: Array<{ id: number; name: string }>;
-  seasons?: Array<{ id: number; seasonNumber: number; name: string; episodeCount: number; airDate?: string }>;
+  seasons?: Array<{
+    id: number;
+    seasonNumber: number;
+    name: string;
+    episodeCount: number;
+    airDate?: string;
+  }>;
   mediaInfo?: MediaInfoSummary;
 }
 

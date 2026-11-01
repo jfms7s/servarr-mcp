@@ -51,7 +51,9 @@ describe('createProwlarrTools', () => {
   });
 
   it('requires a non-empty search query', () => {
-    const tool = createProwlarrTools({} as ProwlarrClient).find((t) => t.name === 'prowlarr_search');
+    const tool = createProwlarrTools({} as ProwlarrClient).find(
+      (t) => t.name === 'prowlarr_search',
+    );
     if (!tool) throw new Error('prowlarr_search is not registered');
     const schema = z.object(tool.inputSchema).pick({ query: true });
     expect(() => schema.parse({ query: '' })).toThrow();
@@ -71,7 +73,10 @@ describe('createProwlarrTools', () => {
       protocol: 'usenet',
       enable: true,
       priority: 25,
-      fields: [{ name: 'username', value: '********' }, { name: 'apikey', value: '********' }],
+      fields: [
+        { name: 'username', value: '********' },
+        { name: 'apikey', value: '********' },
+      ],
     };
     const getIndexer = vi.fn().mockResolvedValue(indexerRecord);
     const testIndexer = vi.fn().mockResolvedValue({ success: true });
@@ -92,9 +97,20 @@ describe('createProwlarrTools', () => {
         privacy: 'public',
         appProfileId: 1,
         tags: [2],
-        capabilities: { categories: [{ id: 1, name: 'Anime' }, { id: 2, name: 'TV' }] },
+        capabilities: {
+          categories: [
+            { id: 1, name: 'Anime' },
+            { id: 2, name: 'TV' },
+          ],
+        },
         fields: [
-          { name: 'baseUrl', label: 'Base Url', helpText: 'Pick one', value: 'https://nyaa.si', selectOptions: [{ value: 1 }] },
+          {
+            name: 'baseUrl',
+            label: 'Base Url',
+            helpText: 'Pick one',
+            value: 'https://nyaa.si',
+            selectOptions: [{ value: 1 }],
+          },
         ],
       }),
     });

@@ -40,7 +40,9 @@ beforeEach(() => {
       movieGets += 1;
       return HttpResponse.json([movie(1), movie(2), movie(3)]);
     }),
-    http.get(url('/rootfolder'), () => HttpResponse.json([{ id: 1, path: '/movies', accessible: true }])),
+    http.get(url('/rootfolder'), () =>
+      HttpResponse.json([{ id: 1, path: '/movies', accessible: true }]),
+    ),
   );
 });
 afterEach(() => vi.useRealTimers());
@@ -91,10 +93,14 @@ describe('Radarr library cache', () => {
 
   it('does not cache a failed download', async () => {
     server.use(
-      http.get(url('/movie'), () => {
-        movieGets += 1;
-        return new HttpResponse('boom', { status: 500 });
-      }, { once: true }),
+      http.get(
+        url('/movie'),
+        () => {
+          movieGets += 1;
+          return new HttpResponse('boom', { status: 500 });
+        },
+        { once: true },
+      ),
     );
     await expect(client.listMovies()).rejects.toThrow();
     await expect(client.listMovies()).resolves.toHaveLength(3);
@@ -108,12 +114,18 @@ describe('Radarr library cache', () => {
       ['bulkEditMovies', (c) => c.bulkEditMovies({ movieIds: [1], monitored: false } as never)],
       ['deleteMovie', (c) => c.deleteMovie(1)],
       ['deleteMovieFile', (c) => c.deleteMovieFile(1)],
-      ...(['RefreshMovie', 'RescanMovie', 'RenameFiles', 'RenameMovie', 'DownloadedMoviesScan'] as const).map(
-        (name): [string, (c: RadarrClient) => Promise<unknown>] => [
-          `runCommand ${name}`,
-          (c) => c.runCommand({ name, movieIds: [1] }),
-        ],
-      ),
+      ...(
+        [
+          'RefreshMovie',
+          'RescanMovie',
+          'RenameFiles',
+          'RenameMovie',
+          'DownloadedMoviesScan',
+        ] as const
+      ).map((name): [string, (c: RadarrClient) => Promise<unknown>] => [
+        `runCommand ${name}`,
+        (c) => c.runCommand({ name, movieIds: [1] }),
+      ]),
     ];
 
     beforeEach(() => {

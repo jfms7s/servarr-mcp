@@ -67,7 +67,19 @@ describe('summarizeMovieFile', () => {
 
 describe('summarizeHistoryRecord', () => {
   it('drops URL keys and credentials from data but keeps the diagnostics', () => {
-    const record = { id: 6, movieId: 3, sourceTitle: 'Dune.2021', eventType: 'grabbed', date: '2026-04-22T10:00:00Z', data: {"downloadUrl": "http://prowlarr:9696/1/download?apikey=SECRET&link=x", "indexer": "X (Prowlarr)", "releaseGroup": "GRP", "droppedPath": "/downloads/x"} } as unknown as HistoryRecord;
+    const record = {
+      id: 6,
+      movieId: 3,
+      sourceTitle: 'Dune.2021',
+      eventType: 'grabbed',
+      date: '2026-04-22T10:00:00Z',
+      data: {
+        downloadUrl: 'http://prowlarr:9696/1/download?apikey=SECRET&link=x',
+        indexer: 'X (Prowlarr)',
+        releaseGroup: 'GRP',
+        droppedPath: '/downloads/x',
+      },
+    } as unknown as HistoryRecord;
 
     const result = summarizeHistoryRecord(record);
     const text = JSON.stringify(result);
@@ -178,7 +190,10 @@ describe('summarizeRelease', () => {
       leechers: 5,
       releaseGroup: 'GROUP',
       edition: 'Extended',
-      languages: [{ id: 1, name: 'English' }, { id: 3, name: 'German' }],
+      languages: [
+        { id: 1, name: 'English' },
+        { id: 3, name: 'German' },
+      ],
       quality: { quality: { id: 19, name: 'Bluray-2160p' } },
       customFormatScore: 95,
       approved: false,

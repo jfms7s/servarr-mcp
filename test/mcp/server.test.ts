@@ -55,7 +55,10 @@ describe('createServer', () => {
     const { tools } = await client.listTools();
     const byName = Object.fromEntries(tools.map((t) => [t.name, t.annotations]));
     expect(byName.sonarr_echo).toMatchObject({ readOnlyHint: true, destructiveHint: false });
-    expect(byName.sonarr_delete_thing).toMatchObject({ readOnlyHint: false, destructiveHint: true });
+    expect(byName.sonarr_delete_thing).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+    });
   });
 
   it('returns the handler result as compact json text', async () => {
@@ -105,7 +108,7 @@ describe('createServer', () => {
     ]);
   });
 
-  it('passes the call\'s abort signal to the handler and into the request scope', async () => {
+  it("passes the call's abort signal to the handler and into the request scope", async () => {
     let received: AbortSignal | undefined;
     let scoped: AbortSignal | undefined;
     const client = await connect([
