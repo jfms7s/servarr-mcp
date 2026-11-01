@@ -125,4 +125,27 @@ describe('startHttp integration', () => {
     expect(body).toEqual({ error: 'unauthorized' });
     expect(JSON.stringify(body)).not.toContain(token);
   });
+
+  it('answers a malformed JSON body with a JSON-RPC parse error, not an HTML stack trace', async () => {
+    const token = 'test-secret-token';
+    handle = await startHttp(() => createServer([testTool]), { port: 0, token });
+    const url = `http://localhost:${handle.port}/mcp`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: '{not json',
+    });
+    expect(response.status).toBe(400);
+    const text = await response.text();
+    expect(text).not.toMatch(/\bat /);
+    expect(JSON.parse(text)).toEqual({ jsonrpc: '2.0', error: { code: -32700, message: 'Parse error' }, id: null });
+
+    const unauthenticated = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{not json',
+    });
+    expect(unauthenticated.status).toBe(401);
+  });
 });

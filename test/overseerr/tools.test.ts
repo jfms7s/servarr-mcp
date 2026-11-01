@@ -437,11 +437,11 @@ describe('createOverseerrTools', () => {
     const get = toolsFor({ updateRequest });
     await get('overseerr_update_request').handler({
       requestId: 1,
-      mediaType: 'tv',
+      mediaType: 'movie',
       is4k: true,
     });
     expect(updateRequest).toHaveBeenCalledWith(1, {
-      mediaType: 'tv',
+      mediaType: 'movie',
       is4k: true,
     });
   });
@@ -461,5 +461,14 @@ describe('createOverseerrTools', () => {
       mediaType: 'tv',
       seasons: [1, 2, 3],
     });
+  });
+
+  it.each([undefined, []])('rejects a tv update with seasons %j before calling Overseerr', async (seasons) => {
+    const updateRequest = vi.fn();
+    const get = toolsFor({ updateRequest });
+    await expect(
+      get('overseerr_update_request').handler({ requestId: 1, mediaType: 'tv', is4k: true, seasons }),
+    ).rejects.toThrow(/seasons/);
+    expect(updateRequest).not.toHaveBeenCalled();
   });
 });

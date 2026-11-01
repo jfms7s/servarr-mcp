@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type ErrorRequestHandler } from 'express';
 import { NodeStreamableHTTPServerTransport } from '@modelcontextprotocol/node';
 import type { McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
@@ -7,6 +7,17 @@ import { bearerAuth } from './auth.js';
 export async function startStdio(server: McpServer): Promise<void> {
   await server.connect(new StdioServerTransport());
 }
+
+// express.json() fails a malformed body with a SyntaxError typed entity.parse.failed, which
+// Express would answer with its HTML error page (stack trace and paths outside production).
+// Answer it as JSON-RPC does instead; anything else goes on to the default handler.
+const jsonParseError: ErrorRequestHandler = (error: unknown, _request, response, next) => {
+  if (error instanceof SyntaxError && (error as SyntaxError & { type?: string }).type === 'entity.parse.failed') {
+    response.status(400).json({ jsonrpc: '2.0', error: { code: -32700, message: 'Parse error' }, id: null });
+    return;
+  }
+  next(error);
+};
 
 export interface HttpHandle {
   port: number;
@@ -43,6 +54,9 @@ export async function startHttp(
       if (!response.headersSent) response.status(500).json({ error: 'internal error' });
     });
   });
+
+  // After the /mcp route: bearerAuth runs first, so an unauthenticated malformed body still gets 401.
+  app.use('/mcp', jsonParseError);
 
   const listener = app.listen(options.port);
   await new Promise<void>((resolve, reject) => {

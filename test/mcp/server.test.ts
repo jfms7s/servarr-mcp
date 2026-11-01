@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ArrApiError } from '../../src/http/errors.js';
 import { createServer, toolResult } from '../../src/mcp/server.js';
 import { defineTool } from '../../src/mcp/types.js';
+import { buildTools } from '../../src/tools.js';
 
 async function connect(tools: Parameters<typeof createServer>[0]) {
   const server = createServer(tools);
@@ -138,5 +139,35 @@ describe('toolResult', () => {
     const result = await client.callTool({ name: 'sonarr_huge', arguments: {} });
     expect(result.isError).toBe(true);
     expect(JSON.stringify(result.content)).toContain('sonarr_huge');
+  });
+});
+
+describe('real tool schemas through createServer', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const instance = { baseUrl: 'http://127.0.0.1:1', apiKey: 'k' };
+  const all = buildTools({
+    transport: 'stdio',
+    port: 3000,
+    sonarr: instance,
+    radarr: instance,
+    prowlarr: instance,
+    overseerr: instance,
+  });
+
+  it.each([
+    ['radarr_bulk_edit_movies', { movieIds: [] }],
+    ['sonarr_get_history', { pageSize: 0 }],
+    ['radarr_get_movie', { movieId: 'three' }],
+  ])('%s rejects %j before any HTTP request', async (name, args) => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const client = await connect(all);
+    const result = await client.callTool({ name, arguments: args });
+    expect(result.isError).toBe(true);
+    const text = (result.content as Array<{ text: string }>)[0]?.text ?? '';
+    expect(text).not.toMatch(/Cannot reach/);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

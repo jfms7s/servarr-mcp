@@ -82,8 +82,8 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
           .string()
           .optional()
           .describe(
-            'Root folder to filter by. Matches whole path segments, so /media/shows does not match ' +
-              '/media/shows-anime',
+            'Folder to filter by: a root folder or any folder beneath it, matched against the series folder. ' +
+              'Matches whole path segments, so /media/shows does not match /media/shows-anime',
           ),
         monitored: z.boolean().optional().describe('Filter by monitored state'),
         genre: z.string().optional().describe('Filter by genre (case-insensitive match against genres array)'),
@@ -99,7 +99,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
         // Apply filters client-side
         const filtered = allSeries.filter((s) => {
-          if (rootFolder !== undefined && !isWithinRoot(s.rootFolderPath, rootFolder)) return false;
+          if (rootFolder !== undefined && !isWithinRoot(s.path ?? s.rootFolderPath, rootFolder)) return false;
           if (monitored !== undefined && s.monitored !== monitored) return false;
           if (genre !== undefined && !s.genres?.some((g) => g.toLowerCase().includes(genre.toLowerCase()))) return false;
           if (titleContains !== undefined && !s.title.toLowerCase().includes(titleContains.toLowerCase())) return false;

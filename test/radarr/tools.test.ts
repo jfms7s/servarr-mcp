@@ -1119,4 +1119,20 @@ describe('Radarr file moves are queued, not synchronous', () => {
     expect(deleteMovieFile).toHaveBeenCalledTimes(1);
     expect(deleteMovieFile).toHaveBeenCalledWith(9);
   });
+
+  it('list_movies rootFolder also matches a subfolder of a root', async () => {
+    const at = (id: number, path: string) => ({ ...movie, id, title: `Movie ${id}`, path });
+    const listMovies = vi.fn().mockResolvedValue([at(1, '/media/movies/Anime/Akira'), at(2, '/media/movies/Other')]);
+    const get = toolsFor({ listMovies });
+
+    const sub = (await get('radarr_list_movies').handler({ rootFolder: '/media/movies/Anime' })) as unknown as {
+      movies: { id: number }[];
+    };
+    expect(sub.movies.map((m) => m.id)).toEqual([1]);
+
+    const root = (await get('radarr_list_movies').handler({ rootFolder: '/media/movies' })) as unknown as {
+      movies: { id: number }[];
+    };
+    expect(root.movies.map((m) => m.id)).toEqual([1, 2]);
+  });
 });

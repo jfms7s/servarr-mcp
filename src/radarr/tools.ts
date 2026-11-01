@@ -80,8 +80,8 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           .string()
           .optional()
           .describe(
-            'Root folder to filter by. Matches whole path segments, so /media/movies does not match ' +
-              '/media/movies-anime',
+            'Folder to filter by: a root folder or any folder beneath it, matched against the movie folder. ' +
+              'Matches whole path segments, so /media/movies does not match /media/movies-anime',
           ),
         hasFile: z.boolean().optional().describe('Filter by whether a file exists'),
         monitored: z.boolean().optional().describe('Filter by monitored state'),
