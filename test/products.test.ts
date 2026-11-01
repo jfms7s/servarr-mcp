@@ -8,7 +8,12 @@ const base: ServarrConfig = { transport: 'stdio', port: 3000, host: '127.0.0.1' 
 
 describe('PRODUCTS', () => {
   it('keeps the Sonarr, Radarr, Prowlarr, Overseerr order', () => {
-    expect(PRODUCTS.map((product) => product.id)).toEqual(['sonarr', 'radarr', 'prowlarr', 'overseerr']);
+    expect(PRODUCTS.map((product) => product.id)).toEqual([
+      'sonarr',
+      'radarr',
+      'prowlarr',
+      'overseerr',
+    ]);
   });
 
   it.each(PRODUCTS.map((product) => [product.id, product] as const))(
@@ -34,13 +39,16 @@ describe('PRODUCTS', () => {
       expect(error).toBeInstanceOf(ConfigError);
       message = (error as Error).message;
     }
-    for (const { envPrefix } of PRODUCTS) expect(message).toContain(`${envPrefix}_URL/${envPrefix}_API_KEY`);
+    for (const { envPrefix } of PRODUCTS)
+      expect(message).toContain(`${envPrefix}_URL/${envPrefix}_API_KEY`);
   });
 
   it('registers tools in product order', () => {
     const all = Object.fromEntries(PRODUCTS.map((product) => [product.id, instance]));
     const names = buildTools({ ...base, ...all }).map((tool) => tool.name);
-    const firstIndex = PRODUCTS.map((product) => names.findIndex((name) => name.startsWith(`${product.id}_`)));
+    const firstIndex = PRODUCTS.map((product) =>
+      names.findIndex((name) => name.startsWith(`${product.id}_`)),
+    );
     expect(firstIndex.every((index) => index >= 0)).toBe(true);
     expect([...firstIndex].sort((a, b) => a - b)).toEqual(firstIndex);
   });

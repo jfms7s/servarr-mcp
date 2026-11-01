@@ -77,11 +77,14 @@ describe('loadConfig', () => {
     );
   });
 
-  it.each(['localhost:8989', 'http:8989', 'https:host:8989', 'ftp://h'])('rejects a url without http:// or https://: %s', (url) => {
-    const load = () => loadConfig({ SONARR_URL: url, SONARR_API_KEY: 'k' });
-    expect(load).toThrow(ConfigError);
-    expect(load).toThrow(/must start with http:\/\/ or https:\/\//);
-  });
+  it.each(['localhost:8989', 'http:8989', 'https:host:8989', 'ftp://h'])(
+    'rejects a url without http:// or https://: %s',
+    (url) => {
+      const load = () => loadConfig({ SONARR_URL: url, SONARR_API_KEY: 'k' });
+      expect(load).toThrow(ConfigError);
+      expect(load).toThrow(/must start with http:\/\/ or https:\/\//);
+    },
+  );
 
   it.each(['HTTPS://h:8989/sonarr', 'http://[::1]:8989'])('accepts %s', (url) => {
     expect(loadConfig({ SONARR_URL: url, SONARR_API_KEY: 'k' }).sonarr).toBeDefined();
@@ -163,7 +166,11 @@ describe('loadConfig', () => {
   });
 
   it('still loads a short token, so an existing deployment keeps starting', () => {
-    const config = loadConfig({ ...base, SERVARR_MCP_TRANSPORT: 'http', SERVARR_MCP_TOKEN: 'short' });
+    const config = loadConfig({
+      ...base,
+      SERVARR_MCP_TRANSPORT: 'http',
+      SERVARR_MCP_TOKEN: 'short',
+    });
     expect(config.token).toBe('short');
   });
 
@@ -183,9 +190,12 @@ describe('loadConfig', () => {
     expect(config.prowlarr?.baseUrl).toBe('http://localhost:9696');
   });
 
-  it.each(['0x50', '3000.0', '1e3', '80 0', '+80'])('rejects a port that is not a plain integer: %s', (port) => {
-    expect(() => loadConfig({ ...base, SERVARR_MCP_PORT: port })).toThrow(ConfigError);
-  });
+  it.each(['0x50', '3000.0', '1e3', '80 0', '+80'])(
+    'rejects a port that is not a plain integer: %s',
+    (port) => {
+      expect(() => loadConfig({ ...base, SERVARR_MCP_PORT: port })).toThrow(ConfigError);
+    },
+  );
 
   it('accepts a plain integer port', () => {
     expect(loadConfig({ ...base, SERVARR_MCP_PORT: '8080' }).port).toBe(8080);

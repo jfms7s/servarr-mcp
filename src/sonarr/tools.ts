@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { assertMoveBatchSize, assertMoveFilesChosen, MAX_MOVE_BATCH, trackMoveCommand } from '../arr/bulk.js';
+import {
+  assertMoveBatchSize,
+  assertMoveFilesChosen,
+  MAX_MOVE_BATCH,
+  trackMoveCommand,
+} from '../arr/bulk.js';
 import { CACHED_LIBRARY_NOTE, refreshInput } from '../arr/library.js';
 import { listWindow, page, pageOf } from '../arr/paging.js';
 import { isWithinRoot, normalizeTitle, relocatePath } from '../arr/paths.js';
@@ -57,31 +62,65 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
               'Matches whole path segments, so /media/shows does not match /media/shows-anime',
           ),
         monitored: z.boolean().optional().describe('Filter by monitored state'),
-        genre: z.string().optional().describe('Filter by genre (case-insensitive match against genres array)'),
-        titleContains: z.string().optional().describe('Filter by title (case-insensitive substring match)'),
-        seriesType: z.enum(['standard', 'daily', 'anime']).optional().describe('Filter by series type'),
-        limit: z.number().int().min(1).optional().describe('Maximum results to return (default 50)'),
+        genre: z
+          .string()
+          .optional()
+          .describe('Filter by genre (case-insensitive match against genres array)'),
+        titleContains: z
+          .string()
+          .optional()
+          .describe('Filter by title (case-insensitive substring match)'),
+        seriesType: z
+          .enum(['standard', 'daily', 'anime'])
+          .optional()
+          .describe('Filter by series type'),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe('Maximum results to return (default 50)'),
         offset: z.number().int().min(0).optional().describe('Skip this many results (default 0)'),
-        includeOverview: z.boolean().optional().describe('Include each row\'s plot overview (default false)'),
+        includeOverview: z
+          .boolean()
+          .optional()
+          .describe("Include each row's plot overview (default false)"),
         refresh: refreshInput,
       },
-      handler: async ({ rootFolder, monitored, genre, titleContains, seriesType, limit = 50, offset = 0, includeOverview = false, refresh }) => {
+      handler: async ({
+        rootFolder,
+        monitored,
+        genre,
+        titleContains,
+        seriesType,
+        limit = 50,
+        offset = 0,
+        includeOverview = false,
+        refresh,
+      }) => {
         const allSeries = await client.listSeries({ refresh });
 
         // Apply filters client-side
         const genreLower = genre?.toLowerCase();
         const titleLower = titleContains?.toLowerCase();
         const filtered = allSeries.filter((s) => {
-          if (rootFolder !== undefined && !isWithinRoot(s.path ?? s.rootFolderPath, rootFolder)) return false;
+          if (rootFolder !== undefined && !isWithinRoot(s.path ?? s.rootFolderPath, rootFolder))
+            return false;
           if (monitored !== undefined && s.monitored !== monitored) return false;
-          if (genreLower !== undefined && !s.genres?.some((g) => g.toLowerCase().includes(genreLower))) return false;
+          if (
+            genreLower !== undefined &&
+            !s.genres?.some((g) => g.toLowerCase().includes(genreLower))
+          )
+            return false;
           if (titleLower !== undefined && !s.title.toLowerCase().includes(titleLower)) return false;
           if (seriesType !== undefined && s.seriesType !== seriesType) return false;
           return true;
         });
 
         const totalMatched = filtered.length;
-        const series = filtered.slice(offset, offset + limit).map((s) => summarizeSeries(s, { overview: includeOverview }));
+        const series = filtered
+          .slice(offset, offset + limit)
+          .map((s) => summarizeSeries(s, { overview: includeOverview }));
 
         return { totalMatched, offset, limit, series };
       },
@@ -95,7 +134,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'root folder, season-folder setting and added date. full=true returns the raw Sonarr record.',
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
-        full: z.boolean().optional().describe('Return the raw Sonarr record instead of the summary (default false)'),
+        full: z
+          .boolean()
+          .optional()
+          .describe('Return the raw Sonarr record instead of the summary (default false)'),
       },
       handler: async ({ seriesId, full }) => {
         const series = await client.getSeries(seriesId);
@@ -223,12 +265,20 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
           .array(z.number().int())
           .optional()
           .describe('Target episodes, for EpisodeSearch'),
-        confirm: z.boolean().optional().describe('Required to run MissingEpisodeSearch, prevents an accidental library-wide search'),
+        confirm: z
+          .boolean()
+          .optional()
+          .describe(
+            'Required to run MissingEpisodeSearch, prevents an accidental library-wide search',
+          ),
       },
       handler: async ({ confirm, ...command }) => {
         if (command.name === 'MissingEpisodeSearch' && confirm !== true) {
           const missing = await client.getWantedMissing({ page: 1, pageSize: 1 });
-          return { wouldRun: { command: command.name, missingCount: missing.totalRecords }, confirmRequired: true };
+          return {
+            wouldRun: { command: command.name, missingCount: missing.totalRecords },
+            confirmRequired: true,
+          };
         }
         return client.runCommand(command);
       },
@@ -271,14 +321,33 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         qualityProfileId: z.number().int().optional().describe('From sonarr_list_quality_profiles'),
         seasonFolder: z.boolean().optional().describe('Use season folders'),
         tags: z.array(z.number().int()).optional().describe('Tag ids from sonarr_list_tags'),
-        rootFolderPath: z.string().optional().describe('Root folder path from sonarr_list_root_folders. Updates the series path automatically.'),
-        seriesType: z.enum(['standard', 'daily', 'anime']).optional().describe('Series type affects episode numbering for anime'),
+        rootFolderPath: z
+          .string()
+          .optional()
+          .describe(
+            'Root folder path from sonarr_list_root_folders. Updates the series path automatically.',
+          ),
+        seriesType: z
+          .enum(['standard', 'daily', 'anime'])
+          .optional()
+          .describe('Series type affects episode numbering for anime'),
         moveFiles: z
           .boolean()
           .optional()
-          .describe('Required with rootFolderPath: true moves the files, false repoints the record only'),
+          .describe(
+            'Required with rootFolderPath: true moves the files, false repoints the record only',
+          ),
       },
-      handler: async ({ seriesId, monitored, qualityProfileId, seasonFolder, tags, rootFolderPath, seriesType, moveFiles }) => {
+      handler: async ({
+        seriesId,
+        monitored,
+        qualityProfileId,
+        seasonFolder,
+        tags,
+        rootFolderPath,
+        seriesType,
+        moveFiles,
+      }) => {
         assertMoveFilesChosen(rootFolderPath, moveFiles, 'sonarr_update_series');
         const current = await client.getSeries(seriesId);
         const merged = {
@@ -297,10 +366,14 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         }
 
         if (moveFiles !== true) {
-          return summarizeSeries(await client.updateSeries(seriesId, merged, { moveFiles: moveFiles ?? false }));
+          return summarizeSeries(
+            await client.updateSeries(seriesId, merged, { moveFiles: moveFiles ?? false }),
+          );
         }
-        const { result, ...move } = await trackMoveCommand(() => client.listCommands(), SONARR_MOVE_COMMANDS, () =>
-          client.updateSeries(seriesId, merged, { moveFiles }),
+        const { result, ...move } = await trackMoveCommand(
+          () => client.listCommands(),
+          SONARR_MOVE_COMMANDS,
+          () => client.updateSeries(seriesId, merged, { moveFiles }),
         );
         return { ...summarizeSeries(result), ...move };
       },
@@ -316,13 +389,26 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'Rows omit the plot overview unless includeOverview is true.',
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
-        seasonNumber: z.number().int().optional().describe('Season number (all seasons if omitted)'),
+        seasonNumber: z
+          .number()
+          .int()
+          .optional()
+          .describe('Season number (all seasons if omitted)'),
         ...listWindow,
-        includeOverview: z.boolean().optional().describe('Include each row\'s plot overview (default false)'),
+        includeOverview: z
+          .boolean()
+          .optional()
+          .describe("Include each row's plot overview (default false)"),
       },
       handler: async ({ seriesId, seasonNumber, limit, offset, includeOverview = false }) => {
-        const { rows, ...window } = pageOf(await client.listEpisodes(seriesId, seasonNumber), { limit, offset });
-        return { ...window, episodes: rows.map((e) => summarizeEpisode(e, { overview: includeOverview })) };
+        const { rows, ...window } = pageOf(await client.listEpisodes(seriesId, seasonNumber), {
+          limit,
+          offset,
+        });
+        return {
+          ...window,
+          episodes: rows.map((e) => summarizeEpisode(e, { overview: includeOverview })),
+        };
       },
     }),
 
@@ -334,7 +420,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'full=true returns the raw Sonarr record.',
       inputSchema: {
         episodeId: z.number().int().describe('Sonarr episode id'),
-        full: z.boolean().optional().describe('Return the raw Sonarr record instead of the summary (default false)'),
+        full: z
+          .boolean()
+          .optional()
+          .describe('Return the raw Sonarr record instead of the summary (default false)'),
       },
       handler: async ({ episodeId, full }) => {
         const episode = await client.getEpisode(episodeId);
@@ -351,7 +440,9 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         monitored: z.boolean().describe('New monitored state'),
       },
       handler: async ({ episodeIds, monitored }) =>
-        (await client.monitorEpisodes(episodeIds, monitored)).map((e) => summarizeEpisode(e, { overview: false })),
+        (await client.monitorEpisodes(episodeIds, monitored)).map((e) =>
+          summarizeEpisode(e, { overview: false }),
+        ),
     }),
 
     defineTool({
@@ -365,7 +456,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         ...listWindow,
       },
       handler: async ({ seriesId, limit, offset }) => {
-        const { rows, ...window } = pageOf(await client.listEpisodeFiles(seriesId), { limit, offset });
+        const { rows, ...window } = pageOf(await client.listEpisodeFiles(seriesId), {
+          limit,
+          offset,
+        });
         return { ...window, files: rows.map(summarizeEpisodeFile) };
       },
     }),
@@ -378,7 +472,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'Without confirm=true, deletes nothing and returns the file that would be deleted as a safety check.',
       inputSchema: {
         episodeFileId: z.number().int().describe('Sonarr episode file id'),
-        confirm: z.boolean().optional().describe('Required to delete, prevents accidental deletion'),
+        confirm: z
+          .boolean()
+          .optional()
+          .describe('Required to delete, prevents accidental deletion'),
       },
       handler: async ({ episodeFileId, confirm }) => {
         if (confirm !== true) {
@@ -409,7 +506,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'request removal from the torrent/usenet client, and blocklist to prevent re-importing.',
       inputSchema: {
         id: z.number().int().describe('Queue item id'),
-        removeFromClient: z.boolean().optional().describe('Remove from download client (default false)'),
+        removeFromClient: z
+          .boolean()
+          .optional()
+          .describe('Remove from download client (default false)'),
         blocklist: z.boolean().optional().describe('Add to blocklist (default false)'),
       },
       handler: async ({ id, removeFromClient, blocklist }) => {
@@ -425,7 +525,16 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       name: 'sonarr_get_history',
       effect: 'read',
       description: 'List history of download, import and grab events.',
-      inputSchema: { ...page, eventType: z.number().int().optional().describe('Filter by event type: 1 grabbed, 2 seriesFolderImported, 3 downloadFolderImported, 4 downloadFailed, 5 episodeFileDeleted, 6 episodeFileRenamed, 7 downloadIgnored. Omit for all events.') },
+      inputSchema: {
+        ...page,
+        eventType: z
+          .number()
+          .int()
+          .optional()
+          .describe(
+            'Filter by event type: 1 grabbed, 2 seriesFolderImported, 3 downloadFolderImported, 4 downloadFailed, 5 episodeFileDeleted, 6 episodeFileRenamed, 7 downloadIgnored. Omit for all events.',
+          ),
+      },
       handler: async ({ page: pageNum, pageSize, eventType }) => {
         const response = await client.getHistory({ page: pageNum, pageSize, eventType });
         return { ...response, records: response.records.map(summarizeHistoryRecord) };
@@ -435,11 +544,19 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
     defineTool({
       name: 'sonarr_get_wanted_missing',
       effect: 'read',
-      description: 'List wanted but missing episodes (not downloaded yet). Rows omit the plot overview.',
+      description:
+        'List wanted but missing episodes (not downloaded yet). Rows omit the plot overview.',
       inputSchema: { ...page },
       handler: async ({ page: pageNum, pageSize }) => {
-        const response = await client.getWantedMissing({ page: pageNum, pageSize, includeSeries: true });
-        return { ...response, records: response.records.map((e) => summarizeEpisode(e, { overview: false })) };
+        const response = await client.getWantedMissing({
+          page: pageNum,
+          pageSize,
+          includeSeries: true,
+        });
+        return {
+          ...response,
+          records: response.records.map((e) => summarizeEpisode(e, { overview: false })),
+        };
       },
     }),
 
@@ -534,14 +651,27 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       name: 'sonarr_search_releases',
       effect: 'read',
       description:
-        'Run a live interactive search across indexers for episode or season releases (can take several seconds). Results are in Sonarr\'s preference order with rank. Rejections are Sonarr\'s verbatim reasons for not choosing a release automatically. Use guid + indexerId with sonarr_grab_release.',
+        "Run a live interactive search across indexers for episode or season releases (can take several seconds). Results are in Sonarr's preference order with rank. Rejections are Sonarr's verbatim reasons for not choosing a release automatically. Use guid + indexerId with sonarr_grab_release.",
       inputSchema: {
         episodeId: z.number().int().optional().describe('Episode id for single-episode search'),
         seriesId: z.number().int().optional().describe('Series id for season-pack search'),
         seasonNumber: z.number().int().optional().describe('Season number for season-pack search'),
-        titleContains: z.string().min(1).optional().describe('Case-insensitive substring filter (e.g. "MeGusta")'),
-        approvedOnly: z.boolean().optional().describe('Show only Sonarr-approved releases (default false)'),
-        limit: z.number().int().min(1).max(100).optional().describe('Maximum results to return (default 20)'),
+        titleContains: z
+          .string()
+          .min(1)
+          .optional()
+          .describe('Case-insensitive substring filter (e.g. "MeGusta")'),
+        approvedOnly: z
+          .boolean()
+          .optional()
+          .describe('Show only Sonarr-approved releases (default false)'),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('Maximum results to return (default 20)'),
       },
       handler: async (args) => {
         // Validation: exactly one mode - episodeId alone OR seriesId + seasonNumber together
@@ -550,7 +680,9 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         const hasSeasonNumber = args.seasonNumber !== undefined;
 
         if (!hasEpisodeId && !hasSeriesId && !hasSeasonNumber) {
-          throw new Error('Must provide either episodeId alone OR seriesId + seasonNumber together');
+          throw new Error(
+            'Must provide either episodeId alone OR seriesId + seasonNumber together',
+          );
         }
 
         if (hasEpisodeId && (hasSeriesId || hasSeasonNumber)) {
@@ -562,7 +694,9 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         }
 
         // Call client with the appropriate parameters
-        const searchParams = hasEpisodeId ? { episodeId: args.episodeId } : { seriesId: args.seriesId, seasonNumber: args.seasonNumber };
+        const searchParams = hasEpisodeId
+          ? { episodeId: args.episodeId }
+          : { seriesId: args.seriesId, seasonNumber: args.seasonNumber };
         const allReleases = await client.searchReleases(searchParams);
 
         // Rank over the full list first, so a release keeps Sonarr's rank
@@ -595,7 +729,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       name: 'sonarr_grab_release',
       effect: 'destructive',
       description:
-        'Download a release via Sonarr. Grab uses cached search results (expire ~30 minutes); if grab fails, run sonarr_search_releases again. Grab overrides Sonarr\'s decision to DOWNLOAD but rejections can still block IMPORT, leaving items stuck in queue. Starts a real download tracked and imported by Sonarr (unlike prowlarr_grab_release, which bypasses Sonarr).',
+        "Download a release via Sonarr. Grab uses cached search results (expire ~30 minutes); if grab fails, run sonarr_search_releases again. Grab overrides Sonarr's decision to DOWNLOAD but rejections can still block IMPORT, leaving items stuck in queue. Starts a real download tracked and imported by Sonarr (unlike prowlarr_grab_release, which bypasses Sonarr).",
       inputSchema: {
         guid: z.string().min(1).describe('Release guid from sonarr_search_releases'),
         indexerId: z.number().int().describe('Release indexerId from sonarr_search_releases'),
@@ -630,13 +764,21 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         qualityProfileId: z.number().int().optional().describe('From sonarr_list_quality_profiles'),
         seriesType: z.enum(['standard', 'daily', 'anime']).optional().describe('Series type'),
         seasonFolder: z.boolean().optional().describe('Use season folders'),
-        rootFolderPath: z.string().optional().describe('Root folder path from sonarr_list_root_folders'),
+        rootFolderPath: z
+          .string()
+          .optional()
+          .describe('Root folder path from sonarr_list_root_folders'),
         tags: z.array(z.number().int()).optional().describe('Tag ids from sonarr_list_tags'),
-        applyTags: z.enum(['add', 'remove', 'replace']).optional().describe('How to apply tags (default replace)'),
+        applyTags: z
+          .enum(['add', 'remove', 'replace'])
+          .optional()
+          .describe('How to apply tags (default replace)'),
         moveFiles: z
           .boolean()
           .optional()
-          .describe('Required with rootFolderPath: true moves the files, false repoints the records only'),
+          .describe(
+            'Required with rootFolderPath: true moves the files, false repoints the records only',
+          ),
       },
       handler: async (args) => {
         assertMoveFilesChosen(args.rootFolderPath, args.moveFiles, 'sonarr_bulk_edit_series');
@@ -659,7 +801,11 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
           series: result.map((s) => summarizeSeries(s, { overview: false })),
         });
         if (args.moveFiles !== true) return summarize(await edit());
-        const { result, ...move } = await trackMoveCommand(() => client.listCommands(), SONARR_MOVE_COMMANDS, edit);
+        const { result, ...move } = await trackMoveCommand(
+          () => client.listCommands(),
+          SONARR_MOVE_COMMANDS,
+          edit,
+        );
         return { ...summarize(result), ...move };
       },
     }),
@@ -673,7 +819,9 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       inputSchema: {},
       handler: async () => {
         const rootFolders = await client.listRootFolders();
-        return rootFolders.flatMap((rf) => (rf.unmappedFolders ?? []).map((folder) => summarizeUnmappedFolder(rf, folder)));
+        return rootFolders.flatMap((rf) =>
+          (rf.unmappedFolders ?? []).map((folder) => summarizeUnmappedFolder(rf, folder)),
+        );
       },
     }),
 
@@ -686,7 +834,11 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'At most 100 previews are returned; `total` gives the full count.',
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
-        seasonNumber: z.number().int().optional().describe('Season number (all seasons if omitted)'),
+        seasonNumber: z
+          .number()
+          .int()
+          .optional()
+          .describe('Season number (all seasons if omitted)'),
       },
       handler: async ({ seriesId, seasonNumber }) => {
         const previews = await client.getRenamePreview(seriesId, seasonNumber);
@@ -775,11 +927,17 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'Important: the series must already exist in Sonarr for files to attach to it; otherwise the scan will not import them. ' +
         'Use folderPath from sonarr_list_unmapped_folders.',
       inputSchema: {
-        path: z.string().describe('Absolute path to the folder to import, as returned by sonarr_list_unmapped_folders (folderPath field)'),
+        path: z
+          .string()
+          .describe(
+            'Absolute path to the folder to import, as returned by sonarr_list_unmapped_folders (folderPath field)',
+          ),
         importMode: z
           .enum(['Auto', 'Move', 'Copy'])
           .optional()
-          .describe('How to handle files: Auto (default, let Sonarr decide), Move (relocate to configured library), Copy (keep original, duplicate to library)'),
+          .describe(
+            'How to handle files: Auto (default, let Sonarr decide), Move (relocate to configured library), Copy (keep original, duplicate to library)',
+          ),
       },
       handler: async ({ path, importMode }) => {
         const command = await client.runCommand({

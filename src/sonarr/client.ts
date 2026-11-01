@@ -105,7 +105,11 @@ export interface SonarrClient {
   getSystemStatus(): Promise<SystemStatus>;
   getHealth(): Promise<HealthCheck[]>;
   getDiskSpace(): Promise<DiskSpace[]>;
-  searchReleases(params: { episodeId?: number; seriesId?: number; seasonNumber?: number }): Promise<Release[]>;
+  searchReleases(params: {
+    episodeId?: number;
+    seriesId?: number;
+    seasonNumber?: number;
+  }): Promise<Release[]>;
   grabRelease(payload: GrabReleasePayload): Promise<Release>;
 }
 
@@ -147,8 +151,7 @@ export function createSonarrClient(config: InstanceConfig): SonarrClient {
     getWantedMissing: (options) => http.get('/wanted/missing', { ...options }),
     getBlocklist: (options) => http.get('/blocklist', { ...options }),
     deleteBlocklistItem: (id) => http.del(`/blocklist/${id}`),
-    getRenamePreview: (seriesId, seasonNumber) =>
-      http.get('/rename', { seriesId, seasonNumber }),
+    getRenamePreview: (seriesId, seasonNumber) => http.get('/rename', { seriesId, seasonNumber }),
     runCommand: (payload) => {
       const run = () => http.post<CommandResource>('/command', payload);
       return changesLibrary(payload.name) ? write(run) : run();

@@ -55,7 +55,13 @@ describe('buildTools', () => {
   });
 
   describe('effects and annotations', () => {
-    const all = buildTools({ ...base, sonarr: instance, radarr: instance, prowlarr: instance, overseerr: instance });
+    const all = buildTools({
+      ...base,
+      sonarr: instance,
+      radarr: instance,
+      prowlarr: instance,
+      overseerr: instance,
+    });
 
     it('classifies every tool', () => {
       for (const tool of all) {
@@ -65,9 +71,15 @@ describe('buildTools', () => {
     });
 
     it('marks every delete, update, bulk edit, grab and import tool destructive', () => {
-      const destructive = all.filter((t) => /_(delete_|update_|bulk_edit_|grab_release$|import_folder$)/.test(t.name));
+      const destructive = all.filter((t) =>
+        /_(delete_|update_|bulk_edit_|grab_release$|import_folder$)/.test(t.name),
+      );
       expect(destructive.length).toBeGreaterThan(0);
-      for (const tool of destructive) expect(annotationsFor(tool.effect), tool.name).toEqual({ readOnlyHint: false, destructiveHint: true });
+      for (const tool of destructive)
+        expect(annotationsFor(tool.effect), tool.name).toEqual({
+          readOnlyHint: false,
+          destructiveHint: true,
+        });
     });
 
     it('never marks a destructive tool read-only', () => {

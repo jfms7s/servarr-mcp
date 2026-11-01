@@ -76,7 +76,19 @@ describe('summarizeIndexer', () => {
 
 describe('summarizeHistoryRecord', () => {
   it('drops URL keys and credentials from data but keeps the diagnostics', () => {
-    const record = { id: 6, indexerId: 2, eventType: 'releaseGrabbed', date: '2026-04-22T10:00:00Z', successful: true, data: {"downloadUrl": "http://prowlarr:9696/1/download?apikey=SECRET&link=x", "indexer": "X (Prowlarr)", "releaseGroup": "GRP", "droppedPath": "/downloads/x"} } as unknown as HistoryRecord;
+    const record = {
+      id: 6,
+      indexerId: 2,
+      eventType: 'releaseGrabbed',
+      date: '2026-04-22T10:00:00Z',
+      successful: true,
+      data: {
+        downloadUrl: 'http://prowlarr:9696/1/download?apikey=SECRET&link=x',
+        indexer: 'X (Prowlarr)',
+        releaseGroup: 'GRP',
+        droppedPath: '/downloads/x',
+      },
+    } as unknown as HistoryRecord;
 
     const result = summarizeHistoryRecord(record);
     const text = JSON.stringify(result);

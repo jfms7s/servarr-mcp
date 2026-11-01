@@ -140,7 +140,11 @@ describe('startHttp integration', () => {
     expect(response.status).toBe(400);
     const text = await response.text();
     expect(text).not.toMatch(/\bat /);
-    expect(JSON.parse(text)).toEqual({ jsonrpc: '2.0', error: { code: -32700, message: 'Parse error' }, id: null });
+    expect(JSON.parse(text)).toEqual({
+      jsonrpc: '2.0',
+      error: { code: -32700, message: 'Parse error' },
+      id: null,
+    });
 
     const unauthenticated = await fetch(url, {
       method: 'POST',
@@ -157,7 +161,12 @@ describe('startHttp integration', () => {
     const response = await fetch(`http://127.0.0.1:${handle.port}/mcp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ jsonrpc: '2.0', method: 'x', id: 1, params: { pad: 'a'.repeat(200_000) } }),
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'x',
+        id: 1,
+        params: { pad: 'a'.repeat(200_000) },
+      }),
     });
     expect(response.status).toBe(413);
     const text = await response.text();

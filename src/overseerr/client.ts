@@ -29,7 +29,16 @@ export interface DiscoverOptions {
 export interface ListRequestsOptions {
   take?: number;
   skip?: number;
-  filter?: 'all' | 'approved' | 'available' | 'pending' | 'processing' | 'unavailable' | 'failed' | 'deleted' | 'completed';
+  filter?:
+    | 'all'
+    | 'approved'
+    | 'available'
+    | 'pending'
+    | 'processing'
+    | 'unavailable'
+    | 'failed'
+    | 'deleted'
+    | 'completed';
   sort?: 'added' | 'modified';
   requestedBy?: number;
 }
@@ -54,7 +63,11 @@ export interface OverseerrClient {
   getTrending(page?: number): Promise<SearchResponse>;
   getMovie(movieId: number): Promise<MovieDetails>;
   getTv(tvId: number): Promise<TvDetails>;
-  getMovieRecommendations(movieId: number, page?: number, language?: string): Promise<SearchResponse>;
+  getMovieRecommendations(
+    movieId: number,
+    page?: number,
+    language?: string,
+  ): Promise<SearchResponse>;
   getSimilarMovies(movieId: number, page?: number, language?: string): Promise<SearchResponse>;
   getTvRecommendations(tvId: number, page?: number, language?: string): Promise<SearchResponse>;
   getSimilarTv(tvId: number, page?: number, language?: string): Promise<SearchResponse>;
@@ -78,7 +91,6 @@ export interface OverseerrClient {
   getRadarrProfiles(radarrId: number): Promise<ServiceProfile[]>;
 }
 
-
 export function createOverseerrClient(config: InstanceConfig): OverseerrClient {
   const http = createArrClient({
     product: 'Overseerr',
@@ -94,9 +106,12 @@ export function createOverseerrClient(config: InstanceConfig): OverseerrClient {
     getTrending: (page) => http.get('/discover/trending', { page }),
     getMovie: (movieId) => http.get(`/movie/${movieId}`),
     getTv: (tvId) => http.get(`/tv/${tvId}`),
-    getMovieRecommendations: (movieId, page, language) => http.get(`/movie/${movieId}/recommendations`, { page, language }),
-    getSimilarMovies: (movieId, page, language) => http.get(`/movie/${movieId}/similar`, { page, language }),
-    getTvRecommendations: (tvId, page, language) => http.get(`/tv/${tvId}/recommendations`, { page, language }),
+    getMovieRecommendations: (movieId, page, language) =>
+      http.get(`/movie/${movieId}/recommendations`, { page, language }),
+    getSimilarMovies: (movieId, page, language) =>
+      http.get(`/movie/${movieId}/similar`, { page, language }),
+    getTvRecommendations: (tvId, page, language) =>
+      http.get(`/tv/${tvId}/recommendations`, { page, language }),
     getSimilarTv: (tvId, page, language) => http.get(`/tv/${tvId}/similar`, { page, language }),
     getMovieRatings: (movieId) => http.get(`/movie/${movieId}/ratingscombined`),
     getTvRatings: (tvId) => http.get(`/tv/${tvId}/ratings`),

@@ -35,7 +35,9 @@ server.events.on('request:start', ({ request }) => {
 
 const base = 'http://radarr.test:7878/api/v3';
 const ok = () => new HttpResponse(null, { status: 200 });
-const tools = createRadarrTools(createRadarrClient({ baseUrl: 'http://radarr.test:7878', apiKey: 'k' }));
+const tools = createRadarrTools(
+  createRadarrClient({ baseUrl: 'http://radarr.test:7878', apiKey: 'k' }),
+);
 
 /** Calls a tool the way the MCP server does: arguments validated against its input schema first. */
 function call(name: string, args: Record<string, unknown>) {

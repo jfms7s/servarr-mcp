@@ -77,7 +77,10 @@ describe('createArrClient', () => {
 
   it('returns undefined for a 204 with no body', async () => {
     server.use(
-      http.delete('http://sonarr.test:8989/api/v3/series/9', () => new HttpResponse(null, { status: 204 })),
+      http.delete(
+        'http://sonarr.test:8989/api/v3/series/9',
+        () => new HttpResponse(null, { status: 204 }),
+      ),
     );
 
     await expect(client.del('/series/9')).resolves.toBeUndefined();
@@ -115,7 +118,10 @@ describe('createArrClient', () => {
 
   it('gives a dedicated message for an auth failure and never echoes the key', async () => {
     server.use(
-      http.get('http://sonarr.test:8989/api/v3/health', () => new HttpResponse(null, { status: 401 })),
+      http.get(
+        'http://sonarr.test:8989/api/v3/health',
+        () => new HttpResponse(null, { status: 401 }),
+      ),
     );
 
     const error = await client.get('/health').catch((e: unknown) => e);
@@ -126,8 +132,9 @@ describe('createArrClient', () => {
 
   it('truncates a long unparseable error body', async () => {
     server.use(
-      http.get('http://sonarr.test:8989/api/v3/health', () =>
-        new HttpResponse('x'.repeat(1000), { status: 500 }),
+      http.get(
+        'http://sonarr.test:8989/api/v3/health',
+        () => new HttpResponse('x'.repeat(1000), { status: 500 }),
       ),
     );
 
@@ -147,7 +154,10 @@ describe('createArrClient', () => {
 
   it('gives "server error with no response body" detail for a 500 with empty body', async () => {
     server.use(
-      http.get('http://sonarr.test:8989/api/v3/health', () => new HttpResponse(null, { status: 500 })),
+      http.get(
+        'http://sonarr.test:8989/api/v3/health',
+        () => new HttpResponse(null, { status: 500 }),
+      ),
     );
 
     const error = (await client.get('/health').catch((e: unknown) => e)) as ArrApiError;
@@ -158,7 +168,10 @@ describe('createArrClient', () => {
 
   it('gives "no response body" detail for a 400 with empty body', async () => {
     server.use(
-      http.get('http://sonarr.test:8989/api/v3/health', () => new HttpResponse(null, { status: 400 })),
+      http.get(
+        'http://sonarr.test:8989/api/v3/health',
+        () => new HttpResponse(null, { status: 400 }),
+      ),
     );
 
     const error = (await client.get('/health').catch((e: unknown) => e)) as ArrApiError;
@@ -169,7 +182,10 @@ describe('createArrClient', () => {
 
   it('rejects a 200 response whose body is not valid JSON', async () => {
     server.use(
-      http.get('http://sonarr.test:8989/api/v3/health', () => new HttpResponse('not json at all', { status: 200 })),
+      http.get(
+        'http://sonarr.test:8989/api/v3/health',
+        () => new HttpResponse('not json at all', { status: 200 }),
+      ),
     );
 
     const error = (await client.get('/health').catch((e: unknown) => e)) as ArrApiError;

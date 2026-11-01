@@ -17,7 +17,12 @@ describe('OverseerrClient', () => {
     server.use(
       http.get(url('/search'), ({ request }) => {
         seen = new URL(request.url).searchParams.get('query');
-        return HttpResponse.json({ page: 1, totalPages: 1, totalResults: 1, results: [{ id: 11 }] });
+        return HttpResponse.json({
+          page: 1,
+          totalPages: 1,
+          totalResults: 1,
+          results: [{ id: 11 }],
+        });
       }),
     );
     const result = await client.search('dune');
@@ -91,7 +96,10 @@ describe('OverseerrClient', () => {
         seen.take = params.get('take') ?? '';
         seen.skip = params.get('skip') ?? '';
         seen.filter = params.get('filter') ?? '';
-        return HttpResponse.json({ pageInfo: { page: 1, pages: 1, results: 0, pageSize: 20 }, results: [] });
+        return HttpResponse.json({
+          pageInfo: { page: 1, pages: 1, results: 0, pageSize: 20 },
+          results: [],
+        });
       }),
     );
     await client.listRequests({ take: 50, skip: 10, filter: 'approved' });
@@ -101,9 +109,7 @@ describe('OverseerrClient', () => {
   });
 
   it('gets a single request', async () => {
-    server.use(
-      http.get(url('/request/123'), () => HttpResponse.json({ id: 123, status: 2 })),
-    );
+    server.use(http.get(url('/request/123'), () => HttpResponse.json({ id: 123, status: 2 })));
     const result = await client.getRequest(123);
     expect(result.id).toBe(123);
   });
@@ -166,7 +172,10 @@ describe('OverseerrClient', () => {
         const params = new URL(request.url).searchParams;
         seen.take = params.get('take') ?? '';
         seen.filter = params.get('filter') ?? '';
-        return HttpResponse.json({ pageInfo: { page: 1, pages: 1, results: 0, pageSize: 20 }, results: [] });
+        return HttpResponse.json({
+          pageInfo: { page: 1, pages: 1, results: 0, pageSize: 20 },
+          results: [],
+        });
       }),
     );
     await client.listMedia({ take: 30, filter: 'available' });
@@ -186,7 +195,10 @@ describe('OverseerrClient', () => {
         const params = new URL(request.url).searchParams;
         seen.take = params.get('take') ?? '';
         seen.sort = params.get('sort') ?? '';
-        return HttpResponse.json({ pageInfo: { page: 1, pages: 1, results: 0, pageSize: 20 }, results: [] });
+        return HttpResponse.json({
+          pageInfo: { page: 1, pages: 1, results: 0, pageSize: 20 },
+          results: [],
+        });
       }),
     );
     await client.listUsers({ take: 25, sort: 'created' });
@@ -195,9 +207,7 @@ describe('OverseerrClient', () => {
   });
 
   it('gets system status', async () => {
-    server.use(
-      http.get(url('/status'), () => HttpResponse.json({ version: '0.1.0' })),
-    );
+    server.use(http.get(url('/status'), () => HttpResponse.json({ version: '0.1.0' })));
     const result = await client.getSystemStatus();
     expect(result.version).toBe('0.1.0');
   });

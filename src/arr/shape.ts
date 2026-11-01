@@ -33,7 +33,12 @@ export function summarizeMediaFileRef(file: {
   size: number;
   quality?: { quality: { name: string } };
 }): MediaFileRef {
-  return { id: file.id, relativePath: file.relativePath, size: file.size, quality: file.quality?.quality.name };
+  return {
+    id: file.id,
+    relativePath: file.relativePath,
+    size: file.size,
+    quality: file.quality?.quality.name,
+  };
 }
 
 export interface UnmappedFolderSummary {
@@ -45,7 +50,10 @@ export interface UnmappedFolderSummary {
 }
 
 /** One unmapped folder, flattened with the root folder it sits in. */
-export function summarizeUnmappedFolder(rootFolder: RootFolder, folder: UnmappedFolder): UnmappedFolderSummary {
+export function summarizeUnmappedFolder(
+  rootFolder: RootFolder,
+  folder: UnmappedFolder,
+): UnmappedFolderSummary {
   return {
     rootFolderId: rootFolder.id,
     rootFolderPath: rootFolder.path,

@@ -1,4 +1,13 @@
-export type { QualityProfile, RootFolder, UnmappedFolder, Tag, DiskSpace, PageParams, HealthCheck, PagedResponse } from '../arr/types.js';
+export type {
+  QualityProfile,
+  RootFolder,
+  UnmappedFolder,
+  Tag,
+  DiskSpace,
+  PageParams,
+  HealthCheck,
+  PagedResponse,
+} from '../arr/types.js';
 
 export interface Season {
   seasonNumber: number;

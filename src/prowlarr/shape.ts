@@ -1,10 +1,4 @@
-import type {
-  Application,
-  DownloadClient,
-  HistoryRecord,
-  Indexer,
-  Release,
-} from './types.js';
+import type { Application, DownloadClient, HistoryRecord, Indexer, Release } from './types.js';
 import { redactHistoryData } from '../arr/redact.js';
 
 export interface ReleaseSummary {

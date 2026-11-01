@@ -55,7 +55,9 @@ describe('Sonarr library cache', () => {
     const list = tool('sonarr_list_series');
     const first = (await list.handler({ limit: 2, offset: 0 })) as { series: unknown[] };
     const second = (await list.handler({ limit: 2, offset: 2 })) as { series: unknown[] };
-    const duplicates = (await tool('sonarr_find_duplicate_series').handler({})) as { total: number };
+    const duplicates = (await tool('sonarr_find_duplicate_series').handler({})) as {
+      total: number;
+    };
 
     expect(first.series).toHaveLength(2);
     expect(second.series).toHaveLength(1);
@@ -87,10 +89,14 @@ describe('Sonarr library cache', () => {
 
   it('does not cache a failed download', async () => {
     server.use(
-      http.get(url('/series'), () => {
-        seriesGets += 1;
-        return new HttpResponse('boom', { status: 500 });
-      }, { once: true }),
+      http.get(
+        url('/series'),
+        () => {
+          seriesGets += 1;
+          return new HttpResponse('boom', { status: 500 });
+        },
+        { once: true },
+      ),
     );
     await expect(client.listSeries()).rejects.toThrow();
     await expect(client.listSeries()).resolves.toHaveLength(3);

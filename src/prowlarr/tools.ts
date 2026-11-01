@@ -54,7 +54,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
       effect: 'read',
       description:
         'List configured indexers with their protocol, priority and enabled state. Use ' +
-        'prowlarr_get_indexer for one indexer\'s full configuration, including its fields.',
+        "prowlarr_get_indexer for one indexer's full configuration, including its fields.",
       inputSchema: {},
       handler: async () => (await client.listIndexers()).map(summarizeIndexer),
     }),
@@ -154,9 +154,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
         'configuration to connected apps like Sonarr and Radarr. IndexerHealthCheck ' +
         're-checks whether configured indexers are reachable.',
       inputSchema: {
-        name: z
-          .enum(['ApplicationIndexerSync', 'IndexerHealthCheck'])
-          .describe('Command name'),
+        name: z.enum(['ApplicationIndexerSync', 'IndexerHealthCheck']).describe('Command name'),
       },
       handler: ({ name }) => client.runCommand({ name }),
     }),

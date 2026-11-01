@@ -25,7 +25,8 @@ const movie = (id: number) => ({
   overview: 'A plot summary.',
 });
 
-const range = <T>(n: number, make: (id: number) => T) => Array.from({ length: n }, (_, i) => make(i + 1));
+const range = <T>(n: number, make: (id: number) => T) =>
+  Array.from({ length: n }, (_, i) => make(i + 1));
 
 describe('summarizeMovie', () => {
   it('keeps the overview by default and drops it with overview: false', () => {
@@ -62,7 +63,10 @@ describe('Radarr list tools leave overview out by default', () => {
 
   it('radarr_bulk_edit_movies omits overview', async () => {
     const get = toolsFor({ bulkEditMovies: vi.fn().mockResolvedValue([movie(1)]) });
-    const result = (await get('radarr_bulk_edit_movies').handler({ movieIds: [1], monitored: true })) as {
+    const result = (await get('radarr_bulk_edit_movies').handler({
+      movieIds: [1],
+      monitored: true,
+    })) as {
       movies: object[];
     };
     expect(result.movies[0]).not.toHaveProperty('overview');
@@ -70,7 +74,9 @@ describe('Radarr list tools leave overview out by default', () => {
 
   it('radarr_lookup_movie keeps overview', async () => {
     const get = toolsFor({ lookupMovie: vi.fn().mockResolvedValue([movie(1)]) });
-    const result = (await get('radarr_lookup_movie').handler({ term: 'movie' })) as Array<{ overview?: string }>;
+    const result = (await get('radarr_lookup_movie').handler({ term: 'movie' })) as Array<{
+      overview?: string;
+    }>;
     expect(result[0]?.overview).toBe('A plot summary.');
   });
 });

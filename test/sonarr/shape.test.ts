@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeEpisode, summarizeQueueRecord, summarizeRenamePreview, summarizeSeries, summarizeUnmappedFolder } from '../../src/sonarr/shape.js';
-import type { Episode, QueueRecord, RenameEpisodeResource, Series, UnmappedFolder } from '../../src/sonarr/types.js';
+import {
+  summarizeEpisode,
+  summarizeQueueRecord,
+  summarizeRenamePreview,
+  summarizeSeries,
+  summarizeUnmappedFolder,
+} from '../../src/sonarr/shape.js';
+import type {
+  Episode,
+  QueueRecord,
+  RenameEpisodeResource,
+  Series,
+  UnmappedFolder,
+} from '../../src/sonarr/types.js';
 
 const series = {
   id: 1,
@@ -114,7 +126,13 @@ describe('summarizeQueueRecord', () => {
   });
 
   it('reports 0 percent complete when size is unknown', () => {
-    const summary = summarizeQueueRecord({ id: 1, title: 't', status: 's', size: 0, sizeleft: 0 } as QueueRecord);
+    const summary = summarizeQueueRecord({
+      id: 1,
+      title: 't',
+      status: 's',
+      size: 0,
+      sizeleft: 0,
+    } as QueueRecord);
     expect(summary.percentComplete).toBe(0);
   });
 });

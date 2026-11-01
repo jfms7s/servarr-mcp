@@ -54,7 +54,12 @@ describe('RadarrClient', () => {
         return HttpResponse.json({ id: 2 }, { status: 201 });
       }),
     );
-    await client.addMovie({ title: 'Dune', tmdbId: 438631, qualityProfileId: 1, rootFolderPath: '/movies' });
+    await client.addMovie({
+      title: 'Dune',
+      tmdbId: 438631,
+      qualityProfileId: 1,
+      rootFolderPath: '/movies',
+    });
     expect(body).toMatchObject({ tmdbId: 438631, rootFolderPath: '/movies' });
   });
 
@@ -81,7 +86,9 @@ describe('RadarrClient', () => {
   });
 
   it('lists collections', async () => {
-    server.use(http.get(url('/collection'), () => HttpResponse.json([{ id: 1, title: 'Dune Collection' }])));
+    server.use(
+      http.get(url('/collection'), () => HttpResponse.json([{ id: 1, title: 'Dune Collection' }])),
+    );
     await expect(client.listCollections()).resolves.toHaveLength(1);
   });
 
@@ -90,7 +97,10 @@ describe('RadarrClient', () => {
     server.use(
       http.post(url('/command'), async ({ request }) => {
         body = await request.json();
-        return HttpResponse.json({ id: 1, name: 'MoviesSearch', status: 'queued' }, { status: 201 });
+        return HttpResponse.json(
+          { id: 1, name: 'MoviesSearch', status: 'queued' },
+          { status: 201 },
+        );
       }),
     );
     await client.runCommand({ name: 'MoviesSearch', movieIds: [3] });
@@ -105,14 +115,18 @@ describe('RadarrClient', () => {
         return HttpResponse.json([{ id: 9, name: 'BulkMoveMovie', status: 'started' }]);
       }),
     );
-    await expect(client.listCommands()).resolves.toEqual([{ id: 9, name: 'BulkMoveMovie', status: 'started' }]);
+    await expect(client.listCommands()).resolves.toEqual([
+      { id: 9, name: 'BulkMoveMovie', status: 'started' },
+    ]);
     expect(requested?.pathname).toBe('/api/v3/command');
     expect(requested?.search).toBe('');
   });
 
   it('reads system status, health and disk space', async () => {
     server.use(
-      http.get(url('/system/status'), () => HttpResponse.json({ appName: 'Radarr', version: '5.0' })),
+      http.get(url('/system/status'), () =>
+        HttpResponse.json({ appName: 'Radarr', version: '5.0' }),
+      ),
       http.get(url('/health'), () => HttpResponse.json([])),
       http.get(url('/diskspace'), () => HttpResponse.json([])),
     );

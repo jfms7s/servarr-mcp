@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeMovie, summarizeQueueRecord, summarizeRenamePreview, summarizeUnmappedFolder } from '../../src/radarr/shape.js';
+import {
+  summarizeMovie,
+  summarizeQueueRecord,
+  summarizeRenamePreview,
+  summarizeUnmappedFolder,
+} from '../../src/radarr/shape.js';
 import type { Movie, QueueRecord, RenameMovieResource } from '../../src/radarr/types.js';
 
 const movie = {
@@ -73,7 +78,14 @@ describe('summarizeQueueRecord', () => {
   });
 
   it('copies the movie id', () => {
-    const summary = summarizeQueueRecord({ id: 1, movieId: 42, title: 't', status: 's', size: 0, sizeleft: 0 } as QueueRecord);
+    const summary = summarizeQueueRecord({
+      id: 1,
+      movieId: 42,
+      title: 't',
+      status: 's',
+      size: 0,
+      sizeleft: 0,
+    } as QueueRecord);
     expect(summary.movieId).toBe(42);
   });
 });

@@ -33,6 +33,8 @@ jobs:
 
       - run: npm run lint
 
+      - run: npm run format:check
+
       - name: Test with coverage (eng-metrics-lab)
         run: |
           npx vitest run --coverage.enabled --coverage.provider=v8 --coverage.reporter=lcovonly --coverage.reportsDirectory="$RUNNER_TEMP/cov" '--coverage.include=src/**'

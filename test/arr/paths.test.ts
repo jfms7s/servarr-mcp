@@ -73,7 +73,9 @@ describe('rootFolderOf', () => {
 
 describe('relocatePath', () => {
   it('joins the current folder name to a Unix root', () => {
-    expect(relocatePath('/media/movies/Dune (2021)', undefined, '/media/archive', 'movie')).toBe('/media/archive/Dune (2021)');
+    expect(relocatePath('/media/movies/Dune (2021)', undefined, '/media/archive', 'movie')).toBe(
+      '/media/archive/Dune (2021)',
+    );
   });
 
   it('uses the separator of a Windows root, whatever the current path uses', () => {
@@ -92,7 +94,11 @@ describe('relocatePath', () => {
   });
 
   it('names the product noun when neither a path nor a folder name is known', () => {
-    expect(() => relocatePath(undefined, undefined, '/tv', 'series')).toThrow(/Ensure the series has a valid path/);
-    expect(() => relocatePath('', undefined, '/movies', 'movie')).toThrow(/Ensure the movie has a valid path/);
+    expect(() => relocatePath(undefined, undefined, '/tv', 'series')).toThrow(
+      /Ensure the series has a valid path/,
+    );
+    expect(() => relocatePath('', undefined, '/movies', 'movie')).toThrow(
+      /Ensure the movie has a valid path/,
+    );
   });
 });
