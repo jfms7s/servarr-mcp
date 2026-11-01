@@ -49,6 +49,16 @@ function readInstance(
       `${product}: ${prefix}_URL must not contain credentials (user:password@); use the API key only`,
     );
   }
+  // `localhost:8989` parses with the scheme "localhost:" and only fails on the first call.
+  // `http:8989` parses too (as http://8989/), so the raw value must spell out the slashes.
+  if ((url.protocol !== 'http:' && url.protocol !== 'https:') || !/^https?:\/\//i.test(rawUrl)) {
+    throw new ConfigError(`${product}: ${prefix}_URL must start with http:// or https://`);
+  }
+  // The client appends /api/... to the base URL, which a query or fragment would swallow.
+  // The raw value is checked too: a bare trailing ? or # parses to an empty search or hash.
+  if (url.search || url.hash || /[?#]/.test(rawUrl)) {
+    throw new ConfigError(`${product}: ${prefix}_URL must not contain a query string or fragment`);
+  }
 
   return { baseUrl: rawUrl.replace(/\/+$/, ''), apiKey };
 }
@@ -67,7 +77,8 @@ function readTransport(env: NodeJS.ProcessEnv): TransportMode {
 function readPort(env: NodeJS.ProcessEnv): number {
   const raw = env.SERVARR_MCP_PORT?.trim();
   if (!raw) return 3000;
-  const port = Number(raw);
+  // Digits only: Number() would also accept 0x50, 3000.0 and 1e3.
+  const port = /^\d+$/.test(raw) ? Number(raw) : NaN;
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new ConfigError(`SERVARR_MCP_PORT must be an integer between 1 and 65535 (got: ${raw})`);
   }

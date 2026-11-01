@@ -470,7 +470,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       name: 'overseerr_update_request',
       effect: 'destructive',
       description:
-        'Update a media request (e.g., change quality profile, root folder, 4K setting). The mediaType field is required. Only fields provided are sent to the API. IMPORTANT: changing rootFolder only affects where Radarr is told to put the item when the request is (re)processed. It does NOT move files for a request that is already available — use Radarr tools to move files after updating. Requires the MANAGE_REQUESTS permission.',
+        'Update a media request (e.g., change quality profile, root folder, 4K setting). The mediaType field is required. Only fields provided are sent to the API. For mediaType "tv", seasons is required (Overseerr rejects a TV update without it). IMPORTANT: changing rootFolder only affects where Radarr is told to put the item when the request is (re)processed. It does NOT move files for a request that is already available — use Radarr tools to move files after updating. Requires the MANAGE_REQUESTS permission.',
       inputSchema: {
         requestId: z.number().int().describe('Media request id'),
         mediaType: z.enum(['movie', 'tv']).describe('Media type (required)'),
@@ -481,11 +481,15 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
         seasons: z
           .array(z.number().int())
           .optional()
-          .describe('For TV: array of season numbers to request'),
+          .describe('For TV (required when mediaType is "tv"): array of season numbers to request'),
         languageProfileId: z.number().int().optional(),
         userId: z.number().int().optional().describe('Change request owner; requires admin'),
       },
       handler: async (args) => {
+        // A raw-shape input schema cannot express this cross-field rule.
+        if (args.mediaType === 'tv' && (args.seasons === undefined || args.seasons.length === 0)) {
+          throw new Error('seasons is required when mediaType is "tv"');
+        }
         const payload: UpdateRequestPayload = {
           mediaType: args.mediaType,
         };

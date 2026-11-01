@@ -70,6 +70,30 @@ describe('loadConfig', () => {
     );
   });
 
+  it.each(['localhost:8989', 'http:8989', 'https:host:8989', 'ftp://h'])('rejects a url without http:// or https://: %s', (url) => {
+    const load = () => loadConfig({ SONARR_URL: url, SONARR_API_KEY: 'k' });
+    expect(load).toThrow(ConfigError);
+    expect(load).toThrow(/must start with http:\/\/ or https:\/\//);
+  });
+
+  it.each(['HTTPS://h:8989/sonarr', 'http://[::1]:8989'])('accepts %s', (url) => {
+    expect(loadConfig({ SONARR_URL: url, SONARR_API_KEY: 'k' }).sonarr).toBeDefined();
+  });
+
+  it.each(['http://h/sonarr?x=1', 'http://h/#a', 'http://h/sonarr?', 'http://h/#'])(
+    'rejects a url with a query string or fragment: %s',
+    (url) => {
+      expect(() => loadConfig({ SONARR_URL: url, SONARR_API_KEY: 'k' })).toThrow(
+        /must not contain a query string or fragment/,
+      );
+    },
+  );
+
+  it('accepts a url with a path and trims its trailing slash', () => {
+    const config = loadConfig({ SONARR_URL: 'http://h:8989/sonarr/', SONARR_API_KEY: 'k' });
+    expect(config.sonarr?.baseUrl).toBe('http://h:8989/sonarr');
+  });
+
   it('does not echo an unparseable url', () => {
     const load = () => loadConfig({ SONARR_URL: 'http://u:p4ss@h:99999', SONARR_API_KEY: 'k' });
     expect(load).toThrow(/SONARR_URL is not a valid URL/);
@@ -119,5 +143,13 @@ describe('loadConfig', () => {
     });
     expect(config.radarr?.apiKey).toBe('radarr-key');
     expect(config.prowlarr?.baseUrl).toBe('http://localhost:9696');
+  });
+
+  it.each(['0x50', '3000.0', '1e3', '80 0', '+80'])('rejects a port that is not a plain integer: %s', (port) => {
+    expect(() => loadConfig({ ...base, SERVARR_MCP_PORT: port })).toThrow(ConfigError);
+  });
+
+  it('accepts a plain integer port', () => {
+    expect(loadConfig({ ...base, SERVARR_MCP_PORT: '8080' }).port).toBe(8080);
   });
 });

@@ -1206,4 +1206,28 @@ describe('Sonarr file moves are queued, not synchronous', () => {
     expect(deleteEpisodeFile).toHaveBeenCalledTimes(1);
     expect(deleteEpisodeFile).toHaveBeenCalledWith(9);
   });
+
+  it('list_series rootFolder also matches a subfolder of a root, like radarr_list_movies', async () => {
+    const show = (id: number, path: string) => ({
+      id,
+      title: `Show ${id}`,
+      rootFolderPath: '/media/tv',
+      path,
+      monitored: true,
+      qualityProfileId: 1,
+      tags: [],
+    });
+    const listSeries = vi.fn().mockResolvedValue([show(1, '/media/tv/Anime/Show'), show(2, '/media/tv/Other')]);
+    const get = toolsFor({ listSeries });
+
+    const sub = (await get('sonarr_list_series').handler({ rootFolder: '/media/tv/Anime' })) as unknown as {
+      series: { id: number }[];
+    };
+    expect(sub.series.map((s) => s.id)).toEqual([1]);
+
+    const root = (await get('sonarr_list_series').handler({ rootFolder: '/media/tv' })) as unknown as {
+      series: { id: number }[];
+    };
+    expect(root.series.map((s) => s.id)).toEqual([1, 2]);
+  });
 });

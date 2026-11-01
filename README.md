@@ -82,6 +82,10 @@ The server reads configuration from environment variables. Each product is **ind
 | `SERVARR_MCP_PORT` | `3000` | No | Port for HTTP transport (default `3000`) |
 | `SERVARR_MCP_TOKEN` | `a-long-random-secret` | Required if transport is `http` or `both` | Bearer token for HTTP client authentication |
 
+Each `*_URL` must start with `http://` or `https://` and carry no credentials, query string or fragment; the server refuses to start otherwise. `SERVARR_MCP_PORT` must be a plain integer.
+
+**Self-signed or private-CA certificates.** If an arr serves HTTPS with a certificate your system doesn't trust, mount the CA certificate and set `NODE_EXTRA_CA_CERTS=/path/to/ca.pem` (in a container, mount the file and set the variable in its environment). Never set `NODE_TLS_REJECT_UNAUTHORIZED=0`: it turns off certificate checks for every connection, including the ones carrying your API keys.
+
 ### Example: Sonarr and Prowlarr only
 
 If you only want to use Sonarr and Prowlarr, set only these:
