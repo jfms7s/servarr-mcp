@@ -14,6 +14,8 @@ import {
   summarizeQualityProfile,
   summarizeQueueRecord,
   summarizeRelease,
+  summarizeRenamePreview,
+  summarizeUnmappedFolder,
 } from './shape.js';
 
 const COMMAND_NAMES = [
@@ -601,20 +603,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       inputSchema: {},
       handler: async () => {
         const rootFolders = await client.listRootFolders();
-        const result = [];
-        for (const rf of rootFolders) {
-          const unmapped = rf.unmappedFolders ?? [];
-          for (const folder of unmapped) {
-            result.push({
-              rootFolderId: rf.id,
-              rootFolderPath: rf.path,
-              folderName: folder.name,
-              folderPath: folder.path,
-              relativePath: folder.relativePath,
-            });
-          }
-        }
-        return result;
+        return rootFolders.flatMap((rf) => (rf.unmappedFolders ?? []).map((folder) => summarizeUnmappedFolder(rf, folder)));
       },
     }),
 
@@ -633,13 +622,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       handler: async ({ movieIds }) => {
         const previews = await client.renamePreview(movieIds);
         const MAX_PREVIEW = 100;
-        const shown = previews.slice(0, MAX_PREVIEW).map((p) => ({
-          id: p.id,
-          movieId: p.movieId,
-          movieFileId: p.movieFileId,
-          existingPath: p.existingPath,
-          newPath: p.newPath,
-        }));
+        const shown = previews.slice(0, MAX_PREVIEW).map(summarizeRenamePreview);
         return {
           total: previews.length,
           shown: shown.length,

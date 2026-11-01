@@ -29,7 +29,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
     defineTool({
       name: 'overseerr_search',
       description:
-        'Search Overseerr for movies, TV shows, and people by title. Each result\'s mediaInfo.status (when present) reports library/request state: 1 unknown, 2 pending, 3 processing, 4 partially available, 5 available, 6 deleted. Use the result id as mediaId for overseerr_create_request, or overseerr_get_movie/overseerr_get_tv for full details.',
+        'Search Overseerr for movies, TV shows, and people by title. Each result\'s mediaInfo.status (when present) reports library/request state: 1 unknown, 2 pending, 3 processing, 4 partially available, 5 available, 6 deleted. Use the result id as mediaId for overseerr_create_request, or overseerr_get_movie/overseerr_get_tv for more details.',
       inputSchema: {
         query: z.string().min(1).describe('Search term'),
         page: z.number().int().min(1).optional().describe('Page number, starting at 1'),
@@ -104,7 +104,8 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_movie',
-      description: 'Get full Overseerr/TMDB details for one movie, including its request/availability status.',
+      description: 'Get a summary of Overseerr/TMDB details for one movie: ids, titles, overview (truncated), tagline, release date, ' +
+        'runtime, status, poster/backdrop paths, vote average and count, genres, and its request/availability status (mediaInfo).',
       inputSchema: {
         movieId: z.number().int().describe('TMDB movie id'),
       },
@@ -113,7 +114,9 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_tv',
-      description: 'Get full Overseerr/TMDB details for one TV series, including its request/availability status.',
+      description: 'Get a summary of Overseerr/TMDB details for one TV series: ids, names, overview (truncated), tagline, first/last air ' +
+        'dates, status, episode and season counts, seasons, poster/backdrop paths, vote average and count, genres, and its ' +
+        'request/availability status (mediaInfo).',
       inputSchema: {
         tvId: z.number().int().describe('TMDB TV series id'),
       },

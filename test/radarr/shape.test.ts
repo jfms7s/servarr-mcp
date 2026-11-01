@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeMovie, summarizeQueueRecord } from '../../src/radarr/shape.js';
-import type { Movie, QueueRecord } from '../../src/radarr/types.js';
+import { summarizeMovie, summarizeQueueRecord, summarizeRenamePreview, summarizeUnmappedFolder } from '../../src/radarr/shape.js';
+import type { Movie, QueueRecord, RenameMovieResource } from '../../src/radarr/types.js';
 
 const movie = {
   id: 1,
@@ -70,5 +70,42 @@ describe('summarizeQueueRecord', () => {
       sizeleft: 50,
     } as QueueRecord);
     expect(summary.percentComplete).toBe(75);
+  });
+});
+
+describe('summarizeRenamePreview', () => {
+  it('keeps the ids and both paths, nothing else', () => {
+    const preview = {
+      id: 1,
+      movieId: 5,
+      movieFileId: 100,
+      existingPath: '/old/Dune.mkv',
+      newPath: '/new/Dune (2021).mkv',
+      extra: 'dropped',
+    } as unknown as RenameMovieResource;
+    expect(summarizeRenamePreview(preview)).toEqual({
+      id: 1,
+      movieId: 5,
+      movieFileId: 100,
+      existingPath: '/old/Dune.mkv',
+      newPath: '/new/Dune (2021).mkv',
+    });
+  });
+});
+
+describe('summarizeUnmappedFolder', () => {
+  it('flattens the folder with its root folder', () => {
+    expect(
+      summarizeUnmappedFolder(
+        { id: 3, path: '/movies', accessible: true },
+        { name: 'Dune', path: '/movies/Dune', relativePath: 'Dune' },
+      ),
+    ).toEqual({
+      rootFolderId: 3,
+      rootFolderPath: '/movies',
+      folderName: 'Dune',
+      folderPath: '/movies/Dune',
+      relativePath: 'Dune',
+    });
   });
 });

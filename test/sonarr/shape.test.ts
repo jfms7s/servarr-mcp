@@ -162,10 +162,12 @@ describe('summarizeUnmappedFolder', () => {
       relativePath: 'NewSeries',
     } as UnmappedFolder;
 
-    const summary = summarizeUnmappedFolder(folder);
-    expect(summary).toMatchObject({
-      name: 'NewSeries',
-      path: '/tv/NewSeries',
+    const summary = summarizeUnmappedFolder({ id: 2, path: '/tv', accessible: true }, folder);
+    expect(summary).toEqual({
+      rootFolderId: 2,
+      rootFolderPath: '/tv',
+      folderName: 'NewSeries',
+      folderPath: '/tv/NewSeries',
       relativePath: 'NewSeries',
     });
   });

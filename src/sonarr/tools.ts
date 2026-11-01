@@ -15,6 +15,7 @@ import {
   summarizeQueueRecord,
   summarizeRelease,
   summarizeRenamePreview,
+  summarizeUnmappedFolder,
   summarizeSeries,
 } from './shape.js';
 
@@ -636,20 +637,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       inputSchema: {},
       handler: async () => {
         const rootFolders = await client.listRootFolders();
-        const result = [];
-        for (const rf of rootFolders) {
-          const unmapped = rf.unmappedFolders ?? [];
-          for (const folder of unmapped) {
-            result.push({
-              rootFolderId: rf.id,
-              rootFolderPath: rf.path,
-              folderName: folder.name,
-              folderPath: folder.path,
-              relativePath: folder.relativePath,
-            });
-          }
-        }
-        return result;
+        return rootFolders.flatMap((rf) => (rf.unmappedFolders ?? []).map((folder) => summarizeUnmappedFolder(rf, folder)));
       },
     }),
 

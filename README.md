@@ -315,8 +315,8 @@ This server exposes 106 tools across the four products.
 | `overseerr_discover_movies` | Discover popular and upcoming movies from TMDB |
 | `overseerr_discover_tv` | Discover popular and upcoming TV shows from TMDB |
 | `overseerr_get_trending` | List currently trending movies and TV shows |
-| `overseerr_get_movie` | Get full Overseerr/TMDB details for one movie |
-| `overseerr_get_tv` | Get full Overseerr/TMDB details for one TV series |
+| `overseerr_get_movie` | Get a summary of Overseerr/TMDB details for one movie (titles, truncated overview, dates, runtime, votes, genres, request/availability status) |
+| `overseerr_get_tv` | Get a summary of Overseerr/TMDB details for one TV series (names, truncated overview, air dates, season/episode counts, votes, genres, request/availability status) |
 | `overseerr_get_movie_recommendations` | Get movies recommended based on a given movie |
 | `overseerr_get_similar_movies` | Get movies similar to a given movie |
 | `overseerr_get_tv_recommendations` | Get TV shows recommended based on a given show |
