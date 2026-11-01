@@ -16,6 +16,7 @@ import type {
   SearchResponse,
   ServiceProfile,
   TvDetails,
+  UpdateRequestPayload,
   UserListResponse,
 } from './types.js';
 
@@ -77,16 +78,6 @@ export interface OverseerrClient {
   getRadarrProfiles(radarrId: number): Promise<ServiceProfile[]>;
 }
 
-export interface UpdateRequestPayload {
-  mediaType: 'movie' | 'tv';
-  seasons?: number[];
-  is4k?: boolean;
-  serverId?: number;
-  profileId?: number;
-  rootFolder?: string;
-  languageProfileId?: number;
-  userId?: number;
-}
 
 export function createOverseerrClient(config: InstanceConfig): OverseerrClient {
   const http = createArrClient({

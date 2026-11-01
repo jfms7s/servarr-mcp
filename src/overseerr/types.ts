@@ -249,3 +249,14 @@ export interface ServiceProfile {
   id: number;
   name: string;
 }
+
+export interface UpdateRequestPayload {
+  mediaType: 'movie' | 'tv';
+  seasons?: number[];
+  is4k?: boolean;
+  serverId?: number;
+  profileId?: number;
+  rootFolder?: string;
+  languageProfileId?: number;
+  userId?: number;
+}

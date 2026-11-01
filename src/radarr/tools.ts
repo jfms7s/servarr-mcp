@@ -5,6 +5,7 @@ import { listWindow, page, pageOf } from '../arr/paging.js';
 import { isWithinRoot, normalizeTitle, rootFolderOf, relocatePath } from '../arr/paths.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { RadarrClient } from './client.js';
+import type { MovieEditorPayload } from './types.js';
 import {
   summarizeBlocklistRecord,
   summarizeCollection,
@@ -273,7 +274,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         assertMoveBatchSize(movieIds, moveFiles, 'radarr_bulk_edit_movies');
 
         // Build payload with only defined fields
-        const payload: Record<string, unknown> = { movieIds };
+        const payload: MovieEditorPayload = { movieIds };
 
         if (monitored !== undefined) payload.monitored = monitored;
         if (qualityProfileId !== undefined) payload.qualityProfileId = qualityProfileId;
@@ -283,7 +284,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         if (tags !== undefined) payload.tags = tags;
         if (applyTags !== undefined) payload.applyTags = applyTags;
 
-        const edit = () => client.bulkEditMovies(payload as unknown as Parameters<typeof client.bulkEditMovies>[0]);
+        const edit = () => client.bulkEditMovies(payload);
         const summarize = (result: Awaited<ReturnType<typeof edit>>) => ({
           updated: result.length,
           movies: result.map((m) => summarizeMovie(m, { overview: false })),
@@ -519,7 +520,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       name: 'radarr_get_command',
       effect: 'read',
       description:
-        'Poll the status of a background command launched by radarr_run_command or radarr_add_movie, or the ' +
+        'Poll the status of a background command launched by radarr_run_command or radarr_import_folder, or the ' +
         'moveCommandId returned by radarr_update_movie and radarr_bulk_edit_movies.',
       inputSchema: {
         commandId: z.number().int().describe('Command id'),
@@ -628,7 +629,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       effect: 'read',
       description:
         'Preview how files would be renamed without actually renaming them. ' +
-        'If the result contains hundreds of files, only the first 100 are shown but the total count is reported. ' +
+        'At most 100 previews are returned; `total` gives the full count. ' +
         'Useful to verify rename patterns before applying them.',
       inputSchema: {
         movieIds: z

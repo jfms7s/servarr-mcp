@@ -71,6 +71,11 @@ describe('summarizeQueueRecord', () => {
     } as QueueRecord);
     expect(summary.percentComplete).toBe(75);
   });
+
+  it('copies the movie id', () => {
+    const summary = summarizeQueueRecord({ id: 1, movieId: 42, title: 't', status: 's', size: 0, sizeleft: 0 } as QueueRecord);
+    expect(summary.movieId).toBe(42);
+  });
 });
 
 describe('summarizeRenamePreview', () => {

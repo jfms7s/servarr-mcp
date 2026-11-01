@@ -176,7 +176,6 @@ export interface RenameEpisodeResource {
 export interface SeriesBulkEditPayload {
   seriesIds: number[];
   monitored?: boolean;
-  monitorNewItems?: string;
   qualityProfileId?: number;
   seriesType?: string;
   seasonFolder?: boolean;
