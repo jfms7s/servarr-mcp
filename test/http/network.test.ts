@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DEFAULT_TIMEOUT_MS, createArrClient } from '../../src/http/client.js';
 import { ArrApiError } from '../../src/http/errors.js';
+import { withRequestSignal } from '../../src/http/cancellation.js';
 
 describe('createArrClient network failures', () => {
   it('provides OS-level error detail for a real connection failure', async () => {
@@ -119,6 +120,27 @@ describe('createArrClient timeouts', () => {
     expect(error.status).toBeUndefined();
     expect(error.detail).toContain('no response within 0.2 s');
     expect(Date.now() - started).toBeLessThan(2_000);
+  });
+
+  it('aborts the upstream request when the MCP client cancels the call', async () => {
+    const baseUrl = await listen(net.createServer(() => {}));
+    const controller = new AbortController();
+    const started = Date.now();
+    setTimeout(() => controller.abort(), 50);
+    const error = (await withRequestSignal(controller.signal, () =>
+      client(baseUrl, 10_000).get('/series'),
+    ).catch((e: unknown) => e)) as ArrApiError;
+    expect(error).toBeInstanceOf(ArrApiError);
+    expect(error.detail).toBe('request cancelled by the client');
+    expect(Date.now() - started).toBeLessThan(2_000);
+  });
+
+  it('still reports a timeout, not a cancellation, inside an unaborted request scope', async () => {
+    const baseUrl = await listen(net.createServer(() => {}));
+    const error = (await withRequestSignal(new AbortController().signal, () =>
+      client(baseUrl, 100).get('/series'),
+    ).catch((e: unknown) => e)) as ArrApiError;
+    expect(error.detail).toContain('no response within 0.1 s');
   });
 
   it('gives up when the body stalls after the headers', async () => {

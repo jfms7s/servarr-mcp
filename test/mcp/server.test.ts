@@ -3,6 +3,7 @@ import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ArrApiError } from '../../src/http/errors.js';
+import { currentRequestSignal } from '../../src/http/cancellation.js';
 import { createServer, toolResult } from '../../src/mcp/server.js';
 import { defineTool } from '../../src/mcp/types.js';
 import { buildTools } from '../../src/tools.js';
@@ -102,6 +103,27 @@ describe('createServer', () => {
     expect(result.content).toEqual([
       { type: 'text', text: 'Sonarr returned 404 for GET /api/v3/series/1: series not found' },
     ]);
+  });
+
+  it('passes the call\'s abort signal to the handler and into the request scope', async () => {
+    let received: AbortSignal | undefined;
+    let scoped: AbortSignal | undefined;
+    const client = await connect([
+      defineTool({
+        name: 'signal_probe',
+        effect: 'read',
+        description: 'Records its signal',
+        inputSchema: {},
+        handler: async (_args, context) => {
+          received = context?.signal;
+          scoped = currentRequestSignal();
+          return {};
+        },
+      }),
+    ]);
+    await client.callTool({ name: 'signal_probe', arguments: {} });
+    expect(received).toBeInstanceOf(AbortSignal);
+    expect(scoped).toBe(received);
   });
 
   it('rejects arguments that do not match the input schema', async () => {

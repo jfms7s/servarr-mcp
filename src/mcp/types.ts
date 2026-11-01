@@ -15,12 +15,18 @@ export interface ToolAnnotations {
   destructiveHint: boolean;
 }
 
+/** Per-call context passed to a tool handler. */
+export interface ToolContext {
+  /** Fires when the MCP client cancels the call. Upstream fetches already honour it. */
+  signal?: AbortSignal;
+}
+
 export interface ToolDefinition<Shape extends ZodRawShape = ZodRawShape> {
   name: string;
   description: string;
   effect: ToolEffect;
   inputSchema: Shape;
-  handler: (args: z.infer<z.ZodObject<Shape>>) => Promise<unknown>;
+  handler: (args: z.infer<z.ZodObject<Shape>>, context?: ToolContext) => Promise<unknown>;
 }
 
 export function annotationsFor(effect: ToolEffect): ToolAnnotations {

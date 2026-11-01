@@ -25,7 +25,7 @@ async function main(): Promise<void> {
     const http = await startHttp(() => createServer(tools), {
       port: config.port,
       host: config.host,
-      token: config.token as string,
+      token: config.token,
     });
     console.error(`servarr-mcp: http transport listening on ${config.host}:${config.port}`);
 

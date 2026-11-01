@@ -61,7 +61,10 @@ export async function startHttp(
       });
       await server.connect(transport);
       await transport.handleRequest(request, response, request.body);
-    })().catch(() => {
+    })().catch((error: unknown) => {
+      // Tool errors never get here (createServer turns them into results), so this is the
+      // transport itself failing; without the log a 500 would leave no trace.
+      console.error('servarr-mcp: /mcp request failed:', error);
       if (!response.headersSent) response.status(500).json({ error: 'internal error' });
     });
   });

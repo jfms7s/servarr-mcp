@@ -5,16 +5,19 @@ export interface InstanceConfig {
 
 export type TransportMode = 'stdio' | 'http' | 'both';
 
-export interface ServarrConfig {
+interface BaseConfig {
   sonarr?: InstanceConfig;
   radarr?: InstanceConfig;
   prowlarr?: InstanceConfig;
   overseerr?: InstanceConfig;
-  transport: TransportMode;
   port: number;
   host: string;
-  token?: string;
 }
+
+/** The HTTP transport cannot be configured without its bearer token. */
+export type ServarrConfig =
+  | (BaseConfig & { transport: 'stdio'; token?: string })
+  | (BaseConfig & { transport: 'http' | 'both'; token: string });
 
 /** Shorter bearer tokens are allowed, with a startup warning (see weakTokenWarning). */
 export const MIN_TOKEN_LENGTH = 32;
@@ -125,20 +128,20 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServarrConfig 
   const transport = readTransport(env);
   const token = env.SERVARR_MCP_TOKEN?.trim() || undefined;
 
-  if ((transport === 'http' || transport === 'both') && !token) {
-    throw new ConfigError(
-      `SERVARR_MCP_TOKEN is required when SERVARR_MCP_TRANSPORT is "${transport}"`,
-    );
-  }
-
-  return {
+  const base: BaseConfig = {
     sonarr,
     radarr,
     prowlarr,
     overseerr,
-    transport,
     port: readPort(env),
     host: readHost(env),
-    token,
   };
+
+  if (transport === 'stdio') return { ...base, transport, token };
+  if (!token) {
+    throw new ConfigError(
+      `SERVARR_MCP_TOKEN is required when SERVARR_MCP_TRANSPORT is "${transport}"`,
+    );
+  }
+  return { ...base, transport, token };
 }
