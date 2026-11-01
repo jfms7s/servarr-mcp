@@ -28,7 +28,19 @@ function safeBaseUrl(baseUrl: string): string | undefined {
 
 // scheme://user:pass@ -> scheme://. The userinfo runs up to the last @ before
 // the host ends (a slash, ?, # or whitespace), so a raw @ in a password is covered.
-const USERINFO = /\b([a-z][a-z0-9+.-]*:\/\/)[^/\s?#]*@/gi;
+// Quotes and angle brackets also end it, so a URL in JSON or HTML is not joined
+// to an email address further along.
+const USERINFO = /\b([a-z][a-z0-9+.-]*:\/\/)[^/\s?#"'`<>]*@/gi;
+
+/** True when a URL carries a username or password. An unparseable URL is not judged here. */
+export function hasUserinfo(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.username !== '' || parsed.password !== '';
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Removes the userinfo from every URL in free text. Detail strings come from

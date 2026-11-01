@@ -44,6 +44,21 @@ describe('createArrClient with credentials in the base url', () => {
     expect(error.message).not.toContain('admin');
     expect(error.detail).not.toContain('admin');
   });
+
+  it('never hands a credentialed base url to fetch, whatever the password holds', async () => {
+    // A space ends a URL in free text, so only refusing up front keeps this one out.
+    const client = createArrClient({
+      product: 'Sonarr',
+      baseUrl: 'http://u:pa ss@127.0.0.1:1',
+      apiKey: 'test-key',
+      apiBase: '/api/v3',
+    });
+
+    const error = (await client.get('/series').catch((e: unknown) => e)) as ArrApiError;
+    expect(error).toBeInstanceOf(ArrApiError);
+    expect(error.detail).toMatch(/base URL contains credentials/);
+    expect(`${error.message} ${error.detail}`).not.toMatch(/pa ss|u:pa/);
+  });
 });
 
 describe('createArrClient timeouts', () => {

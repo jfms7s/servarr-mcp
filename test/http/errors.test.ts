@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ArrApiError, describeError, stripUserinfo } from '../../src/http/errors.js';
+import { ArrApiError, describeError, hasUserinfo, stripUserinfo } from '../../src/http/errors.js';
 
 describe('ArrApiError', () => {
   it('formats a message with status, method and path', () => {
@@ -109,6 +109,11 @@ describe('stripUserinfo', () => {
     expect(stripUserinfo('http://u:p@ss@h/x')).toBe('http://h/x');
   });
 
+  it('does not join a quoted URL to a later email address', () => {
+    const json = '{"a":"http://h:8989","email":"x@y.z"}';
+    expect(stripUserinfo(json)).toBe(json);
+  });
+
   it('leaves URLs without userinfo and plain emails alone', () => {
     const text = 'http://h:8989/a?x=b@c see admin@example.com';
     expect(stripUserinfo(text)).toBe(text);
@@ -125,5 +130,14 @@ describe('ArrApiError detail', () => {
     });
     expect(error.detail).toBe('cannot use http://h/api/v3/series');
     expect(error.message).not.toContain('hunter2');
+  });
+});
+
+describe('hasUserinfo', () => {
+  it('detects a username or password', () => {
+    expect(hasUserinfo('http://u:p@h')).toBe(true);
+    expect(hasUserinfo('http://u@h')).toBe(true);
+    expect(hasUserinfo('http://h:8989')).toBe(false);
+    expect(hasUserinfo('not a url')).toBe(false);
   });
 });

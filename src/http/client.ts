@@ -1,4 +1,4 @@
-import { ArrApiError } from './errors.js';
+import { ArrApiError, hasUserinfo } from './errors.js';
 
 export type QueryValue = string | number | boolean | undefined | null | Array<string | number>;
 export type QueryParams = Record<string, QueryValue>;
@@ -92,6 +92,10 @@ function isTimeout(error: unknown): boolean {
 export function createArrClient(options: ArrClientOptions): ArrHttpClient {
   const { product, baseUrl, apiKey, apiBase } = options;
   const defaultTimeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  // fetch refuses such a URL and quotes it whole in its error, and no pattern over
+  // that text can be trusted with every password. loadConfig rejects it already;
+  // this keeps a client built any other way from ever handing it to fetch.
+  const credentialedBaseUrl = hasUserinfo(baseUrl);
 
   async function request<T>(
     method: string,
@@ -116,6 +120,16 @@ export function createArrClient(options: ArrClientOptions): ArrHttpClient {
 
     const headers: Record<string, string> = { 'X-Api-Key': apiKey, Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+    if (credentialedBaseUrl) {
+      throw new ArrApiError({
+        product,
+        baseUrl,
+        method,
+        path: apiPath,
+        detail: 'the base URL contains credentials (user:password@); use the API key only',
+      });
+    }
 
     let response: Response;
     try {
