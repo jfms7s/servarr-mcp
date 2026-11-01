@@ -150,6 +150,7 @@ describe('real tool schemas through createServer', () => {
   const instance = { baseUrl: 'http://127.0.0.1:1', apiKey: 'k' };
   const all = buildTools({
     transport: 'stdio',
+    host: '127.0.0.1',
     port: 3000,
     sonarr: instance,
     radarr: instance,

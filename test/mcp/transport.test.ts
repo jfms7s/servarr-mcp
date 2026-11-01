@@ -30,7 +30,7 @@ describe('startHttp integration', () => {
       token,
     });
 
-    const url = new URL(`http://localhost:${handle.port}/mcp`);
+    const url = new URL(`http://127.0.0.1:${handle.port}/mcp`);
     const transport = new StreamableHTTPClientTransport(url, {
       requestInit: {
         headers: { Authorization: `Bearer ${token}` },
@@ -73,7 +73,7 @@ describe('startHttp integration', () => {
       token,
     });
 
-    const url = new URL(`http://localhost:${handle.port}/mcp`);
+    const url = new URL(`http://127.0.0.1:${handle.port}/mcp`);
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -95,7 +95,7 @@ describe('startHttp integration', () => {
 
     // Kubernetes probes cannot present a bearer token, and /mcp answers an
     // unauthenticated probe with 401 -- which a probe reads as failure.
-    const response = await fetch(`http://localhost:${handle.port}/healthz`);
+    const response = await fetch(`http://127.0.0.1:${handle.port}/healthz`);
 
     expect(response.status).toBe(200);
     const body = await response.text();
@@ -110,7 +110,7 @@ describe('startHttp integration', () => {
       token,
     });
 
-    const url = new URL(`http://localhost:${handle.port}/mcp`);
+    const url = new URL(`http://127.0.0.1:${handle.port}/mcp`);
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -129,7 +129,7 @@ describe('startHttp integration', () => {
   it('answers a malformed JSON body with a JSON-RPC parse error, not an HTML stack trace', async () => {
     const token = 'test-secret-token';
     handle = await startHttp(() => createServer([testTool]), { port: 0, token });
-    const url = `http://localhost:${handle.port}/mcp`;
+    const url = `http://127.0.0.1:${handle.port}/mcp`;
 
     const response = await fetch(url, {
       method: 'POST',
@@ -153,7 +153,7 @@ describe('startHttp integration', () => {
     const token = 'test-secret-token';
     handle = await startHttp(() => createServer([testTool]), { port: 0, token });
 
-    const response = await fetch(`http://localhost:${handle.port}/mcp`, {
+    const response = await fetch(`http://127.0.0.1:${handle.port}/mcp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ jsonrpc: '2.0', method: 'x', id: 1, params: { pad: 'a'.repeat(200_000) } }),

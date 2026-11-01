@@ -35,7 +35,7 @@ export interface HttpHandle {
 
 export async function startHttp(
   createMcpServer: () => McpServer,
-  options: { port: number; token: string },
+  options: { port: number; host?: string; token: string },
 ): Promise<HttpHandle> {
   const app = express();
 
@@ -67,7 +67,7 @@ export async function startHttp(
   // After the /mcp route: bearerAuth runs first, so an unauthenticated malformed body still gets 401.
   app.use('/mcp', bodyParserError);
 
-  const listener = app.listen(options.port);
+  const listener = app.listen(options.port, options.host ?? '127.0.0.1');
   await new Promise<void>((resolve, reject) => {
     listener.once('listening', resolve);
     listener.once('error', reject);

@@ -12,8 +12,12 @@ export interface ServarrConfig {
   overseerr?: InstanceConfig;
   transport: TransportMode;
   port: number;
+  host: string;
   token?: string;
 }
+
+/** Shorter bearer tokens are allowed, with a startup warning (see weakTokenWarning). */
+export const MIN_TOKEN_LENGTH = 32;
 
 export class ConfigError extends Error {
   constructor(message: string) {
@@ -85,6 +89,25 @@ function readPort(env: NodeJS.ProcessEnv): number {
   return port;
 }
 
+function readHost(env: NodeJS.ProcessEnv): string {
+  // Loopback unless told otherwise: run from source, the HTTP transport should not be
+  // reachable from the LAN by accident. The image sets 0.0.0.0 so a Service can reach the pod.
+  return env.SERVARR_MCP_HOST?.trim() || '127.0.0.1';
+}
+
+/**
+ * A warning for a bearer token shorter than MIN_TOKEN_LENGTH, or undefined. A warning rather
+ * than a startup failure so that an existing deployment with a shorter token keeps starting;
+ * the message never echoes the token.
+ */
+export function weakTokenWarning(token: string | undefined): string | undefined {
+  if (token === undefined || token.length >= MIN_TOKEN_LENGTH) return undefined;
+  return (
+    `SERVARR_MCP_TOKEN is ${token.length} characters; use at least ${MIN_TOKEN_LENGTH} ` +
+    '(for example `openssl rand -hex 32`)'
+  );
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServarrConfig {
   const sonarr = readInstance(env, 'Sonarr', 'SONARR');
   const radarr = readInstance(env, 'Radarr', 'RADARR');
@@ -107,5 +130,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServarrConfig 
     );
   }
 
-  return { sonarr, radarr, prowlarr, overseerr, transport, port: readPort(env), token };
+  return {
+    sonarr,
+    radarr,
+    prowlarr,
+    overseerr,
+    transport,
+    port: readPort(env),
+    host: readHost(env),
+    token,
+  };
 }

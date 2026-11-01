@@ -14,6 +14,10 @@ describe('isAuthorized', () => {
     expect(isAuthorized('Bearer short', 'a-much-longer-secret')).toBe(false);
   });
 
+  it('rejects a longer token that starts with the right one', () => {
+    expect(isAuthorized('Bearer s3cret-and-more', 's3cret')).toBe(false);
+  });
+
   it('rejects a missing header', () => {
     expect(isAuthorized(undefined, 's3cret')).toBe(false);
   });
