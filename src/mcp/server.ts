@@ -21,7 +21,7 @@ export function toolResult(
   value: unknown,
   toolName?: string,
 ): { content: Array<{ type: 'text'; text: string }>; isError?: true } {
-  const text = value === undefined ? 'Success.' : JSON.stringify(value, null, 2);
+  const text = value === undefined ? 'Success.' : JSON.stringify(value);
   if (text.length > MAX_RESULT_CHARS) {
     const subject = toolName ? `${toolName} result` : 'Result';
     return {

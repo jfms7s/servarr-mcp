@@ -46,11 +46,60 @@ describe('createRadarrTools', () => {
     expect(result.movies).toEqual([expect.objectContaining({ id: 1, title: 'Dune' })]);
   });
 
-  it('returns the full record from get_movie', async () => {
-    const getMovie = vi.fn().mockResolvedValue({ id: 4, title: 'Arrival', path: '/movies' });
+  it('summarises get_movie by default and returns the raw record with full=true', async () => {
+    const raw = {
+      ...movie,
+      id: 4,
+      title: 'Arrival',
+      hasFile: true,
+      rootFolderPath: '/movies',
+      added: '2020-01-01T00:00:00Z',
+      minimumAvailability: 'released',
+      images: [{ coverType: 'poster', url: '/poster.jpg' }],
+      alternateTitles: [{ title: 'Story of Your Life' }],
+      ratings: { imdb: { value: 7.9, votes: 1 } },
+      movieFile: {
+        id: 9,
+        movieId: 4,
+        relativePath: 'Arrival.mkv',
+        path: '/movies/Arrival/Arrival.mkv',
+        size: 456,
+        dateAdded: '2020-01-02T00:00:00Z',
+        quality: { quality: { id: 7, name: 'Bluray-1080p' } },
+        mediaInfo: { videoCodec: 'x264' },
+      },
+    };
+    const getMovie = vi.fn().mockResolvedValue(raw);
     const get = toolsFor({ getMovie });
-    await expect(get('radarr_get_movie').handler({ movieId: 4 })).resolves.toMatchObject({ id: 4 });
+
+    const summary = (await get('radarr_get_movie').handler({ movieId: 4 })) as Record<string, unknown>;
     expect(getMovie).toHaveBeenCalledWith(4);
+    expect(summary).not.toHaveProperty('images');
+    expect(summary).not.toHaveProperty('alternateTitles');
+    expect(summary).not.toHaveProperty('ratings');
+    expect(JSON.stringify(summary)).not.toContain('mediaInfo');
+    expect(summary).toMatchObject({
+      id: 4,
+      rootFolderPath: '/movies',
+      minimumAvailability: 'released',
+      movieFile: { id: 9, relativePath: 'Arrival.mkv', size: 456, quality: 'Bluray-1080p' },
+    });
+
+    const full = (await get('radarr_get_movie').handler({ movieId: 4, full: true })) as Record<string, unknown>;
+    expect(full).toBe(raw);
+    expect(full).toHaveProperty('images');
+    expect(full).toHaveProperty('alternateTitles');
+  });
+
+  it('shapes root folders with an unmapped folder count', async () => {
+    const get = toolsFor({
+      listRootFolders: vi.fn().mockResolvedValue([
+        { id: 1, path: '/movies', accessible: true, freeSpace: 5, unmappedFolders: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] },
+      ]),
+    });
+    const result = (await get('radarr_list_root_folders').handler({})) as Array<Record<string, unknown>>;
+    expect(result).toEqual([{ id: 1, path: '/movies', accessible: true, freeSpace: 5, unmappedFolderCount: 3 }]);
+    expect(result[0]).not.toHaveProperty('unmappedFolders');
   });
 
   it('maps searchForMovie into addOptions', async () => {

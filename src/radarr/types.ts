@@ -31,6 +31,8 @@ export interface Movie {
   ratings?: Record<string, { value?: number; votes?: number }>;
   genres?: string[];
   originalLanguage?: Language;
+  /** Present on GET /movie/{id} when the movie has a file. */
+  movieFile?: MovieFile;
 }
 
 export interface AddMoviePayload {

@@ -58,10 +58,10 @@ describe('createServer', () => {
     expect(byName.sonarr_delete_thing).toMatchObject({ readOnlyHint: false, destructiveHint: true });
   });
 
-  it('returns the handler result as pretty-printed json text', async () => {
+  it('returns the handler result as compact json text', async () => {
     const client = await connect([echoTool]);
     const result = await client.callTool({ name: 'sonarr_echo', arguments: { seriesId: 3 } });
-    expect(result.content).toEqual([{ type: 'text', text: JSON.stringify({ seriesId: 3 }, null, 2) }]);
+    expect(result.content).toEqual([{ type: 'text', text: '{"seriesId":3}' }]);
     expect(result.isError).toBeFalsy();
   });
 
@@ -134,17 +134,16 @@ describe('createServer', () => {
 });
 
 describe('toolResult', () => {
-  it('returns small values unchanged as pretty-printed json', () => {
-    const value = { a: 1, b: ['x'] };
-    const result = toolResult(value);
-    expect(result).toEqual({ content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] });
+  it('returns small values unchanged as compact json', () => {
+    const result = toolResult({ a: [1, 2] });
+    expect(result).toEqual({ content: [{ type: 'text', text: '{"a":[1,2]}' }] });
     expect(result).not.toHaveProperty('isError');
   });
 
   it('returns an error instead of a result over 50,000 characters', () => {
     const result = toolResult({ blob: 'x'.repeat(60_000) });
     expect(result.isError).toBe(true);
-    expect(result.content[0]?.text).toMatch(/^Result too large \(60016 characters, limit 50000\)/);
+    expect(result.content[0]?.text).toMatch(/^Result too large \(60011 characters, limit 50000\)/);
     expect(result.content[0]?.text).toContain('limit/offset');
   });
 

@@ -80,4 +80,37 @@ describe('createProwlarrTools', () => {
     expect(getIndexer).toHaveBeenCalledWith(3);
     expect(testIndexer).toHaveBeenCalledWith(indexerRecord);
   });
+
+  it('shapes get_indexer, dropping field UI metadata', async () => {
+    const get = toolsFor({
+      getIndexer: vi.fn().mockResolvedValue({
+        id: 3,
+        name: 'Nyaa',
+        protocol: 'torrent',
+        enable: true,
+        priority: 25,
+        privacy: 'public',
+        appProfileId: 1,
+        tags: [2],
+        capabilities: { categories: [{ id: 1, name: 'Anime' }, { id: 2, name: 'TV' }] },
+        fields: [
+          { name: 'baseUrl', label: 'Base Url', helpText: 'Pick one', value: 'https://nyaa.si', selectOptions: [{ value: 1 }] },
+        ],
+      }),
+    });
+    const result = await get('prowlarr_get_indexer').handler({ indexerId: 3 });
+    expect(result).toEqual({
+      id: 3,
+      name: 'Nyaa',
+      protocol: 'torrent',
+      enable: true,
+      priority: 25,
+      privacy: 'public',
+      appProfileId: 1,
+      tags: [2],
+      categoryCount: 2,
+      fields: [{ name: 'baseUrl', value: 'https://nyaa.si' }],
+    });
+    expect(JSON.stringify(result)).not.toMatch(/label|helpText|selectOptions/);
+  });
 });

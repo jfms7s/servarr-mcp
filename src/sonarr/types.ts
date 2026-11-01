@@ -58,6 +58,8 @@ export interface Episode {
   monitored: boolean;
   episodeFileId?: number;
   series?: Series;
+  /** Present on GET /episode/{id} when the episode has a file. */
+  episodeFile?: EpisodeFile;
 }
 
 export interface EpisodeFile {

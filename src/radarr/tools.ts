@@ -10,6 +10,7 @@ import {
   summarizeCollection,
   summarizeHistoryRecord,
   summarizeMovie,
+  summarizeMovieDetail,
   summarizeMovieFile,
   summarizeQualityProfile,
   summarizeQueueRecord,
@@ -17,6 +18,7 @@ import {
   summarizeRenamePreview,
   summarizeUnmappedFolder,
 } from './shape.js';
+import { summarizeRootFolder } from '../arr/shape.js';
 
 const COMMAND_NAMES = [
   'MoviesSearch',
@@ -103,9 +105,17 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
     defineTool({
       name: 'radarr_get_movie',
       effect: 'read',
-      description: 'Get the full Radarr record for one movie.',
-      inputSchema: { movieId: z.number().int().describe('Radarr movie id') },
-      handler: ({ movieId }) => client.getMovie(movieId),
+      description:
+        'Get one Radarr movie: the list summary plus root folder, added date, minimum availability and ' +
+        'its file (id, relative path, size, quality) when it has one. full=true returns the raw Radarr record.',
+      inputSchema: {
+        movieId: z.number().int().describe('Radarr movie id'),
+        full: z.boolean().optional().describe('Return the raw Radarr record instead of the summary (default false)'),
+      },
+      handler: async ({ movieId, full }) => {
+        const movie = await client.getMovie(movieId);
+        return full ? movie : summarizeMovieDetail(movie);
+      },
     }),
 
     defineTool({
@@ -306,8 +316,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       handler: async ({ movieId, deleteFiles, confirmDeleteFiles, addImportExclusion }) => {
         // Guard against destructive operations without confirmation
         if (deleteFiles && !confirmDeleteFiles) {
-          const movie = await client.getMovie(movieId);
-          const files = await client.listMovieFiles(movieId);
+          const [movie, files] = await Promise.all([client.getMovie(movieId), client.listMovieFiles(movieId)]);
           return {
             wouldDelete: {
               title: movie.title,
@@ -732,9 +741,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       name: 'radarr_list_root_folders',
       effect: 'read',
       description:
-        'List configured root folders where movies are stored. Use these paths in radarr_add_movie.',
+        'List configured root folders where movies are stored (id, path, accessible, free space, ' +
+        'unmapped folder count). Use these paths in radarr_add_movie; use radarr_list_unmapped_folders for the folders themselves.',
       inputSchema: {},
-      handler: () => client.listRootFolders(),
+      handler: async () => (await client.listRootFolders()).map(summarizeRootFolder),
     }),
 
     defineTool({
