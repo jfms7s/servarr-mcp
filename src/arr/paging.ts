@@ -6,6 +6,12 @@ import { z } from 'zod';
 
 export const DEFAULT_LIST_LIMIT = 100;
 
+/** Server-side paging input for the arr endpoints that page themselves (history, wanted, blocklist). */
+export const page = {
+  page: z.number().int().min(1).optional().describe('Page number, starting at 1'),
+  pageSize: z.number().int().min(1).max(200).optional().describe('Records per page (default 20)'),
+};
+
 export const listWindow = {
   limit: z
     .number()

@@ -1,9 +1,4 @@
-export interface PagedResponse<T> {
-  page: number;
-  pageSize: number;
-  totalRecords: number;
-  records: T[];
-}
+export type { HealthCheck, PagedResponse } from '../arr/types.js';
 
 export interface Release {
   guid: string;
@@ -101,9 +96,3 @@ export interface SystemStatus {
   startTime?: string;
 }
 
-export interface HealthCheck {
-  source: string;
-  type: string;
-  message: string;
-  wikiUrl?: string;
-}
