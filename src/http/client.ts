@@ -7,7 +7,7 @@ export type QueryParams = Record<string, QueryValue>;
 export const DEFAULT_TIMEOUT_MS = 30_000;
 /** Release and indexer searches fan out to every indexer, so they get longer. */
 export const SEARCH_TIMEOUT_MS = 90_000;
-/** Bulk editor PUTs can move many files before answering. */
+/** Bulk editor PUTs answer with every edited record, which takes a while for a large batch. */
 export const EDITOR_TIMEOUT_MS = 120_000;
 
 export interface RequestOptions {

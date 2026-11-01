@@ -99,6 +99,8 @@ export interface SonarrClient {
   getRenamePreview(seriesId: number, seasonNumber?: number): Promise<RenameEpisodeResource[]>;
   runCommand(payload: CommandPayload): Promise<CommandResource>;
   getCommand(id: number): Promise<CommandResource>;
+  /** Commands the arr still holds: queued, running and recently finished. */
+  listCommands(): Promise<CommandResource[]>;
   listQualityProfiles(): Promise<QualityProfile[]>;
   listRootFolders(): Promise<RootFolder[]>;
   listTags(): Promise<Tag[]>;
@@ -152,6 +154,7 @@ export function createSonarrClient(config: InstanceConfig): SonarrClient {
       const run = () => http.post<CommandResource>('/command', payload);
       return changesLibrary(payload.name) ? write(run) : run();
     },
+    listCommands: () => http.get('/command'),
     getCommand: async (id) => {
       const command = await http.get<CommandResource>(`/command/${id}`);
       // Commands run in the background, so the library changes when they finish, not

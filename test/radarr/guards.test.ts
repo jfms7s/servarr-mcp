@@ -9,7 +9,11 @@ import { createRadarrTools } from '../../src/radarr/tools.js';
 // request reaches the server at all, and what it carries when it does.
 
 const server = setupServer();
+// The command queue the file-moving tools read before and after a move; empty here.
+const commandHandler = () => http.get(`${base}/command`, () => HttpResponse.json([]));
+const commandList = { method: 'GET', path: '/api/v3/command', query: {} };
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+beforeEach(() => server.use(commandHandler()));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
@@ -127,7 +131,10 @@ describe('Radarr root-folder changes require an explicit moveFiles', () => {
     await call('radarr_update_movie', { movieId: 3, rootFolderPath: '/archive', moveFiles });
     expect(wire).toEqual([
       { method: 'GET', path: '/api/v3/movie/3', query: {} },
+      // A file move is queued in the background, so the command queue is read around the PUT.
+      ...(moveFiles ? [commandList] : []),
       { method: 'PUT', path: '/api/v3/movie/3', query: { moveFiles: String(moveFiles) } },
+      ...(moveFiles ? [commandList] : []),
     ]);
   });
 
@@ -162,7 +169,8 @@ describe('Radarr root-folder changes require an explicit moveFiles', () => {
         rootFolderPath: '/archive',
         moveFiles,
       });
-      expect(wire).toEqual([{ method: 'PUT', path: '/api/v3/movie/editor', query: {} }]);
+      const editor = { method: 'PUT', path: '/api/v3/movie/editor', query: {} };
+      expect(wire).toEqual(moveFiles ? [commandList, editor, commandList] : [editor]);
       expect(bodies).toEqual([{ movieIds: [1, 2], rootFolderPath: '/archive', moveFiles }]);
     },
   );

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { assertMoveBatchSize, assertMoveFilesChosen, MAX_MOVE_BATCH } from '../mcp/bulk.js';
+import { assertMoveBatchSize, assertMoveFilesChosen, MAX_MOVE_BATCH, trackMoveCommand } from '../mcp/bulk.js';
 import { CACHED_LIBRARY_NOTE, refreshInput } from '../mcp/library.js';
 import { listWindow, pageOf } from '../mcp/paging.js';
 import { isWithinRoot, normalizeTitle } from '../mcp/paths.js';
@@ -55,6 +55,9 @@ function getFolderNameAndJoinPath(currentPath: string | undefined, fallbackName:
     newPath: `${cleanRoot}${separator}${folderName}`,
   };
 }
+
+/** What Sonarr queues for a file-moving edit: BulkMoveSeries from the editor, MoveSeries from PUT /series. */
+const SONARR_MOVE_COMMANDS = ['BulkMoveSeries', 'MoveSeries'];
 
 const page = {
   page: z.number().int().min(1).optional().describe('Page number, starting at 1'),
@@ -268,7 +271,9 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'seasonFolder, tags, rootFolderPath, seriesType). When rootFolderPath is provided, ' +
         'the series path is automatically updated to <rootFolderPath>/<folderName>, and moveFiles is ' +
         'required: true moves the episode files with the record, false repoints the record only (the files ' +
-        'stay put and Sonarr reports the episodes missing after a rescan).',
+        'stay put and Sonarr reports the episodes missing after a rescan). With moveFiles true, Sonarr queues ' +
+        'the move as a background command and returns before the files move: the result carries ' +
+        'moveCommandId to poll with sonarr_get_command (null when none was found).',
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
         monitored: z.boolean().optional().describe('Monitor the series'),
@@ -302,8 +307,11 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
             };
           })()),
         };
-        const updated = await client.updateSeries(seriesId, merged, { moveFiles });
-        return summarizeSeries(updated);
+        if (moveFiles !== true) return summarizeSeries(await client.updateSeries(seriesId, merged, { moveFiles }));
+        const { result, ...move } = await trackMoveCommand(() => client.listCommands(), SONARR_MOVE_COMMANDS, () =>
+          client.updateSeries(seriesId, merged, { moveFiles }),
+        );
+        return { ...summarizeSeries(result), ...move };
       },
     }),
 
@@ -437,7 +445,8 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
     defineTool({
       name: 'sonarr_get_command',
       description:
-        'Poll the status of a background command launched by sonarr_run_command or sonarr_add_series.',
+        'Poll the status of a background command launched by sonarr_run_command or sonarr_add_series, or the ' +
+        'moveCommandId returned by sonarr_update_series and sonarr_bulk_edit_series.',
       inputSchema: {
         commandId: z.number().int().describe('Command id'),
       },
@@ -575,8 +584,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         'monitored state, season folder setting, and tags. When rootFolderPath is given, moveFiles is ' +
         'required: true moves the files with the records, false repoints the records only (the files stay put ' +
         'and Sonarr reports the episodes missing after a rescan). ' +
-        `With moveFiles true the files are moved before the call returns, so at most ${MAX_MOVE_BATCH} ` +
-        'ids are accepted per call when moveFiles is true. Send larger sets as sequential batches, not in parallel.',
+        'With moveFiles true, Sonarr queues the move as a background command and returns before the files ' +
+        'move: the result carries moveCommandId to poll with sonarr_get_command (null when none was found). ' +
+        `At most ${MAX_MOVE_BATCH} ids are accepted per call when moveFiles is true; send larger sets as ` +
+        'sequential batches, and poll each moveCommandId until it completes before the next batch or a retry.',
       inputSchema: {
         seriesIds: z.array(z.number().int()).min(1).describe('Series ids to update'),
         monitored: z.boolean().optional().describe('Set monitored state'),
@@ -606,11 +617,14 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         if (args.applyTags !== undefined) payload.applyTags = args.applyTags;
         if (args.moveFiles !== undefined) payload.moveFiles = args.moveFiles;
 
-        const result = await client.bulkEditSeries(payload as unknown as SeriesBulkEditPayload);
-        return {
+        const edit = () => client.bulkEditSeries(payload as unknown as SeriesBulkEditPayload);
+        const summarize = (result: Awaited<ReturnType<typeof edit>>) => ({
           updated: result.length,
           series: result.map((s) => summarizeSeries(s, { overview: false })),
-        };
+        });
+        if (args.moveFiles !== true) return summarize(await edit());
+        const { result, ...move } = await trackMoveCommand(() => client.listCommands(), SONARR_MOVE_COMMANDS, edit);
+        return { ...summarize(result), ...move };
       },
     }),
 
