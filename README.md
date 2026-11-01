@@ -381,7 +381,7 @@ This is a sensitive credential — treat it like a password. Do not commit it to
 
 ### Prerequisites
 
-- Node.js 20 or later
+- Node.js 22 or later
 - npm 10+
 
 ### Running Tests
@@ -390,10 +390,11 @@ This is a sensitive credential — treat it like a password. Do not commit it to
 npm test
 ```
 
-### Linting and Type Checking
+### Linting, Formatting and Type Checking
 
 ```bash
 npm run lint
+npm run format:check   # npm run format rewrites src and test with Prettier
 npm run typecheck
 ```
 
