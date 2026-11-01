@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { redactHistoryData } from '../../src/mcp/redact.js';
+import { redactHistoryData } from '../../src/arr/redact.js';
 
 describe('redactHistoryData', () => {
   it('passes undefined through', () => {

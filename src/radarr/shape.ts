@@ -8,10 +8,8 @@ import type {
   QueueRecord,
   Release,
   RenameMovieResource,
-  RootFolder,
-  UnmappedFolder,
 } from './types.js';
-import { redactHistoryData } from '../mcp/redact.js';
+import { redactHistoryData } from '../arr/redact.js';
 
 const MAX_OVERVIEW = 300;
 
@@ -272,21 +270,4 @@ export function summarizeRenamePreview(resource: RenameMovieResource): RenamePre
   };
 }
 
-export interface UnmappedFolderSummary {
-  rootFolderId: number;
-  rootFolderPath: string;
-  folderName?: string;
-  folderPath?: string;
-  relativePath?: string;
-}
-
-/** One unmapped folder, flattened with the root folder it sits in. */
-export function summarizeUnmappedFolder(rootFolder: RootFolder, folder: UnmappedFolder): UnmappedFolderSummary {
-  return {
-    rootFolderId: rootFolder.id,
-    rootFolderPath: rootFolder.path,
-    folderName: folder.name,
-    folderPath: folder.path,
-    relativePath: folder.relativePath,
-  };
-}
+export { summarizeUnmappedFolder, type UnmappedFolderSummary } from '../arr/shape.js';

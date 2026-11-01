@@ -1,9 +1,4 @@
-export interface PagedResponse<T> {
-  page: number;
-  pageSize: number;
-  totalRecords: number;
-  records: T[];
-}
+export type { QualityProfile, RootFolder, UnmappedFolder, Tag, DiskSpace, PageParams, HealthCheck, PagedResponse } from '../arr/types.js';
 
 export interface Season {
   seasonNumber: number;
@@ -132,32 +127,6 @@ export interface CommandResource {
   message?: string;
 }
 
-export interface QualityProfile {
-  id: number;
-  name: string;
-  upgradeAllowed: boolean;
-  cutoff: number;
-}
-
-export interface UnmappedFolder {
-  name?: string;
-  path?: string;
-  relativePath?: string;
-}
-
-export interface RootFolder {
-  id: number;
-  path: string;
-  accessible: boolean;
-  freeSpace?: number;
-  unmappedFolders?: UnmappedFolder[];
-}
-
-export interface Tag {
-  id: number;
-  label: string;
-}
-
 export interface SystemStatus {
   appName: string;
   version: string;
@@ -165,25 +134,6 @@ export interface SystemStatus {
   osName?: string;
   isDocker?: boolean;
   startTime?: string;
-}
-
-export interface HealthCheck {
-  source: string;
-  type: string;
-  message: string;
-  wikiUrl?: string;
-}
-
-export interface DiskSpace {
-  path: string;
-  label: string;
-  freeSpace: number;
-  totalSpace: number;
-}
-
-export interface PageParams {
-  page?: number;
-  pageSize?: number;
 }
 
 export interface Release {

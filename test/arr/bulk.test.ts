@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { MAX_MOVE_BATCH, assertMoveBatchSize, assertMoveFilesChosen, trackMoveCommand } from '../../src/mcp/bulk.js';
+import { MAX_MOVE_BATCH, assertMoveBatchSize, assertMoveFilesChosen, trackMoveCommand } from '../../src/arr/bulk.js';
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 

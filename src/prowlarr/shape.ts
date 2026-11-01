@@ -5,7 +5,7 @@ import type {
   Indexer,
   Release,
 } from './types.js';
-import { redactHistoryData } from '../mcp/redact.js';
+import { redactHistoryData } from '../arr/redact.js';
 
 export interface ReleaseSummary {
   guid: string;

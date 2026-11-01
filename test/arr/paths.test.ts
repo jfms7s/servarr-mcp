@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isWithinRoot, normalizeTitle, rootFolderOf } from '../../src/mcp/paths.js';
+import { isWithinRoot, normalizeTitle, relocatePath, rootFolderOf } from '../../src/arr/paths.js';
 
 describe('isWithinRoot', () => {
   it('matches a path inside the root', () => {
@@ -68,5 +68,31 @@ describe('rootFolderOf', () => {
   it('uses the stored root folder path when the path is missing', () => {
     expect(rootFolderOf(undefined, roots, '/movies')).toBe('/movies');
     expect(rootFolderOf(undefined, roots)).toBeUndefined();
+  });
+});
+
+describe('relocatePath', () => {
+  it('joins the current folder name to a Unix root', () => {
+    expect(relocatePath('/media/movies/Dune (2021)', undefined, '/media/archive', 'movie')).toBe('/media/archive/Dune (2021)');
+  });
+
+  it('uses the separator of a Windows root, whatever the current path uses', () => {
+    expect(relocatePath('/media/tv/Show', undefined, 'D:\\TV', 'series')).toBe('D:\\TV\\Show');
+    expect(relocatePath('C:\\Old\\Show\\', undefined, '/tv', 'series')).toBe('/tv/Show');
+  });
+
+  it('drops trailing separators on the root', () => {
+    expect(relocatePath('/a/Show', undefined, '/tv//', 'series')).toBe('/tv/Show');
+    expect(relocatePath('/a/Show', undefined, 'D:\\TV\\', 'series')).toBe('D:\\TV\\Show');
+  });
+
+  it('falls back to the folder name when the item has no path', () => {
+    expect(relocatePath(undefined, 'Show (2020)', '/tv', 'series')).toBe('/tv/Show (2020)');
+    expect(relocatePath('', 'Show (2020)', '/tv', 'series')).toBe('/tv/Show (2020)');
+  });
+
+  it('names the product noun when neither a path nor a folder name is known', () => {
+    expect(() => relocatePath(undefined, undefined, '/tv', 'series')).toThrow(/Ensure the series has a valid path/);
+    expect(() => relocatePath('', undefined, '/movies', 'movie')).toThrow(/Ensure the movie has a valid path/);
   });
 });

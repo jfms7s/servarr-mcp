@@ -3,6 +3,29 @@ function trimTrailingSeparators(path: string): string {
 }
 
 /**
+ * The path an item gets when moved under `root`: its current folder name (or `fallbackName`,
+ * for an item with no path) joined to `root` in the root's own separator style. Either
+ * separator style is accepted in `currentPath`, and trailing separators on `root` are dropped.
+ */
+export function relocatePath(
+  currentPath: string | undefined,
+  fallbackName: string | undefined,
+  root: string,
+  noun: 'series' | 'movie',
+): string {
+  const folderName = currentPath?.split(/[/\\]+/).filter(Boolean).pop() ?? fallbackName;
+  if (!folderName) {
+    throw new Error(
+      'Cannot determine folder name: current path is empty and folderName is not set. ' +
+        `Ensure the ${noun} has a valid path before relocating.`,
+    );
+  }
+  // A root with backslashes and no forward slash is a Windows root: join with a backslash.
+  const separator = root.includes('\\') && !root.includes('/') ? '\\' : '/';
+  return `${trimTrailingSeparators(root)}${separator}${folderName}`;
+}
+
+/**
  * Whether `path` is the root folder itself or sits inside it. Compares whole path segments,
  * so `/media/movies` does not match `/media/movies-animation/...`. Either separator style works.
  */

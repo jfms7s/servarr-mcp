@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { assertMoveBatchSize, assertMoveFilesChosen, MAX_MOVE_BATCH, trackMoveCommand } from '../mcp/bulk.js';
-import { CACHED_LIBRARY_NOTE, refreshInput } from '../mcp/library.js';
-import { listWindow, pageOf } from '../mcp/paging.js';
-import { isWithinRoot, normalizeTitle, rootFolderOf } from '../mcp/paths.js';
+import { assertMoveBatchSize, assertMoveFilesChosen, MAX_MOVE_BATCH, trackMoveCommand } from '../arr/bulk.js';
+import { CACHED_LIBRARY_NOTE, refreshInput } from '../arr/library.js';
+import { listWindow, page, pageOf } from '../arr/paging.js';
+import { isWithinRoot, normalizeTitle, rootFolderOf, relocatePath } from '../arr/paths.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { RadarrClient } from './client.js';
 import {
@@ -28,40 +28,8 @@ const COMMAND_NAMES = [
   'RenameMovie',
 ] as const;
 
-/**
- * Extract folder name from a path, handling both Unix and Windows separators.
- * Split on either separator, then use the root folder's separator style for the result.
- */
-function getFolderNameAndJoinPath(currentPath: string | undefined, fallbackName: string | undefined, rootFolderPath: string): { folderName: string; newPath: string } {
-  const folderName = currentPath?.split(/[/\\]+/).filter(Boolean).pop() ?? fallbackName;
-
-  if (!folderName) {
-    throw new Error(
-      'Cannot determine folder name: current path is empty and folderName is not set. ' +
-        'Ensure the movie has a valid path before relocating.',
-    );
-  }
-
-  // Determine separator to use: if rootFolderPath contains backslash and no forward slash, use backslash; otherwise use forward slash
-  const usesBackslash = rootFolderPath.includes('\\') && !rootFolderPath.includes('/');
-  const separator = usesBackslash ? '\\' : '/';
-
-  // Normalize root folder path (remove trailing separators of either type)
-  const cleanRoot = rootFolderPath.replace(/[/\\]+$/, '');
-
-  return {
-    folderName,
-    newPath: `${cleanRoot}${separator}${folderName}`,
-  };
-}
-
 /** What Radarr queues for a file-moving edit: BulkMoveMovie from the editor, MoveMovie from PUT /movie. */
 const RADARR_MOVE_COMMANDS = ['BulkMoveMovie', 'MoveMovie'];
-
-const page = {
-  page: z.number().int().min(1).optional().describe('Page number, starting at 1'),
-  pageSize: z.number().int().min(1).max(200).optional().describe('Records per page (default 20)'),
-};
 
 export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
   return [
@@ -232,7 +200,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
         // When rootFolderPath changes, compute the new path by preserving the folder name
         if (rootFolderPath !== undefined) {
-          const { newPath } = getFolderNameAndJoinPath(current.path, current.folderName, rootFolderPath);
+          const newPath = relocatePath(current.path, current.folderName, rootFolderPath, 'movie');
           merged.path = newPath;
         }
 
