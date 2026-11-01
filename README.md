@@ -8,7 +8,7 @@ This server reaches Sonarr and Radarr at their `/api/v3` endpoints, and Prowlarr
 
 ## Install
 
-**Prerequisites:** Node.js 20 or later.
+**Prerequisites:** Node.js 22 or later.
 
 ### From Source
 
