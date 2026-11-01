@@ -1,7 +1,7 @@
 import express from 'express';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { NodeStreamableHTTPServerTransport } from '@modelcontextprotocol/node';
+import type { McpServer } from '@modelcontextprotocol/server';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { bearerAuth } from './auth.js';
 
 export async function startStdio(server: McpServer): Promise<void> {
@@ -32,7 +32,7 @@ export async function startHttp(
   app.all('/mcp', bearerAuth(options.token), express.json(), (request, response) => {
     void (async () => {
       const server = createMcpServer();
-      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+      const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
       response.on('close', () => {
         void transport.close();
         void server.close();
