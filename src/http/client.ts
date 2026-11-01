@@ -1,3 +1,4 @@
+import { currentRequestSignal } from './cancellation.js';
 import { ArrApiError, hasUserinfo } from './errors.js';
 
 export type QueryValue = string | number | boolean | undefined | null | Array<string | number>;
@@ -89,6 +90,12 @@ function isTimeout(error: unknown): boolean {
   return named(error) || (error instanceof Error && named(error.cause));
 }
 
+/**
+ * An HTTP client for a Servarr-style API. It assumes `X-Api-Key` header auth and Servarr-style
+ * error bodies (a validation-failure array, or an object with message/error/title). Overseerr
+ * fits both by coincidence. A product with other auth or error shapes should make auth and
+ * error extraction options here (and rename this to a neutral name), not be special-cased.
+ */
 export function createArrClient(options: ArrClientOptions): ArrHttpClient {
   const { product, baseUrl, apiKey, apiBase } = options;
   const defaultTimeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -107,8 +114,11 @@ export function createArrClient(options: ArrClientOptions): ArrHttpClient {
     const apiPath = `${apiBase}${path}`;
     const url = `${baseUrl}${apiPath}${buildQuery(query)}`;
     const timeoutMs = requestOptions?.timeoutMs ?? defaultTimeoutMs;
-    // One signal bounds the whole exchange: the request and the body reads below.
-    const signal = AbortSignal.timeout(timeoutMs);
+    // One signal bounds the whole exchange: the request and the body reads below. It also
+    // fires when the MCP client cancels the tool call that made this request.
+    const timeout = AbortSignal.timeout(timeoutMs);
+    const cancelled = currentRequestSignal();
+    const signal = cancelled ? AbortSignal.any([timeout, cancelled]) : timeout;
     const timedOut = () =>
       new ArrApiError({
         product,
@@ -117,7 +127,17 @@ export function createArrClient(options: ArrClientOptions): ArrHttpClient {
         path: apiPath,
         detail: `no response within ${timeoutMs / 1000} s`,
       });
+    const wasCancelled = () => cancelled?.aborted === true && !timeout.aborted;
+    const cancelledError = () =>
+      new ArrApiError({
+        product,
+        baseUrl,
+        method,
+        path: apiPath,
+        detail: 'request cancelled by the client',
+      });
 
+    // Servarr-style auth; see the note on createArrClient before adding a product that differs.
     const headers: Record<string, string> = { 'X-Api-Key': apiKey, Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
 
@@ -140,6 +160,7 @@ export function createArrClient(options: ArrClientOptions): ArrHttpClient {
         signal,
       });
     } catch (cause) {
+      if (wasCancelled()) throw cancelledError();
       if (isTimeout(cause)) throw timedOut();
       const inner = cause instanceof Error && cause.cause instanceof Error ? cause.cause : cause;
       const detail = inner instanceof Error ? inner.message : String(inner);
@@ -163,6 +184,7 @@ export function createArrClient(options: ArrClientOptions): ArrHttpClient {
     try {
       text = await response.text();
     } catch (cause) {
+      if (wasCancelled()) throw cancelledError();
       if (isTimeout(cause)) throw timedOut();
       throw cause;
     }

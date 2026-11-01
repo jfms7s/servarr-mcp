@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { z } from 'zod';
 import { createServer } from '../../src/mcp/server.js';
 import { defineTool } from '../../src/mcp/types.js';
 import { startHttp } from '../../src/mcp/transport.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 
 const testTool = defineTool({
   name: 'test_echo',
@@ -175,5 +176,22 @@ describe('startHttp integration', () => {
     expect(['::', '0.0.0.0']).toContain(handle.address);
     const response = await fetch(`http://127.0.0.1:${handle.port}/healthz`);
     expect(await response.text()).toBe('ok');
+  });
+
+  it('logs a transport failure and answers 500', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const broken = {
+      connect: () => Promise.reject(new Error('boom')),
+      close: () => Promise.resolve(),
+    } as unknown as McpServer;
+    handle = await startHttp(() => broken, { port: 0, token: 't' });
+    const response = await fetch(`http://127.0.0.1:${handle.port}/mcp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer t' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', id: 1 }),
+    });
+    expect(response.status).toBe(500);
+    expect(errors).toHaveBeenCalledWith('servarr-mcp: /mcp request failed:', expect.any(Error));
+    errors.mockRestore();
   });
 });

@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
-import { McpServer } from '@modelcontextprotocol/server';
+import { McpServer, type ServerContext } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import { withRequestSignal } from '../http/cancellation.js';
 import { describeError } from '../http/errors.js';
 import { annotationsFor, type ToolDefinition } from './types.js';
 
@@ -49,9 +50,11 @@ export function createServer(tools: ToolDefinition[]): McpServer {
         inputSchema: z.object(tool.inputSchema),
         annotations: annotationsFor(tool.effect),
       },
-      async (args: Record<string, unknown>) => {
+      async (args: Record<string, unknown>, context: ServerContext) => {
+        const signal = context.mcpReq.signal;
         try {
-          return toolResult(await tool.handler(args), tool.name);
+          const value = await withRequestSignal(signal, () => tool.handler(args, { signal }));
+          return toolResult(value, tool.name);
         } catch (error) {
           return {
             content: [{ type: 'text' as const, text: describeError(error) }],
