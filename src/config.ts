@@ -90,8 +90,9 @@ function readPort(env: NodeJS.ProcessEnv): number {
 }
 
 function readHost(env: NodeJS.ProcessEnv): string {
+  // `*` means every interface, IPv4 and IPv6 (see startHttp).
   // Loopback unless told otherwise: run from source, the HTTP transport should not be
-  // reachable from the LAN by accident. The image sets 0.0.0.0 so a Service can reach the pod.
+  // reachable from the LAN by accident. The image sets `*` so a Service can reach the pod.
   return env.SERVARR_MCP_HOST?.trim() || '127.0.0.1';
 }
 

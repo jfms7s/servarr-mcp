@@ -30,6 +30,8 @@ const bodyParserError: ErrorRequestHandler = (error: unknown, _request, response
 
 export interface HttpHandle {
   port: number;
+  /** The address actually bound, e.g. `127.0.0.1`, or `::` for `*` on a dual-stack host. */
+  address: string;
   close(): Promise<void>;
 }
 
@@ -67,7 +69,10 @@ export async function startHttp(
   // After the /mcp route: bearerAuth runs first, so an unauthenticated malformed body still gets 401.
   app.use('/mcp', bodyParserError);
 
-  const listener = app.listen(options.port, options.host ?? '127.0.0.1');
+  // `*` leaves the host out, so Node binds `::` (dual-stack) where IPv6 exists and falls back
+  // to 0.0.0.0 where it doesn't -- what the server did before the host became configurable.
+  const host = options.host ?? '127.0.0.1';
+  const listener = host === '*' ? app.listen(options.port) : app.listen(options.port, host);
   await new Promise<void>((resolve, reject) => {
     listener.once('listening', resolve);
     listener.once('error', reject);
@@ -75,9 +80,11 @@ export async function startHttp(
 
   const addr = listener.address();
   const port = typeof addr === 'object' && addr !== null ? addr.port : options.port;
+  const address = typeof addr === 'object' && addr !== null ? addr.address : host;
 
   return {
     port,
+    address,
     close: () =>
       new Promise<void>((resolve, reject) => {
         listener.close((error) => (error ? reject(error) : resolve()));

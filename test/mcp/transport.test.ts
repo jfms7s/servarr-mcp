@@ -163,4 +163,17 @@ describe('startHttp integration', () => {
     expect(text).not.toMatch(/\bat /);
     expect(JSON.parse(text)).toMatchObject({ jsonrpc: '2.0', error: { code: -32600 }, id: null });
   });
+
+  it('binds to loopback when no host is given', async () => {
+    handle = await startHttp(() => createServer([testTool]), { port: 0, token: 't' });
+    expect(handle.address).toBe('127.0.0.1');
+  });
+
+  it('binds to every interface for host "*", as the image sets it', async () => {
+    handle = await startHttp(() => createServer([testTool]), { port: 0, host: '*', token: 't' });
+    // Node binds :: (dual-stack) where IPv6 exists, else 0.0.0.0; either serves IPv4 too.
+    expect(['::', '0.0.0.0']).toContain(handle.address);
+    const response = await fetch(`http://127.0.0.1:${handle.port}/healthz`);
+    expect(await response.text()).toBe('ok');
+  });
 });

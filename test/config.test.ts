@@ -135,6 +135,11 @@ describe('loadConfig', () => {
 
   it('honours SERVARR_MCP_HOST', () => {
     expect(loadConfig({ ...base, SERVARR_MCP_HOST: ' 0.0.0.0 ' }).host).toBe('0.0.0.0');
+    expect(loadConfig({ ...base, SERVARR_MCP_HOST: '*' }).host).toBe('*');
+  });
+
+  it('treats a blank SERVARR_MCP_HOST as unset, like the other variables', () => {
+    expect(loadConfig({ ...base, SERVARR_MCP_HOST: ' ' }).host).toBe('127.0.0.1');
   });
 
   it('warns about a token shorter than the minimum without echoing it', () => {
