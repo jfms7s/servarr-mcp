@@ -2,18 +2,14 @@
 import { ConfigError, loadConfig, weakTokenWarning } from './config.js';
 import { createServer } from './mcp/server.js';
 import { startHttp, startStdio } from './mcp/transport.js';
+import { PRODUCTS } from './products.js';
 import { buildTools } from './tools.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
   const tools = buildTools(config);
 
-  const enabled = [
-    config.sonarr && 'Sonarr',
-    config.radarr && 'Radarr',
-    config.prowlarr && 'Prowlarr',
-    config.overseerr && 'Overseerr',
-  ].filter(Boolean);
+  const enabled = PRODUCTS.filter((product) => config[product.id]).map((product) => product.label);
 
   // stdout carries the MCP protocol on the stdio transport, so log to stderr.
   console.error(`servarr-mcp: ${tools.length} tools from ${enabled.join(', ')}`);
