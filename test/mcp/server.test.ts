@@ -16,6 +16,7 @@ async function connect(tools: Parameters<typeof createServer>[0]) {
 
 const echoTool = defineTool({
   name: 'sonarr_echo',
+  effect: 'read',
   description: 'Echo a series id back',
   inputSchema: { seriesId: z.number().int().describe('Series id') },
   handler: async ({ seriesId }) => ({ seriesId }),
@@ -40,6 +41,21 @@ describe('createServer', () => {
     expect(tools[0]?.description).toBe('Echo a series id back');
   });
 
+  it('lists each tool with annotations derived from its effect', async () => {
+    const deleteTool = defineTool({
+      name: 'sonarr_delete_thing',
+      effect: 'destructive',
+      description: 'Delete a thing',
+      inputSchema: {},
+      handler: async () => undefined,
+    });
+    const client = await connect([echoTool, deleteTool]);
+    const { tools } = await client.listTools();
+    const byName = Object.fromEntries(tools.map((t) => [t.name, t.annotations]));
+    expect(byName.sonarr_echo).toMatchObject({ readOnlyHint: true, destructiveHint: false });
+    expect(byName.sonarr_delete_thing).toMatchObject({ readOnlyHint: false, destructiveHint: true });
+  });
+
   it('returns the handler result as pretty-printed json text', async () => {
     const client = await connect([echoTool]);
     const result = await client.callTool({ name: 'sonarr_echo', arguments: { seriesId: 3 } });
@@ -51,6 +67,7 @@ describe('createServer', () => {
     const client = await connect([
       defineTool({
         name: 'sonarr_void',
+        effect: 'read',
         description: 'Returns nothing',
         inputSchema: {},
         handler: async () => undefined,
@@ -64,6 +81,7 @@ describe('createServer', () => {
     const client = await connect([
       defineTool({
         name: 'sonarr_boom',
+        effect: 'read',
         description: 'Always fails',
         inputSchema: {},
         handler: async () => {
@@ -111,6 +129,7 @@ describe('toolResult', () => {
     const client = await connect([
       defineTool({
         name: 'sonarr_huge',
+        effect: 'read',
         description: 'Returns too much',
         inputSchema: {},
         handler: async () => ({ blob: 'x'.repeat(60_000) }),

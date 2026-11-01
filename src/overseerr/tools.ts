@@ -28,6 +28,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
   return [
     defineTool({
       name: 'overseerr_search',
+      effect: 'read',
       description:
         'Search Overseerr for movies, TV shows, and people by title. Each result\'s mediaInfo.status (when present) reports library/request state: 1 unknown, 2 pending, 3 processing, 4 partially available, 5 available, 6 deleted. Use the result id as mediaId for overseerr_create_request, or overseerr_get_movie/overseerr_get_tv for more details.',
       inputSchema: {
@@ -47,6 +48,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_discover_movies',
+      effect: 'read',
       description:
         'Discover popular and upcoming movies from TMDB, optionally filtered by genre id. Does not require a search term.',
       inputSchema: {
@@ -67,6 +69,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_discover_tv',
+      effect: 'read',
       description:
         'Discover popular and upcoming TV shows from TMDB, optionally filtered by genre id. Does not require a search term.',
       inputSchema: {
@@ -87,6 +90,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_trending',
+      effect: 'read',
       description: 'List currently trending movies and TV shows.',
       inputSchema: {
         page: z.number().int().min(1).optional(),
@@ -104,6 +108,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_movie',
+      effect: 'read',
       description: 'Get a summary of Overseerr/TMDB details for one movie: ids, titles, overview (truncated), tagline, release date, ' +
         'runtime, status, poster/backdrop paths, vote average and count, genres, and its request/availability status (mediaInfo).',
       inputSchema: {
@@ -114,6 +119,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_tv',
+      effect: 'read',
       description: 'Get a summary of Overseerr/TMDB details for one TV series: ids, names, overview (truncated), tagline, first/last air ' +
         'dates, status, episode and season counts, seasons, poster/backdrop paths, vote average and count, genres, and its ' +
         'request/availability status (mediaInfo).',
@@ -125,6 +131,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_list_requests',
+      effect: 'read',
       description:
         'List media requests. Only the API key owner\'s own requests are returned unless the key has admin/manage-requests permissions in Overseerr.',
       inputSchema: {
@@ -153,6 +160,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_request',
+      effect: 'read',
       description: 'Get one media request by id.',
       inputSchema: {
         requestId: z.number().int(),
@@ -162,6 +170,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_request_count',
+      effect: 'read',
       description: 'Get counts of requests by status (pending, approved, declined, etc).',
       inputSchema: {},
       handler: async () => client.getRequestCount(),
@@ -169,6 +178,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_create_request',
+      effect: 'write',
       description:
         'Request that a movie or TV show be added. Get mediaId from overseerr_search, overseerr_discover_movies, overseerr_discover_tv, or overseerr_get_trending (their result id is the TMDB id Overseerr expects here). For TV requests, pass seasons as an array of season numbers or the string "all"; omit seasons for movies.',
       inputSchema: {
@@ -188,6 +198,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_update_request_status',
+      effect: 'destructive',
       description: 'Approve or decline a pending media request.',
       inputSchema: {
         requestId: z.number().int(),
@@ -199,6 +210,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_retry_request',
+      effect: 'write',
       description: 'Retry a failed request by resending it to the connected Sonarr or Radarr instance.',
       inputSchema: {
         requestId: z.number().int(),
@@ -208,6 +220,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_delete_request',
+      effect: 'destructive',
       description: 'Destructive: permanently remove a media request.',
       inputSchema: {
         requestId: z.number().int(),
@@ -220,6 +233,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_list_media',
+      effect: 'read',
       description: 'List media items known to Overseerr with their availability status.',
       inputSchema: {
         take: z
@@ -245,6 +259,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_delete_media',
+      effect: 'destructive',
       description:
         'Destructive: remove a media item from Overseerr, clearing its availability so it can be re-requested.',
       inputSchema: {
@@ -258,6 +273,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_list_users',
+      effect: 'read',
       description: 'List Overseerr users. Requires the API key to have user-management permissions.',
       inputSchema: {
         take: z
@@ -280,6 +296,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_system_status',
+      effect: 'read',
       description: 'Get Overseerr version and update status.',
       inputSchema: {},
       handler: async () => client.getSystemStatus(),
@@ -287,6 +304,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_movie_recommendations',
+      effect: 'read',
       description: 'Get movies recommended based on a given movie. Use the movieId from overseerr_get_movie or overseerr_search.',
       inputSchema: {
         movieId: z.number().int().describe('TMDB movie id'),
@@ -306,6 +324,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_similar_movies',
+      effect: 'read',
       description: 'Get movies similar to a given movie.',
       inputSchema: {
         movieId: z.number().int().describe('TMDB movie id'),
@@ -325,6 +344,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_tv_recommendations',
+      effect: 'read',
       description: 'Get TV shows recommended based on a given show.',
       inputSchema: {
         tvId: z.number().int().describe('TMDB TV series id'),
@@ -344,6 +364,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_similar_tv',
+      effect: 'read',
       description: 'Get TV shows similar to a given show.',
       inputSchema: {
         tvId: z.number().int().describe('TMDB TV series id'),
@@ -363,6 +384,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_movie_ratings',
+      effect: 'read',
       description: 'Get Rotten Tomatoes and IMDB ratings for a movie, when available.',
       inputSchema: {
         movieId: z.number().int().describe('TMDB movie id'),
@@ -372,6 +394,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_tv_ratings',
+      effect: 'read',
       description: 'Get Rotten Tomatoes ratings for a TV show, when available.',
       inputSchema: {
         tvId: z.number().int().describe('TMDB TV series id'),
@@ -381,6 +404,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_person',
+      effect: 'read',
       description: 'Get biography and details for a person (actor, director, etc).',
       inputSchema: {
         personId: z.number().int().describe('TMDB person id'),
@@ -390,6 +414,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_person_credits',
+      effect: 'read',
       description:
         'Get a person\'s combined movie and TV credits (cast and crew roles), newest first. ' +
         `Returns at most limit (default ${DEFAULT_CREDITS_LIMIT}) cast and limit crew rows, with castTotal and crewTotal ` +
@@ -420,6 +445,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_list_radarr_servers',
+      effect: 'read',
       description:
         'List all Radarr instances configured in Overseerr. Shows the activeDirectory (root folder) for each Radarr server, which is the default root folder where requests are routed — this field explains misrouting issues when multiple root folders are configured. Requires admin API key. NOTE: apiKey and connection details (hostname, port, baseUrl, externalUrl) are not returned for security reasons.',
       inputSchema: {},
@@ -431,6 +457,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_get_radarr_profiles',
+      effect: 'read',
       description:
         'Get quality profiles available on a specific Radarr server instance. Use this to map profile IDs before calling overseerr_update_request to change the quality profile for a request.',
       inputSchema: {
@@ -441,6 +468,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
 
     defineTool({
       name: 'overseerr_update_request',
+      effect: 'destructive',
       description:
         'Update a media request (e.g., change quality profile, root folder, 4K setting). The mediaType field is required. Only fields provided are sent to the API. IMPORTANT: changing rootFolder only affects where Radarr is told to put the item when the request is (re)processed. It does NOT move files for a request that is already available — use Radarr tools to move files after updating. Requires the MANAGE_REQUESTS permission.',
       inputSchema: {

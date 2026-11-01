@@ -63,9 +63,19 @@ describe('Radarr destructive tools on the wire (defaults only)', () => {
     expect(wire).toEqual([{ method: 'DELETE', path: '/api/v3/blocklist/5', query: {} }]);
   });
 
-  it('radarr_delete_movie_file deletes only that movie file', async () => {
-    server.use(http.delete(`${base}/moviefile/9`, ok));
+  it('radarr_delete_movie_file without confirm only reads the file', async () => {
+    server.use(
+      http.get(`${base}/moviefile/9`, () =>
+        HttpResponse.json({ id: 9, movieId: 2, relativePath: 'a.mkv', path: '/m/a.mkv', size: 1 }),
+      ),
+    );
     await call('radarr_delete_movie_file', { movieFileId: 9 });
+    expect(wire).toEqual([{ method: 'GET', path: '/api/v3/moviefile/9', query: {} }]);
+  });
+
+  it('radarr_delete_movie_file with confirm deletes only that movie file', async () => {
+    server.use(http.delete(`${base}/moviefile/9`, ok));
+    await call('radarr_delete_movie_file', { movieFileId: 9, confirm: true });
     expect(wire).toEqual([{ method: 'DELETE', path: '/api/v3/moviefile/9', query: {} }]);
   });
 

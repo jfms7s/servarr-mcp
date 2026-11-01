@@ -227,6 +227,18 @@ describe('RadarrClient', () => {
     expect(params?.getAll('movieId')).toEqual(['5']);
   });
 
+  it('getMovieFile hits GET /moviefile/{id}', async () => {
+    let path: string | undefined;
+    server.use(
+      http.get(url('/moviefile/9'), ({ request }) => {
+        path = new URL(request.url).pathname;
+        return HttpResponse.json({ id: 9 });
+      }),
+    );
+    expect(await client.getMovieFile(9)).toEqual({ id: 9 });
+    expect(path).toBe('/api/v3/moviefile/9');
+  });
+
   describe('destructive requests on the wire', () => {
     /** Records method, path and every query value of each request that reaches msw. */
     function capture(method: 'delete' | 'put', path: string) {

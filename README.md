@@ -228,7 +228,7 @@ This server exposes 106 tools across the four products.
 | `sonarr_get_episode` | Get the full record for one episode |
 | `sonarr_monitor_episodes` | Set monitored state for one or more episodes |
 | `sonarr_list_episode_files` | List downloaded episode files for a series; paginated (`limit` default 100, `offset`) |
-| `sonarr_delete_episode_file` | **Destructive:** Permanently delete an episode file |
+| `sonarr_delete_episode_file` | **Destructive:** Permanently delete an episode file (needs `confirm: true`; otherwise previews the file) |
 | `sonarr_get_queue` | List items currently downloading or awaiting import |
 | `sonarr_delete_queue_item` | **Destructive:** Remove an item from the download queue |
 | `sonarr_search_releases` | Interactive search for an episode or season pack, with Sonarr's rank and rejection reasons |
@@ -263,7 +263,7 @@ This server exposes 106 tools across the four products.
 | `radarr_update_movie` | Update movie settings, including **root folder**, with an explicit choice to move the files on disk or not |
 | `radarr_delete_movie` | **Destructive:** Remove a movie from Radarr; deleting files requires an explicit confirm flag |
 | `radarr_list_movie_files` | List downloaded movie files for a movie |
-| `radarr_delete_movie_file` | **Destructive:** Permanently delete a movie file |
+| `radarr_delete_movie_file` | **Destructive:** Permanently delete a movie file (needs `confirm: true`; otherwise previews the file) |
 | `radarr_get_calendar` | List movies with releases in a date range; paginated (`limit` default 100, `offset`) |
 | `radarr_get_queue` | List items currently downloading or awaiting import |
 | `radarr_delete_queue_item` | **Destructive:** Remove an item from the download queue |
@@ -356,7 +356,9 @@ Radarr and Sonarr don't move the files inside the call: the bulk editor (and `*_
 
 Routing is decided upstream: `overseerr_list_radarr_servers` reports the `activeDirectory` each Radarr server defaults to, which is usually what determines where new requests land. Note that `overseerr_update_request` changes where a request will be sent — it does not move media that has already been downloaded. Use the Radarr or Sonarr tools for that.
 
-**Safety note:** deleting files through `radarr_delete_movie` or `sonarr_delete_series` requires `confirmDeleteFiles: true`. Called without it, these tools return a description of what would be lost and delete nothing. The bulk editors deliberately do not expose file deletion at all. The library-wide searches `radarr_run_command` with `MissingMoviesSearch` and `sonarr_run_command` with `MissingEpisodeSearch` search, and may download, every missing monitored item at once, so they need `confirm: true`. Called without it, they return `{ wouldRun: { command, missingCount }, confirmRequired: true }` and start nothing. Searches for specific ids are not gated.
+**Safety note:** deleting files through `radarr_delete_movie` or `sonarr_delete_series` requires `confirmDeleteFiles: true`. Called without it, these tools return a description of what would be lost and delete nothing. `radarr_delete_movie_file` and `sonarr_delete_episode_file` likewise delete nothing without `confirm: true`; called without it, they return `{ wouldDelete: { id, relativePath, path, size, quality, … }, confirmRequired: true }`. The bulk editors deliberately do not expose file deletion at all. The library-wide searches `radarr_run_command` with `MissingMoviesSearch` and `sonarr_run_command` with `MissingEpisodeSearch` search, and may download, every missing monitored item at once, so they need `confirm: true`. Called without it, they return `{ wouldRun: { command, missingCount }, confirmRequired: true }` and start nothing. Searches for specific ids are not gated.
+
+A confirm flag only guards against the model's own mistakes: a model can set both flags in one call. The real boundary is your MCP client's approval prompt. Every tool carries MCP annotations for that: `readOnlyHint: true` on tools that change nothing (lists, lookups, release and indexer searches), `destructiveHint: true` on tools that delete or rewrite records and paths (`delete_*`, `update_*`, `bulk_edit_*`, `grab_release`, `import_folder`), and both `false` on the rest (adds, `run_command`, `monitor_episodes`, Overseerr create and retry, `prowlarr_test_indexer`). Configure your client to auto-approve read-only tools at most.
 
 ## Finding Your API Key
 

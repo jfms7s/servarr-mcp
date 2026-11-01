@@ -13,6 +13,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
   return [
     defineTool({
       name: 'prowlarr_search',
+      effect: 'read',
       description:
         'Search configured indexers for releases. Returns release guids that can be handed to ' +
         'prowlarr_grab_release. Use prowlarr_list_indexers and prowlarr_list_categories to ' +
@@ -34,6 +35,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_grab_release',
+      effect: 'destructive',
       description:
         'Send a release to the download client configured in Prowlarr. Get guid and indexerId ' +
         'from prowlarr_search. This bypasses Sonarr and Radarr: they will not track or import ' +
@@ -48,6 +50,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_list_indexers',
+      effect: 'read',
       description:
         'List configured indexers with their protocol, priority and enabled state. Use ' +
         'prowlarr_get_indexer for one indexer\'s full configuration, including its fields.',
@@ -57,6 +60,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_get_indexer',
+      effect: 'read',
       description: 'Get details about a specific configured indexer.',
       inputSchema: {
         indexerId: z.number().int().describe('The indexer id'),
@@ -66,6 +70,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_test_indexer',
+      effect: 'write',
       description: 'Test the connectivity of a configured indexer to its source.',
       inputSchema: {
         indexerId: z.number().int().describe('The indexer id to test'),
@@ -78,6 +83,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_get_indexer_stats',
+      effect: 'read',
       description:
         'Get query and grab statistics for each indexer, including failure counts and response times.',
       inputSchema: {},
@@ -86,6 +92,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_get_indexer_status',
+      effect: 'read',
       description:
         'Get the health/backoff status of configured indexers. Reports which indexers are ' +
         'temporarily disabled due to failures.',
@@ -95,6 +102,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_list_categories',
+      effect: 'read',
       description:
         'List newznab categories supported by configured indexers. Use these ids with ' +
         'prowlarr_search to filter by content type (2000-range: movies, 5000-range: TV, ' +
@@ -105,6 +113,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_get_history',
+      effect: 'read',
       description: 'Get the history of indexer queries and grabs.',
       inputSchema: {
         page: z.number().int().min(1).optional().describe('Page number (default 1)'),
@@ -119,6 +128,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_list_applications',
+      effect: 'read',
       description:
         'List the *arr applications (Sonarr, Radarr, etc.) that Prowlarr syncs indexers to.',
       inputSchema: {},
@@ -127,6 +137,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_list_download_clients',
+      effect: 'read',
       description: 'List download clients configured in Prowlarr.',
       inputSchema: {},
       handler: async () => (await client.listDownloadClients()).map(summarizeDownloadClient),
@@ -134,6 +145,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_run_command',
+      effect: 'write',
       description:
         'Run an administrative command. ApplicationIndexerSync pushes Prowlarr indexer ' +
         'configuration to connected apps like Sonarr and Radarr. IndexerHealthCheck ' +
@@ -148,6 +160,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_get_system_status',
+      effect: 'read',
       description: 'Get the Prowlarr application version, name, and host information.',
       inputSchema: {},
       handler: () => client.getSystemStatus(),
@@ -155,6 +168,7 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'prowlarr_get_health',
+      effect: 'read',
       description: 'Get health check results for Prowlarr and any detected issues.',
       inputSchema: {},
       handler: () => client.getHealth(),

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ServarrConfig } from '../src/config.js';
+import { annotationsFor } from '../src/mcp/types.js';
 import { buildTools } from '../src/tools.js';
 
 const instance = { baseUrl: 'http://localhost', apiKey: 'k' };
@@ -51,5 +52,28 @@ describe('buildTools', () => {
     const names = buildTools({ ...base, overseerr: instance }).map((t) => t.name);
     expect(names.every((n) => n.startsWith('overseerr_'))).toBe(true);
     expect(names).toHaveLength(28);
+  });
+
+  describe('effects and annotations', () => {
+    const all = buildTools({ ...base, sonarr: instance, radarr: instance, prowlarr: instance, overseerr: instance });
+
+    it('classifies every tool', () => {
+      for (const tool of all) {
+        expect(['read', 'write', 'destructive'], tool.name).toContain(tool.effect);
+        expect(typeof annotationsFor(tool.effect).readOnlyHint, tool.name).toBe('boolean');
+      }
+    });
+
+    it('marks every delete, update, bulk edit, grab and import tool destructive', () => {
+      const destructive = all.filter((t) => /_(delete_|update_|bulk_edit_|grab_release$|import_folder$)/.test(t.name));
+      expect(destructive.length).toBeGreaterThan(0);
+      for (const tool of destructive) expect(annotationsFor(tool.effect), tool.name).toEqual({ readOnlyHint: false, destructiveHint: true });
+    });
+
+    it('never marks a destructive tool read-only', () => {
+      for (const tool of all.filter((t) => t.effect === 'destructive')) {
+        expect(annotationsFor(tool.effect).readOnlyHint, tool.name).toBe(false);
+      }
+    });
   });
 });

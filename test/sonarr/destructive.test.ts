@@ -63,9 +63,19 @@ describe('Sonarr destructive tools on the wire (defaults only)', () => {
     expect(wire).toEqual([{ method: 'DELETE', path: '/api/v3/blocklist/5', query: {} }]);
   });
 
-  it('sonarr_delete_episode_file deletes only that episode file', async () => {
-    server.use(http.delete(`${base}/episodefile/9`, ok));
+  it('sonarr_delete_episode_file without confirm only reads the file', async () => {
+    server.use(
+      http.get(`${base}/episodefile/9`, () =>
+        HttpResponse.json({ id: 9, seriesId: 2, seasonNumber: 1, relativePath: 'a.mkv', path: '/m/a.mkv', size: 1 }),
+      ),
+    );
     await call('sonarr_delete_episode_file', { episodeFileId: 9 });
+    expect(wire).toEqual([{ method: 'GET', path: '/api/v3/episodefile/9', query: {} }]);
+  });
+
+  it('sonarr_delete_episode_file with confirm deletes only that episode file', async () => {
+    server.use(http.delete(`${base}/episodefile/9`, ok));
+    await call('sonarr_delete_episode_file', { episodeFileId: 9, confirm: true });
     expect(wire).toEqual([{ method: 'DELETE', path: '/api/v3/episodefile/9', query: {} }]);
   });
 

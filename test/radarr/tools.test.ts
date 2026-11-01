@@ -1089,4 +1089,34 @@ describe('Radarr file moves are queued, not synchronous', () => {
       expect(get(name).description).toMatch(/radarr_get_command/);
     }
   });
+
+  it('delete_movie_file previews the file and deletes nothing without confirm', async () => {
+    const getMovieFile = vi.fn().mockResolvedValue({
+      id: 9,
+      movieId: 2,
+      relativePath: 'a.mkv',
+      path: '/media/a.mkv',
+      size: 1024,
+      dateAdded: '2026-01-01',
+      quality: { quality: { id: 1, name: 'Bluray-1080p' } },
+    });
+    const deleteMovieFile = vi.fn();
+    const get = toolsFor({ getMovieFile, deleteMovieFile });
+    const result = (await get('radarr_delete_movie_file').handler({ movieFileId: 9 })) as {
+      wouldDelete: Record<string, unknown>;
+      confirmRequired: boolean;
+    };
+    expect(result.confirmRequired).toBe(true);
+    expect(result.wouldDelete).toMatchObject({ id: 9, movieId: 2, path: '/media/a.mkv', quality: 'Bluray-1080p' });
+    expect(getMovieFile).toHaveBeenCalledWith(9);
+    expect(deleteMovieFile).not.toHaveBeenCalled();
+  });
+
+  it('delete_movie_file deletes once with confirm=true', async () => {
+    const deleteMovieFile = vi.fn().mockResolvedValue(undefined);
+    const get = toolsFor({ deleteMovieFile });
+    await get('radarr_delete_movie_file').handler({ movieFileId: 9, confirm: true });
+    expect(deleteMovieFile).toHaveBeenCalledTimes(1);
+    expect(deleteMovieFile).toHaveBeenCalledWith(9);
+  });
 });
