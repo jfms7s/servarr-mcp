@@ -479,3 +479,14 @@ describe('createOverseerrTools', () => {
     expect(updateRequest).not.toHaveBeenCalled();
   });
 });
+
+describe('overseerr input descriptions', () => {
+  it('describes every input field of every tool', () => {
+    const missing = createOverseerrTools({} as OverseerrClient).flatMap((tool) =>
+      Object.entries(tool.inputSchema)
+        .filter(([, schema]) => !(schema as z.ZodType).description)
+        .map(([key]) => `${tool.name}.${key}`),
+    );
+    expect(missing).toEqual([]);
+  });
+});

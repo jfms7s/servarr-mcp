@@ -19,9 +19,7 @@ export interface SearchOptions {
   query: string;
   indexerIds?: number[];
   categories?: number[];
-  type?: string;
   limit?: number;
-  offset?: number;
 }
 
 export interface GrabPayload {

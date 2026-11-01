@@ -147,6 +147,8 @@ export function summarizeEpisodeDetail(episode: Episode): EpisodeDetail {
 
 export interface QueueSummary {
   id: number;
+  seriesId?: number;
+  episodeId?: number;
   title: string;
   status: string;
   trackedDownloadState?: string;
@@ -166,6 +168,8 @@ export function summarizeQueueRecord(record: QueueRecord): QueueSummary {
 
   return {
     id: record.id,
+    seriesId: record.seriesId,
+    episodeId: record.episodeId,
     title: record.title,
     status: record.status,
     trackedDownloadState: record.trackedDownloadState,

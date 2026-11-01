@@ -37,12 +37,9 @@ export interface UpdateMovieOptions {
 export interface CalendarOptions {
   start?: string;
   end?: string;
-  unmonitored?: boolean;
 }
 
-export interface QueueOptions extends PageParams {
-  includeMovie?: boolean;
-}
+export type QueueOptions = PageParams;
 
 export interface DeleteQueueItemOptions {
   removeFromClient?: boolean;

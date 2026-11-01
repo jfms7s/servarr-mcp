@@ -40,10 +40,7 @@ export interface CalendarOptions {
   includeSeries?: boolean;
 }
 
-export interface QueueOptions extends PageParams {
-  includeSeries?: boolean;
-  includeEpisode?: boolean;
-}
+export type QueueOptions = PageParams;
 
 export interface DeleteQueueItemOptions {
   removeFromClient?: boolean;

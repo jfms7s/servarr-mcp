@@ -6,6 +6,7 @@ import type {
   OverseerrUser,
   PersonDetails,
   RadarrSettings,
+  SearchResponse,
   SearchResult,
   TvDetails,
 } from './types.js';
@@ -64,6 +65,23 @@ export function summarizeSearchResult(result: SearchResult): SearchResultSummary
     voteAverage: result.voteAverage,
     popularity: result.popularity,
     mediaInfo: result.mediaInfo ? summarizeMediaInfo(result.mediaInfo) : undefined,
+  };
+}
+
+export interface SearchResponseSummary {
+  page: number;
+  totalPages: number;
+  totalResults: number;
+  results: SearchResultSummary[];
+}
+
+/** One page of search, discover, trending, recommendation or similar results. */
+export function summarizeSearchResponse(response: SearchResponse): SearchResponseSummary {
+  return {
+    page: response.page,
+    totalPages: response.totalPages,
+    totalResults: response.totalResults,
+    results: response.results.map(summarizeSearchResult),
   };
 }
 

@@ -75,6 +75,19 @@ describe('summarizeEpisode', () => {
 });
 
 describe('summarizeQueueRecord', () => {
+  it('copies the series and episode ids', () => {
+    const summary = summarizeQueueRecord({
+      id: 1,
+      seriesId: 7,
+      episodeId: 70,
+      title: 't',
+      status: 's',
+      size: 0,
+      sizeleft: 0,
+    } as QueueRecord);
+    expect(summary).toMatchObject({ seriesId: 7, episodeId: 70 });
+  });
+
   it('reports progress and surfaces status messages', () => {
     const record = {
       id: 5,

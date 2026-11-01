@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
-import type { OverseerrClient, UpdateRequestPayload } from './client.js';
+import type { OverseerrClient } from './client.js';
+import type { UpdateRequestPayload } from './types.js';
 import {
   summarizeMediaInfo,
   summarizeMediaRequest,
   summarizeMovieDetails,
-  summarizeSearchResult,
+  summarizeSearchResponse,
   summarizeTvDetails,
   summarizeUser,
   summarizePersonDetails,
@@ -37,12 +38,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       },
       handler: async (args) => {
         const result = await client.search(args.query, args.page);
-        return {
-          page: result.page,
-          totalPages: result.totalPages,
-          totalResults: result.totalResults,
-          results: result.results.map(summarizeSearchResult),
-        };
+        return summarizeSearchResponse(result);
       },
     }),
 
@@ -52,18 +48,13 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       description:
         'Discover popular and upcoming movies from TMDB, optionally filtered by genre id. Does not require a search term.',
       inputSchema: {
-        page: z.number().int().min(1).optional(),
+        page: z.number().int().min(1).optional().describe('Page number, starting at 1 (default 1)'),
         genre: z.string().optional().describe('TMDB genre id'),
         language: z.string().optional().describe('ISO 639-1 language code, e.g. "en"'),
       },
       handler: async (args) => {
         const result = await client.discoverMovies(args);
-        return {
-          page: result.page,
-          totalPages: result.totalPages,
-          totalResults: result.totalResults,
-          results: result.results.map(summarizeSearchResult),
-        };
+        return summarizeSearchResponse(result);
       },
     }),
 
@@ -73,18 +64,13 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       description:
         'Discover popular and upcoming TV shows from TMDB, optionally filtered by genre id. Does not require a search term.',
       inputSchema: {
-        page: z.number().int().min(1).optional(),
+        page: z.number().int().min(1).optional().describe('Page number, starting at 1 (default 1)'),
         genre: z.string().optional().describe('TMDB genre id'),
         language: z.string().optional().describe('ISO 639-1 language code, e.g. "en"'),
       },
       handler: async (args) => {
         const result = await client.discoverTv(args);
-        return {
-          page: result.page,
-          totalPages: result.totalPages,
-          totalResults: result.totalResults,
-          results: result.results.map(summarizeSearchResult),
-        };
+        return summarizeSearchResponse(result);
       },
     }),
 
@@ -93,16 +79,11 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       effect: 'read',
       description: 'List currently trending movies and TV shows.',
       inputSchema: {
-        page: z.number().int().min(1).optional(),
+        page: z.number().int().min(1).optional().describe('Page number, starting at 1 (default 1)'),
       },
       handler: async (args) => {
         const result = await client.getTrending(args.page);
-        return {
-          page: result.page,
-          totalPages: result.totalPages,
-          totalResults: result.totalResults,
-          results: result.results.map(summarizeSearchResult),
-        };
+        return summarizeSearchResponse(result);
       },
     }),
 
@@ -145,8 +126,8 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
         skip: z.number().int().min(0).optional().describe('Results to skip, for pagination'),
         filter: z
           .enum(['all', 'approved', 'available', 'pending', 'processing', 'unavailable', 'failed', 'deleted', 'completed'])
-          .optional(),
-        sort: z.enum(['added', 'modified']).optional(),
+          .optional().describe('Only items with this status (default all)'),
+        sort: z.enum(['added', 'modified']).optional().describe('Sort order'),
         requestedBy: z.number().int().optional().describe('Filter to one user id'),
       },
       handler: async (args) => {
@@ -163,7 +144,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       effect: 'read',
       description: 'Get one media request by id.',
       inputSchema: {
-        requestId: z.number().int(),
+        requestId: z.number().int().describe('Media request id, from overseerr_list_requests'),
       },
       handler: async (args) => summarizeMediaRequest(await client.getRequest(args.requestId)),
     }),
@@ -182,15 +163,15 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       description:
         'Request that a movie or TV show be added. Get mediaId from overseerr_search, overseerr_discover_movies, overseerr_discover_tv, or overseerr_get_trending (their result id is the TMDB id Overseerr expects here). For TV requests, pass seasons as an array of season numbers or the string "all"; omit seasons for movies.',
       inputSchema: {
-        mediaType: z.enum(['movie', 'tv']),
+        mediaType: z.enum(['movie', 'tv']).describe('movie or tv'),
         mediaId: z.number().int().describe('TMDB id'),
         seasons: z
           .union([z.array(z.number().int()), z.literal('all')])
-          .optional(),
-        is4k: z.boolean().optional(),
-        serverId: z.number().int().optional(),
-        profileId: z.number().int().optional(),
-        rootFolder: z.string().optional(),
+          .optional().describe('TV only: season numbers, or "all"; omit for movies'),
+        is4k: z.boolean().optional().describe('Request the 4K version (default false)'),
+        serverId: z.number().int().optional().describe('Radarr server id, from overseerr_list_radarr_servers'),
+        profileId: z.number().int().optional().describe('Quality profile id, from overseerr_get_radarr_profiles'),
+        rootFolder: z.string().optional().describe('Root folder path (a server\'s activeDirectory, from overseerr_list_radarr_servers)'),
         userId: z.number().int().optional().describe('Request on behalf of this user id; requires admin permissions'),
       },
       handler: async (args) => summarizeMediaRequest(await client.createRequest(args)),
@@ -201,8 +182,8 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       effect: 'destructive',
       description: 'Approve or decline a pending media request.',
       inputSchema: {
-        requestId: z.number().int(),
-        status: z.enum(['approve', 'decline']),
+        requestId: z.number().int().describe('Media request id, from overseerr_list_requests'),
+        status: z.enum(['approve', 'decline']).describe('approve or decline'),
       },
       handler: async (args) =>
         summarizeMediaRequest(await client.updateRequestStatus(args.requestId, args.status)),
@@ -213,7 +194,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       effect: 'write',
       description: 'Retry a failed request by resending it to the connected Sonarr or Radarr instance.',
       inputSchema: {
-        requestId: z.number().int(),
+        requestId: z.number().int().describe('Media request id, from overseerr_list_requests'),
       },
       handler: async (args) => summarizeMediaRequest(await client.retryRequest(args.requestId)),
     }),
@@ -223,7 +204,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       effect: 'destructive',
       description: 'Destructive: permanently remove a media request.',
       inputSchema: {
-        requestId: z.number().int(),
+        requestId: z.number().int().describe('Media request id, from overseerr_list_requests'),
       },
       handler: async (args) => {
         await client.deleteRequest(args.requestId);
@@ -241,12 +222,12 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
           .int()
           .min(1)
           .max(100)
-          .optional(),
-        skip: z.number().int().min(0).optional(),
+          .optional().describe('Max results (default 20)'),
+        skip: z.number().int().min(0).optional().describe('Results to skip, for pagination'),
         filter: z
           .enum(['all', 'available', 'partial', 'allavailable', 'processing', 'pending', 'deleted'])
-          .optional(),
-        sort: z.enum(['added', 'modified', 'mediaAdded']).optional(),
+          .optional().describe('Only items with this status (default all)'),
+        sort: z.enum(['added', 'modified', 'mediaAdded']).optional().describe('Sort order'),
       },
       handler: async (args) => {
         const result = await client.listMedia(args);
@@ -263,7 +244,7 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       description:
         'Destructive: remove a media item from Overseerr, clearing its availability so it can be re-requested.',
       inputSchema: {
-        mediaId: z.number().int(),
+        mediaId: z.number().int().describe('Overseerr media id (not the TMDB id), from overseerr_list_media'),
       },
       handler: async (args) => {
         await client.deleteMedia(args.mediaId);
@@ -281,9 +262,9 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
           .int()
           .min(1)
           .max(100)
-          .optional(),
-        skip: z.number().int().min(0).optional(),
-        sort: z.enum(['created', 'updated', 'requests', 'displayname']).optional(),
+          .optional().describe('Max results (default 20)'),
+        skip: z.number().int().min(0).optional().describe('Results to skip, for pagination'),
+        sort: z.enum(['created', 'updated', 'requests', 'displayname']).optional().describe('Sort order'),
       },
       handler: async (args) => {
         const result = await client.listUsers(args);
@@ -308,17 +289,12 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       description: 'Get movies recommended based on a given movie. Use the movieId from overseerr_get_movie or overseerr_search.',
       inputSchema: {
         movieId: z.number().int().describe('TMDB movie id'),
-        page: z.number().int().min(1).optional(),
+        page: z.number().int().min(1).optional().describe('Page number, starting at 1 (default 1)'),
         language: z.string().optional().describe('ISO 639-1 language code, e.g. "en"'),
       },
       handler: async (args) => {
         const result = await client.getMovieRecommendations(args.movieId, args.page, args.language);
-        return {
-          page: result.page,
-          totalPages: result.totalPages,
-          totalResults: result.totalResults,
-          results: result.results.map(summarizeSearchResult),
-        };
+        return summarizeSearchResponse(result);
       },
     }),
 
@@ -328,17 +304,12 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       description: 'Get movies similar to a given movie.',
       inputSchema: {
         movieId: z.number().int().describe('TMDB movie id'),
-        page: z.number().int().min(1).optional(),
+        page: z.number().int().min(1).optional().describe('Page number, starting at 1 (default 1)'),
         language: z.string().optional().describe('ISO 639-1 language code, e.g. "en"'),
       },
       handler: async (args) => {
         const result = await client.getSimilarMovies(args.movieId, args.page, args.language);
-        return {
-          page: result.page,
-          totalPages: result.totalPages,
-          totalResults: result.totalResults,
-          results: result.results.map(summarizeSearchResult),
-        };
+        return summarizeSearchResponse(result);
       },
     }),
 
@@ -348,17 +319,12 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       description: 'Get TV shows recommended based on a given show.',
       inputSchema: {
         tvId: z.number().int().describe('TMDB TV series id'),
-        page: z.number().int().min(1).optional(),
+        page: z.number().int().min(1).optional().describe('Page number, starting at 1 (default 1)'),
         language: z.string().optional().describe('ISO 639-1 language code, e.g. "en"'),
       },
       handler: async (args) => {
         const result = await client.getTvRecommendations(args.tvId, args.page, args.language);
-        return {
-          page: result.page,
-          totalPages: result.totalPages,
-          totalResults: result.totalResults,
-          results: result.results.map(summarizeSearchResult),
-        };
+        return summarizeSearchResponse(result);
       },
     }),
 
@@ -368,17 +334,12 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       description: 'Get TV shows similar to a given show.',
       inputSchema: {
         tvId: z.number().int().describe('TMDB TV series id'),
-        page: z.number().int().min(1).optional(),
+        page: z.number().int().min(1).optional().describe('Page number, starting at 1 (default 1)'),
         language: z.string().optional().describe('ISO 639-1 language code, e.g. "en"'),
       },
       handler: async (args) => {
         const result = await client.getSimilarTv(args.tvId, args.page, args.language);
-        return {
-          page: result.page,
-          totalPages: result.totalPages,
-          totalResults: result.totalResults,
-          results: result.results.map(summarizeSearchResult),
-        };
+        return summarizeSearchResponse(result);
       },
     }),
 
@@ -472,17 +433,17 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       description:
         'Update a media request (e.g., change quality profile, root folder, 4K setting). The mediaType field is required. Only fields provided are sent to the API. For mediaType "tv", seasons is required (Overseerr rejects a TV update without it). IMPORTANT: changing rootFolder only affects where Radarr is told to put the item when the request is (re)processed. It does NOT move files for a request that is already available — use Radarr tools to move files after updating. Requires the MANAGE_REQUESTS permission.',
       inputSchema: {
-        requestId: z.number().int().describe('Media request id'),
+        requestId: z.number().int().describe('Media request id, from overseerr_list_requests'),
         mediaType: z.enum(['movie', 'tv']).describe('Media type (required)'),
         rootFolder: z.string().optional().describe('Root folder path for Radarr/Sonarr'),
-        profileId: z.number().int().optional().describe('Quality profile id'),
-        serverId: z.number().int().optional().describe('Radarr/Sonarr server id'),
-        is4k: z.boolean().optional(),
+        profileId: z.number().int().optional().describe('Quality profile id, from overseerr_get_radarr_profiles'),
+        serverId: z.number().int().optional().describe('Radarr/Sonarr server id, from overseerr_list_radarr_servers'),
+        is4k: z.boolean().optional().describe('Request the 4K version (default false)'),
         seasons: z
           .array(z.number().int())
           .optional()
           .describe('For TV (required when mediaType is "tv"): array of season numbers to request'),
-        languageProfileId: z.number().int().optional(),
+        languageProfileId: z.number().int().optional().describe('Sonarr language profile id (TV only)'),
         userId: z.number().int().optional().describe('Change request owner; requires admin'),
       },
       handler: async (args) => {

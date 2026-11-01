@@ -181,6 +181,14 @@ describe('createSonarrTools', () => {
     expect(() => schema.parse({ name: 'DropDatabase' })).toThrow();
   });
 
+  it('rejects an empty episodeIds list for monitor_episodes at schema level', () => {
+    const tool = createSonarrTools({} as SonarrClient).find((t) => t.name === 'sonarr_monitor_episodes');
+    if (!tool) throw new Error('sonarr_monitor_episodes is not registered');
+    const schema = z.object(tool.inputSchema).pick({ episodeIds: true });
+    expect(() => schema.parse({ episodeIds: [1] })).not.toThrow();
+    expect(() => schema.parse({ episodeIds: [] })).toThrow();
+  });
+
   it('propagates client errors out of the handler', async () => {
     const listSeries = vi.fn().mockRejectedValue(new Error('down'));
     const get = toolsFor({ listSeries });
@@ -221,7 +229,7 @@ describe('createSonarrTools', () => {
         seasonFolder: true,
         tags: [1, 2],
       }),
-      { moveFiles: undefined },
+      { moveFiles: false }, // sent explicitly when omitted
     );
   });
 
@@ -614,7 +622,7 @@ describe('createSonarrTools', () => {
         path: '/tv/Test Series',
         monitored: false,
       }),
-      { moveFiles: undefined },
+      { moveFiles: false },
     );
   });
 

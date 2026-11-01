@@ -89,6 +89,7 @@ export function summarizeMovieDetail(movie: Movie): MovieDetail {
 
 export interface QueueSummary {
   id: number;
+  movieId?: number;
   title: string;
   status: string;
   trackedDownloadState?: string;
@@ -107,6 +108,7 @@ export function summarizeQueueRecord(record: QueueRecord): QueueSummary {
 
   return {
     id: record.id,
+    movieId: record.movieId,
     title: record.title,
     status: record.status,
     trackedDownloadState: record.trackedDownloadState,

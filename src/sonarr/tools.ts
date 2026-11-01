@@ -69,11 +69,13 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         const allSeries = await client.listSeries({ refresh });
 
         // Apply filters client-side
+        const genreLower = genre?.toLowerCase();
+        const titleLower = titleContains?.toLowerCase();
         const filtered = allSeries.filter((s) => {
           if (rootFolder !== undefined && !isWithinRoot(s.path ?? s.rootFolderPath, rootFolder)) return false;
           if (monitored !== undefined && s.monitored !== monitored) return false;
-          if (genre !== undefined && !s.genres?.some((g) => g.toLowerCase().includes(genre.toLowerCase()))) return false;
-          if (titleContains !== undefined && !s.title.toLowerCase().includes(titleContains.toLowerCase())) return false;
+          if (genreLower !== undefined && !s.genres?.some((g) => g.toLowerCase().includes(genreLower))) return false;
+          if (titleLower !== undefined && !s.title.toLowerCase().includes(titleLower)) return false;
           if (seriesType !== undefined && s.seriesType !== seriesType) return false;
           return true;
         });
@@ -286,17 +288,17 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
           ...(seasonFolder !== undefined && { seasonFolder }),
           ...(tags !== undefined && { tags }),
           ...(seriesType !== undefined && { seriesType }),
-          // When changing rootFolderPath, construct the new path by combining
-          // the new root folder with the series' folder name
-          ...(rootFolderPath !== undefined && (() => {
-            const newPath = relocatePath(current.path, current.folder, rootFolderPath, 'series');
-            return {
-              path: newPath,
-              rootFolderPath,
-            };
-          })()),
+          ...(rootFolderPath !== undefined && { rootFolderPath }),
         };
-        if (moveFiles !== true) return summarizeSeries(await client.updateSeries(seriesId, merged, { moveFiles }));
+
+        // When rootFolderPath changes, compute the new path by preserving the folder name
+        if (rootFolderPath !== undefined) {
+          merged.path = relocatePath(current.path, current.folder, rootFolderPath, 'series');
+        }
+
+        if (moveFiles !== true) {
+          return summarizeSeries(await client.updateSeries(seriesId, merged, { moveFiles: moveFiles ?? false }));
+        }
         const { result, ...move } = await trackMoveCommand(() => client.listCommands(), SONARR_MOVE_COMMANDS, () =>
           client.updateSeries(seriesId, merged, { moveFiles }),
         );
@@ -345,7 +347,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       effect: 'write',
       description: 'Set the monitored state for one or more episodes.',
       inputSchema: {
-        episodeIds: z.array(z.number().int()).describe('Episode ids to update'),
+        episodeIds: z.array(z.number().int()).min(1).describe('Episode ids to update'),
         monitored: z.boolean().describe('New monitored state'),
       },
       handler: async ({ episodeIds, monitored }) =>
@@ -469,7 +471,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       name: 'sonarr_get_command',
       effect: 'read',
       description:
-        'Poll the status of a background command launched by sonarr_run_command or sonarr_add_series, or the ' +
+        'Poll the status of a background command launched by sonarr_run_command or sonarr_import_folder, or the ' +
         'moveCommandId returned by sonarr_update_series and sonarr_bulk_edit_series.',
       inputSchema: {
         commandId: z.number().int().describe('Command id'),
@@ -538,8 +540,8 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         seriesId: z.number().int().optional().describe('Series id for season-pack search'),
         seasonNumber: z.number().int().optional().describe('Season number for season-pack search'),
         titleContains: z.string().min(1).optional().describe('Case-insensitive substring filter (e.g. "MeGusta")'),
-        approvedOnly: z.boolean().optional().default(false).describe('Show only Sonarr-approved releases'),
-        limit: z.number().int().min(1).max(100).optional().default(20).describe('Maximum results to return'),
+        approvedOnly: z.boolean().optional().describe('Show only Sonarr-approved releases (default false)'),
+        limit: z.number().int().min(1).max(100).optional().describe('Maximum results to return (default 20)'),
       },
       handler: async (args) => {
         // Validation: exactly one mode - episodeId alone OR seriesId + seasonNumber together
@@ -641,7 +643,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         assertMoveBatchSize(args.seriesIds, args.moveFiles, 'sonarr_bulk_edit_series');
 
         // Build payload with only defined fields to avoid blanking unspecified fields
-        const payload: Partial<SeriesBulkEditPayload> = { seriesIds: args.seriesIds };
+        const payload: SeriesBulkEditPayload = { seriesIds: args.seriesIds };
         if (args.monitored !== undefined) payload.monitored = args.monitored;
         if (args.qualityProfileId !== undefined) payload.qualityProfileId = args.qualityProfileId;
         if (args.seriesType !== undefined) payload.seriesType = args.seriesType;
@@ -651,7 +653,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         if (args.applyTags !== undefined) payload.applyTags = args.applyTags;
         if (args.moveFiles !== undefined) payload.moveFiles = args.moveFiles;
 
-        const edit = () => client.bulkEditSeries(payload as unknown as SeriesBulkEditPayload);
+        const edit = () => client.bulkEditSeries(payload);
         const summarize = (result: Awaited<ReturnType<typeof edit>>) => ({
           updated: result.length,
           series: result.map((s) => summarizeSeries(s, { overview: false })),
@@ -681,7 +683,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       description:
         'Preview how Sonarr will rename episode files for a series or season without actually ' +
         'running the rename. Useful for verifying your naming rules are working correctly. ' +
-        'If the series has hundreds of episodes, only the first 100 are shown but the total count is reported.',
+        'At most 100 previews are returned; `total` gives the full count.',
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
         seasonNumber: z.number().int().optional().describe('Season number (all seasons if omitted)'),
