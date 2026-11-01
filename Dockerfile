@@ -4,7 +4,7 @@
 # dependency tree is native: if a native dependency is ever added, the deps stage must
 # move back to the target platform. The digest pins the multi-arch index (both arches);
 # Dependabot keeps it current.
-FROM --platform=$BUILDPLATFORM node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 AS build
+FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -12,13 +12,13 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-FROM --platform=$BUILDPLATFORM node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 AS deps
+FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 # The runtime stage runs nothing, so it needs no emulation either: it only copies.
-FROM node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
+FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package*.json ./
