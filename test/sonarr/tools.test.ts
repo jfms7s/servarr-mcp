@@ -1176,4 +1176,34 @@ describe('Sonarr file moves are queued, not synchronous', () => {
       expect(get(name).description).toMatch(/sonarr_get_command/);
     }
   });
+
+  it('delete_episode_file previews the file and deletes nothing without confirm', async () => {
+    const getEpisodeFile = vi.fn().mockResolvedValue({
+      id: 9,
+      seriesId: 2, seasonNumber: 1,
+      relativePath: 'a.mkv',
+      path: '/media/a.mkv',
+      size: 1024,
+      dateAdded: '2026-01-01',
+      quality: { quality: { id: 1, name: 'Bluray-1080p' } },
+    });
+    const deleteEpisodeFile = vi.fn();
+    const get = toolsFor({ getEpisodeFile, deleteEpisodeFile });
+    const result = (await get('sonarr_delete_episode_file').handler({ episodeFileId: 9 })) as {
+      wouldDelete: Record<string, unknown>;
+      confirmRequired: boolean;
+    };
+    expect(result.confirmRequired).toBe(true);
+    expect(result.wouldDelete).toMatchObject({ id: 9, seriesId: 2, path: '/media/a.mkv', quality: 'Bluray-1080p' });
+    expect(getEpisodeFile).toHaveBeenCalledWith(9);
+    expect(deleteEpisodeFile).not.toHaveBeenCalled();
+  });
+
+  it('delete_episode_file deletes once with confirm=true', async () => {
+    const deleteEpisodeFile = vi.fn().mockResolvedValue(undefined);
+    const get = toolsFor({ deleteEpisodeFile });
+    await get('sonarr_delete_episode_file').handler({ episodeFileId: 9, confirm: true });
+    expect(deleteEpisodeFile).toHaveBeenCalledTimes(1);
+    expect(deleteEpisodeFile).toHaveBeenCalledWith(9);
+  });
 });

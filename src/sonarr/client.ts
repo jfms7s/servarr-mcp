@@ -88,6 +88,7 @@ export interface SonarrClient {
   getEpisode(id: number): Promise<Episode>;
   monitorEpisodes(episodeIds: number[], monitored: boolean): Promise<Episode[]>;
   listEpisodeFiles(seriesId: number): Promise<EpisodeFile[]>;
+  getEpisodeFile(id: number): Promise<EpisodeFile>;
   deleteEpisodeFile(id: number): Promise<void>;
   getCalendar(options?: CalendarOptions): Promise<Episode[]>;
   getQueue(options?: QueueOptions): Promise<PagedResponse<QueueRecord>>;
@@ -140,6 +141,7 @@ export function createSonarrClient(config: InstanceConfig): SonarrClient {
     monitorEpisodes: (episodeIds, monitored) =>
       write(() => http.put('/episode/monitor', { episodeIds, monitored })),
     listEpisodeFiles: (seriesId) => http.get('/episodefile', { seriesId }),
+    getEpisodeFile: (id) => http.get(`/episodefile/${id}`),
     deleteEpisodeFile: (id) => write(() => http.del(`/episodefile/${id}`)),
     getCalendar: (options) => http.get('/calendar', { ...options }),
     getQueue: (options) => http.get('/queue', { ...options }),

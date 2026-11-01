@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { describeError } from '../http/errors.js';
-import type { ToolDefinition } from './types.js';
+import { annotationsFor, type ToolDefinition } from './types.js';
 
 // Read at runtime rather than imported: package.json sits outside rootDir
 // ("src"), so a JSON import would drag the build's rootDir up and nest the
@@ -44,7 +44,11 @@ export function createServer(tools: ToolDefinition[]): McpServer {
   for (const tool of tools) {
     server.registerTool(
       tool.name,
-      { description: tool.description, inputSchema: z.object(tool.inputSchema) },
+      {
+        description: tool.description,
+        inputSchema: z.object(tool.inputSchema),
+        annotations: annotationsFor(tool.effect),
+      },
       async (args: Record<string, unknown>) => {
         try {
           return toolResult(await tool.handler(args), tool.name);

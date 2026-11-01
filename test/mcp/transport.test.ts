@@ -7,6 +7,7 @@ import { startHttp } from '../../src/mcp/transport.js';
 
 const testTool = defineTool({
   name: 'test_echo',
+  effect: 'read',
   description: 'Echo input back',
   inputSchema: { text: z.string().describe('Text to echo') },
   handler: async ({ text }) => ({ text }),

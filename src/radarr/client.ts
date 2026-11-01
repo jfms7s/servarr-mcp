@@ -81,6 +81,7 @@ export interface RadarrClient {
   bulkEditMovies(payload: MovieEditorPayload): Promise<Movie[]>;
   deleteMovie(id: number, options?: DeleteMovieOptions): Promise<void>;
   listMovieFiles(movieId: number): Promise<MovieFile[]>;
+  getMovieFile(id: number): Promise<MovieFile>;
   deleteMovieFile(id: number): Promise<void>;
   renamePreview(movieIds: number[]): Promise<RenameMovieResource[]>;
   getCalendar(options?: CalendarOptions): Promise<Movie[]>;
@@ -130,6 +131,7 @@ export function createRadarrClient(config: InstanceConfig): RadarrClient {
       write(() => http.put('/movie/editor', payload, undefined, { timeoutMs: EDITOR_TIMEOUT_MS })),
     deleteMovie: (id, options) => write(() => http.del(`/movie/${id}`, { ...options })),
     listMovieFiles: (movieId) => http.get('/moviefile', { movieId }),
+    getMovieFile: (id) => http.get(`/moviefile/${id}`),
     deleteMovieFile: (id) => write(() => http.del(`/moviefile/${id}`)),
     renamePreview: (movieIds) => http.get('/rename', { movieId: movieIds }),
     getCalendar: (options) => http.get('/calendar', { ...options }),

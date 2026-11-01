@@ -67,6 +67,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
   return [
     defineTool({
       name: 'radarr_list_movies',
+      effect: 'read',
       description:
         'List movies in Radarr with optional filtering and pagination. ' +
         'Results are returned as { totalMatched, offset, limit, movies } so pagination is visible. Default limit is 50 ' +
@@ -133,6 +134,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_get_movie',
+      effect: 'read',
       description: 'Get the full Radarr record for one movie.',
       inputSchema: { movieId: z.number().int().describe('Radarr movie id') },
       handler: ({ movieId }) => client.getMovie(movieId),
@@ -140,6 +142,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_lookup_movie',
+      effect: 'read',
       description:
         'Search TMDB for movies matching a search term. Use this to find the tmdbId needed ' +
         'by radarr_add_movie. Does not modify the library.',
@@ -149,6 +152,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_add_movie',
+      effect: 'write',
       description:
         'Add a new movie to Radarr. Get tmdbId from radarr_lookup_movie, qualityProfileId ' +
         'from radarr_list_quality_profiles, and rootFolderPath from radarr_list_root_folders.',
@@ -182,6 +186,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_update_movie',
+      effect: 'destructive',
       description:
         'Update a movie, changing only the provided fields (monitored, qualityProfileId, ' +
         'minimumAvailability, rootFolderPath, tags). All other fields are read from the current record. ' +
@@ -243,6 +248,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_bulk_edit_movies',
+      effect: 'destructive',
       description:
         'Bulk-edit multiple movies with a single API call. ' +
         'Only provided fields are sent to the API, others are left unchanged. ' +
@@ -312,6 +318,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_delete_movie',
+      effect: 'destructive',
       description:
         'Remove a movie from Radarr. ' +
         'When deleteFiles=true without confirmDeleteFiles=true, returns what would be deleted as a safety check. ' +
@@ -356,6 +363,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_list_movie_files',
+      effect: 'read',
       description:
         'List downloaded movie files for a movie. Shows file path, size, and quality information.',
       inputSchema: { movieId: z.number().int().describe('Radarr movie id') },
@@ -365,11 +373,29 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_delete_movie_file',
-      description: 'Destructive: permanently delete a movie file and its record.',
+      effect: 'destructive',
+      description:
+        'Destructive: permanently delete a movie file on disk and its record. ' +
+        'Without confirm=true, deletes nothing and returns the file that would be deleted as a safety check.',
       inputSchema: {
         movieFileId: z.number().int().describe('Radarr movie file id'),
+        confirm: z.boolean().optional().describe('Required to delete, prevents accidental deletion'),
       },
-      handler: async ({ movieFileId }) => {
+      handler: async ({ movieFileId, confirm }) => {
+        if (confirm !== true) {
+          const file = await client.getMovieFile(movieFileId);
+          return {
+            wouldDelete: {
+              id: file.id,
+              movieId: file.movieId,
+              relativePath: file.relativePath,
+              path: file.path,
+              size: file.size,
+              quality: file.quality?.quality.name,
+            },
+            confirmRequired: true,
+          };
+        }
         await client.deleteMovieFile(movieFileId);
         return undefined;
       },
@@ -377,6 +403,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_get_calendar',
+      effect: 'read',
       description:
         'List movies with releases in a date range. Pass start and end for a predictable ' +
         'window; if they are omitted Radarr chooses its own short range around today. ' +
@@ -395,6 +422,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_get_queue',
+      effect: 'read',
       description:
         'List items currently downloading or awaiting import, with percent complete and any ' +
         'error messages. Use this to diagnose stuck or failed downloads.',
@@ -407,6 +435,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_delete_queue_item',
+      effect: 'destructive',
       description:
         'Destructive: remove an item from the download queue. Use removeFromClient to also ' +
         'request removal from the torrent/usenet client, and blocklist to prevent re-importing.',
@@ -426,6 +455,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_get_history',
+      effect: 'read',
       description: 'List history of download, import and grab events.',
       inputSchema: {
         ...page,
@@ -445,6 +475,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_get_wanted_missing',
+      effect: 'read',
       description: 'List wanted but missing movies (monitored but not downloaded yet). Rows omit the plot overview.',
       inputSchema: { ...page },
       handler: async ({ page: pageNum, pageSize }) => {
@@ -455,6 +486,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_get_blocklist',
+      effect: 'read',
       description: 'List releases on the blocklist (failed imports or manually blocked).',
       inputSchema: { ...page },
       handler: async ({ page: pageNum, pageSize }) => {
@@ -465,6 +497,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_delete_blocklist_item',
+      effect: 'destructive',
       description: 'Destructive: remove a release from the blocklist.',
       inputSchema: {
         id: z.number().int().describe('Blocklist item id'),
@@ -477,6 +510,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_list_collections',
+      effect: 'read',
       description: 'List all movie collections defined in Radarr.',
       inputSchema: {},
       handler: async () => (await client.listCollections()).map(summarizeCollection),
@@ -484,6 +518,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_run_command',
+      effect: 'write',
       description:
         'Trigger a Radarr background command, for example searching for a movie or rescanning ' +
         'its folder. Returns a command id; poll it with radarr_get_command. ' +
@@ -505,6 +540,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_get_command',
+      effect: 'read',
       description:
         'Poll the status of a background command launched by radarr_run_command or radarr_add_movie, or the ' +
         'moveCommandId returned by radarr_update_movie and radarr_bulk_edit_movies.',
@@ -516,6 +552,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_search_releases',
+      effect: 'read',
       description:
         'Search for releases to download a movie. Runs a live interactive search across indexers ' +
         '(can take several seconds); results are in Radarr\'s preference order with `rank`. ' +
@@ -571,6 +608,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_grab_release',
+      effect: 'destructive',
       description:
         'Download a release from a previous search. Note two caveats: ' +
         '(a) Radarr grabs from its cached search results, which expire after about 30 minutes — ' +
@@ -597,6 +635,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_list_unmapped_folders',
+      effect: 'read',
       description:
         'List folders in each root folder that Radarr has not yet mapped to any movie. ' +
         'Use this to find media that needs to be imported or organized.',
@@ -609,6 +648,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_get_rename_preview',
+      effect: 'read',
       description:
         'Preview how files would be renamed without actually renaming them. ' +
         'If the result contains hundreds of files, only the first 100 are shown but the total count is reported. ' +
@@ -633,6 +673,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_find_duplicate_movies',
+      effect: 'read',
       description:
         'Find movies that appear to be the same film in more than one place. ' +
         'Reports exact duplicates (same tmdbId) and misplaced copies (same title+year under different root folders). ' +
@@ -712,6 +753,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_list_quality_profiles',
+      effect: 'read',
       description:
         'List available quality profiles. Use these ids in radarr_add_movie and radarr_update_movie.',
       inputSchema: {},
@@ -720,6 +762,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_list_root_folders',
+      effect: 'read',
       description:
         'List configured root folders where movies are stored. Use these paths in radarr_add_movie.',
       inputSchema: {},
@@ -728,6 +771,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_list_tags',
+      effect: 'read',
       description: 'List all tags available for movie organization.',
       inputSchema: {},
       handler: () => client.listTags(),
@@ -735,6 +779,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_get_system_status',
+      effect: 'read',
       description: 'Get Radarr version, OS, Docker status and other system information.',
       inputSchema: {},
       handler: () => client.getSystemStatus(),
@@ -742,6 +787,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_get_health',
+      effect: 'read',
       description: 'Check Radarr health status. Returns warnings or errors about the installation.',
       inputSchema: {},
       handler: () => client.getHealth(),
@@ -749,6 +795,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_get_disk_space',
+      effect: 'read',
       description: 'List disk space on each drive containing movies or root folders.',
       inputSchema: {},
       handler: () => client.getDiskSpace(),
@@ -756,6 +803,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'radarr_import_folder',
+      effect: 'destructive',
       description:
         'Scan a folder and import any movie file found into an existing movie entry in Radarr. ' +
         'This is asynchronous — it returns a command id that can be polled with radarr_get_command. ' +

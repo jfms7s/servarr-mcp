@@ -69,6 +69,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
   return [
     defineTool({
       name: 'sonarr_list_series',
+      effect: 'read',
       description:
         'List TV series in the Sonarr library with optional filters. Results are returned ' +
         'as { totalMatched, offset, limit, series } so pagination is visible. Default limit is 50 ' +
@@ -115,6 +116,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_series',
+      effect: 'read',
       description: 'Get the full Sonarr record for one series, including every season.',
       inputSchema: { seriesId: z.number().int().describe('Sonarr series id') },
       handler: ({ seriesId }) => client.getSeries(seriesId),
@@ -122,6 +124,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_lookup_series',
+      effect: 'read',
       description:
         'Search TheTVDB for series matching a search term. Use this to find the tvdbId ' +
         'needed by sonarr_add_series. Does not modify the library.',
@@ -131,6 +134,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_add_series',
+      effect: 'write',
       description:
         'Add a new series to Sonarr. Get tvdbId from sonarr_lookup_series, qualityProfileId ' +
         'from sonarr_list_quality_profiles, and rootFolderPath from sonarr_list_root_folders.',
@@ -167,6 +171,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_delete_series',
+      effect: 'destructive',
       description:
         'Remove a series from Sonarr. ' +
         'When deleteFiles=true without confirmDeleteFiles=true, returns what would be deleted as a safety check. ' +
@@ -210,6 +215,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_queue',
+      effect: 'read',
       description:
         'List items currently downloading or awaiting import, with percent complete and any ' +
         'error messages. Use this to diagnose stuck or failed downloads.',
@@ -222,6 +228,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_run_command',
+      effect: 'write',
       description:
         'Trigger a Sonarr background command, for example searching for a series or ' +
         'rescanning its folder. Returns a command id; poll it with sonarr_get_command. ' +
@@ -248,6 +255,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_calendar',
+      effect: 'read',
       description:
         'List episodes airing in a date range. Pass start and end for a predictable ' +
         'window; if they are omitted Sonarr chooses its own short range around today. ' +
@@ -267,6 +275,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_update_series',
+      effect: 'destructive',
       description:
         'Update a series, changing only the provided fields (monitored, qualityProfileId, ' +
         'seasonFolder, tags, rootFolderPath, seriesType). When rootFolderPath is provided, ' +
@@ -318,6 +327,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_list_episodes',
+      effect: 'read',
       description:
         'List episodes for a series or season, summarised with file state and air dates. ' +
         'Omit seasonNumber to list all seasons. Results are returned as { totalMatched, offset, limit, episodes }; ' +
@@ -337,6 +347,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_episode',
+      effect: 'read',
       description: 'Get the full Sonarr record for one episode.',
       inputSchema: {
         episodeId: z.number().int().describe('Sonarr episode id'),
@@ -346,6 +357,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_monitor_episodes',
+      effect: 'write',
       description: 'Set the monitored state for one or more episodes.',
       inputSchema: {
         episodeIds: z.array(z.number().int()).describe('Episode ids to update'),
@@ -357,6 +369,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_list_episode_files',
+      effect: 'read',
       description:
         'List episode files (downloaded episodes) for a series. Results are returned as ' +
         '{ totalMatched, offset, limit, files }; default limit is 100 (pass limit and offset for other ranges).',
@@ -372,11 +385,30 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_delete_episode_file',
-      description: 'Destructive: permanently delete an episode file and its record.',
+      effect: 'destructive',
+      description:
+        'Destructive: permanently delete an episode file on disk and its record. ' +
+        'Without confirm=true, deletes nothing and returns the file that would be deleted as a safety check.',
       inputSchema: {
         episodeFileId: z.number().int().describe('Sonarr episode file id'),
+        confirm: z.boolean().optional().describe('Required to delete, prevents accidental deletion'),
       },
-      handler: async ({ episodeFileId }) => {
+      handler: async ({ episodeFileId, confirm }) => {
+        if (confirm !== true) {
+          const file = await client.getEpisodeFile(episodeFileId);
+          return {
+            wouldDelete: {
+              id: file.id,
+              seriesId: file.seriesId,
+              seasonNumber: file.seasonNumber,
+              relativePath: file.relativePath,
+              path: file.path,
+              size: file.size,
+              quality: file.quality?.quality.name,
+            },
+            confirmRequired: true,
+          };
+        }
         await client.deleteEpisodeFile(episodeFileId);
         return undefined;
       },
@@ -384,6 +416,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_delete_queue_item',
+      effect: 'destructive',
       description:
         'Destructive: remove an item from the download queue. Use removeFromClient to also ' +
         'request removal from the torrent/usenet client, and blocklist to prevent re-importing.',
@@ -403,6 +436,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_history',
+      effect: 'read',
       description: 'List history of download, import and grab events.',
       inputSchema: { ...page, eventType: z.number().int().optional().describe('Filter by event type: 1 grabbed, 2 seriesFolderImported, 3 downloadFolderImported, 4 downloadFailed, 5 episodeFileDeleted, 6 episodeFileRenamed, 7 downloadIgnored. Omit for all events.') },
       handler: async ({ page: pageNum, pageSize, eventType }) => {
@@ -413,6 +447,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_wanted_missing',
+      effect: 'read',
       description: 'List wanted but missing episodes (not downloaded yet). Rows omit the plot overview.',
       inputSchema: { ...page },
       handler: async ({ page: pageNum, pageSize }) => {
@@ -423,6 +458,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_blocklist',
+      effect: 'read',
       description: 'List releases on the blocklist (failed imports or manually blocked).',
       inputSchema: { ...page },
       handler: async ({ page: pageNum, pageSize }) => {
@@ -433,6 +469,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_delete_blocklist_item',
+      effect: 'destructive',
       description: 'Destructive: remove a release from the blocklist.',
       inputSchema: {
         id: z.number().int().describe('Blocklist item id'),
@@ -445,6 +482,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_command',
+      effect: 'read',
       description:
         'Poll the status of a background command launched by sonarr_run_command or sonarr_add_series, or the ' +
         'moveCommandId returned by sonarr_update_series and sonarr_bulk_edit_series.',
@@ -456,6 +494,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_list_quality_profiles',
+      effect: 'read',
       description:
         'List available quality profiles. Use these ids in sonarr_add_series and sonarr_update_series.',
       inputSchema: {},
@@ -464,6 +503,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_list_root_folders',
+      effect: 'read',
       description:
         'List configured root folders where series are stored. Use these paths in sonarr_add_series.',
       inputSchema: {},
@@ -472,6 +512,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_list_tags',
+      effect: 'read',
       description: 'List all tags available for series organization.',
       inputSchema: {},
       handler: () => client.listTags(),
@@ -479,6 +520,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_system_status',
+      effect: 'read',
       description: 'Get Sonarr version, OS, Docker status and other system information.',
       inputSchema: {},
       handler: () => client.getSystemStatus(),
@@ -486,6 +528,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_health',
+      effect: 'read',
       description: 'Check Sonarr health status. Returns warnings or errors about the installation.',
       inputSchema: {},
       handler: () => client.getHealth(),
@@ -493,6 +536,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_disk_space',
+      effect: 'read',
       description: 'List disk space on each drive containing series or root folders.',
       inputSchema: {},
       handler: () => client.getDiskSpace(),
@@ -500,6 +544,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_search_releases',
+      effect: 'read',
       description:
         'Run a live interactive search across indexers for episode or season releases (can take several seconds). Results are in Sonarr\'s preference order with rank. Rejections are Sonarr\'s verbatim reasons for not choosing a release automatically. Use guid + indexerId with sonarr_grab_release.',
       inputSchema: {
@@ -560,6 +605,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_grab_release',
+      effect: 'destructive',
       description:
         'Download a release via Sonarr. Grab uses cached search results (expire ~30 minutes); if grab fails, run sonarr_search_releases again. Grab overrides Sonarr\'s decision to DOWNLOAD but rejections can still block IMPORT, leaving items stuck in queue. Starts a real download tracked and imported by Sonarr (unlike prowlarr_grab_release, which bypasses Sonarr).',
       inputSchema: {
@@ -579,6 +625,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_bulk_edit_series',
+      effect: 'destructive',
       description:
         'Bulk edit multiple series at once. Only fields explicitly provided are updated; ' +
         'omitted fields are not changed. Supports changing root folder, quality profile, series type, ' +
@@ -631,6 +678,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_list_unmapped_folders',
+      effect: 'read',
       description:
         'List folders in each root folder that are not yet mapped to any series. ' +
         'Use this to find media that needs to be imported or organized.',
@@ -643,6 +691,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_get_rename_preview',
+      effect: 'read',
       description:
         'Preview how Sonarr will rename episode files for a series or season without actually ' +
         'running the rename. Useful for verifying your naming rules are working correctly. ' +
@@ -665,6 +714,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_find_duplicate_series',
+      effect: 'read',
       description:
         'Find potential duplicate series in the library. Detects series with the same tvdbId ' +
         '(exact duplicate) and different series (distinct tvdbIds) with the same normalized title + year ' +
@@ -730,6 +780,7 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
 
     defineTool({
       name: 'sonarr_import_folder',
+      effect: 'destructive',
       description:
         'Scan a folder and import any episode files found into existing series entries in Sonarr. ' +
         'This is asynchronous — it returns a command id that can be polled with sonarr_get_command. ' +
