@@ -9,7 +9,11 @@ import { createSonarrTools } from '../../src/sonarr/tools.js';
 // request reaches the server at all, and what it carries when it does.
 
 const server = setupServer();
+// The command queue the file-moving tools read before and after a move; empty here.
+const commandHandler = () => http.get(`${base}/command`, () => HttpResponse.json([]));
+const commandList = { method: 'GET', path: '/api/v3/command', query: {} };
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+beforeEach(() => server.use(commandHandler()));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
@@ -125,7 +129,10 @@ describe('Sonarr root-folder changes require an explicit moveFiles', () => {
       await call('sonarr_update_series', { seriesId: 3, rootFolderPath: '/archive', moveFiles });
       expect(wire).toEqual([
         { method: 'GET', path: '/api/v3/series/3', query: {} },
+        // A file move is queued in the background, so the command queue is read around the PUT.
+        ...(moveFiles ? [commandList] : []),
         { method: 'PUT', path: '/api/v3/series/3', query: { moveFiles: String(moveFiles) } },
+        ...(moveFiles ? [commandList] : []),
       ]);
     },
   );
@@ -161,7 +168,8 @@ describe('Sonarr root-folder changes require an explicit moveFiles', () => {
         rootFolderPath: '/archive',
         moveFiles,
       });
-      expect(wire).toEqual([{ method: 'PUT', path: '/api/v3/series/editor', query: {} }]);
+      const editor = { method: 'PUT', path: '/api/v3/series/editor', query: {} };
+      expect(wire).toEqual(moveFiles ? [commandList, editor, commandList] : [editor]);
       expect(bodies).toEqual([{ seriesIds: [1, 2], rootFolderPath: '/archive', moveFiles }]);
     },
   );

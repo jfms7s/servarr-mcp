@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { assertMoveBatchSize, assertMoveFilesChosen, MAX_MOVE_BATCH } from '../mcp/bulk.js';
+import { assertMoveBatchSize, assertMoveFilesChosen, MAX_MOVE_BATCH, trackMoveCommand } from '../mcp/bulk.js';
 import { CACHED_LIBRARY_NOTE, refreshInput } from '../mcp/library.js';
 import { listWindow, pageOf } from '../mcp/paging.js';
 import { isWithinRoot, normalizeTitle, rootFolderOf } from '../mcp/paths.js';
@@ -52,6 +52,9 @@ function getFolderNameAndJoinPath(currentPath: string | undefined, fallbackName:
     newPath: `${cleanRoot}${separator}${folderName}`,
   };
 }
+
+/** What Radarr queues for a file-moving edit: BulkMoveMovie from the editor, MoveMovie from PUT /movie. */
+const RADARR_MOVE_COMMANDS = ['BulkMoveMovie', 'MoveMovie'];
 
 const page = {
   page: z.number().int().min(1).optional().describe('Page number, starting at 1'),
@@ -182,7 +185,9 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         'minimumAvailability, rootFolderPath, tags). All other fields are read from the current record. ' +
         'When rootFolderPath is given, path is automatically updated to the new root (preserving the ' +
         'existing folder name), and moveFiles is required: true moves the files with the record, false ' +
-        'repoints the record only (the files stay put and Radarr reports the movie missing after a rescan).',
+        'repoints the record only (the files stay put and Radarr reports the movie missing after a rescan). ' +
+        'With moveFiles true, Radarr queues the move as a background command and returns before the files ' +
+        'move: the result carries moveCommandId to poll with radarr_get_command (null when none was found).',
       inputSchema: {
         movieId: z.number().int().describe('Radarr movie id'),
         monitored: z.boolean().optional().describe('Monitor the movie'),
@@ -224,8 +229,13 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           merged.path = newPath;
         }
 
-        const updated = await client.updateMovie(movieId, merged, { moveFiles: moveFiles ?? false });
-        return summarizeMovie(updated);
+        if (moveFiles !== true) {
+          return summarizeMovie(await client.updateMovie(movieId, merged, { moveFiles: false }));
+        }
+        const { result, ...move } = await trackMoveCommand(() => client.listCommands(), RADARR_MOVE_COMMANDS, () =>
+          client.updateMovie(movieId, merged, { moveFiles: true }),
+        );
+        return { ...summarizeMovie(result), ...move };
       },
     }),
 
@@ -237,8 +247,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         'Use applyTags to control how tags are merged: add, remove, or replace. ' +
         'When rootFolderPath is given, moveFiles is required: true moves the files with the records, false ' +
         'repoints the records only (the files stay put and Radarr reports the movies missing after a rescan). ' +
-        `When moveFiles is true the files are moved before the call returns, so at most ${MAX_MOVE_BATCH} ids ` +
-        'are accepted per call; send larger sets as sequential batches, not in parallel.',
+        'With moveFiles true, Radarr queues the move as a background command and returns before the files ' +
+        'move: the result carries moveCommandId to poll with radarr_get_command (null when none was found). ' +
+        `At most ${MAX_MOVE_BATCH} ids are accepted per call when moveFiles is true; send larger sets as ` +
+        'sequential batches, and poll each moveCommandId until it completes before the next batch or a retry.',
       inputSchema: {
         movieIds: z
           .array(z.number().int())
@@ -285,11 +297,14 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         if (tags !== undefined) payload.tags = tags;
         if (applyTags !== undefined) payload.applyTags = applyTags;
 
-        const result = await client.bulkEditMovies(payload as unknown as Parameters<typeof client.bulkEditMovies>[0]);
-        return {
+        const edit = () => client.bulkEditMovies(payload as unknown as Parameters<typeof client.bulkEditMovies>[0]);
+        const summarize = (result: Awaited<ReturnType<typeof edit>>) => ({
           updated: result.length,
           movies: result.map((m) => summarizeMovie(m, { overview: false })),
-        };
+        });
+        if (moveFiles !== true) return summarize(await edit());
+        const { result, ...move } = await trackMoveCommand(() => client.listCommands(), RADARR_MOVE_COMMANDS, edit);
+        return { ...summarize(result), ...move };
       },
     }),
 
@@ -489,7 +504,8 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
     defineTool({
       name: 'radarr_get_command',
       description:
-        'Poll the status of a background command launched by radarr_run_command or radarr_add_movie.',
+        'Poll the status of a background command launched by radarr_run_command or radarr_add_movie, or the ' +
+        'moveCommandId returned by radarr_update_movie and radarr_bulk_edit_movies.',
       inputSchema: {
         commandId: z.number().int().describe('Command id'),
       },

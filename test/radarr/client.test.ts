@@ -97,6 +97,19 @@ describe('RadarrClient', () => {
     expect(body).toEqual({ name: 'MoviesSearch', movieIds: [3] });
   });
 
+  it('lists commands with GET /command and no query', async () => {
+    let requested: URL | undefined;
+    server.use(
+      http.get(url('/command'), ({ request }) => {
+        requested = new URL(request.url);
+        return HttpResponse.json([{ id: 9, name: 'BulkMoveMovie', status: 'started' }]);
+      }),
+    );
+    await expect(client.listCommands()).resolves.toEqual([{ id: 9, name: 'BulkMoveMovie', status: 'started' }]);
+    expect(requested?.pathname).toBe('/api/v3/command');
+    expect(requested?.search).toBe('');
+  });
+
   it('reads system status, health and disk space', async () => {
     server.use(
       http.get(url('/system/status'), () => HttpResponse.json({ appName: 'Radarr', version: '5.0' })),

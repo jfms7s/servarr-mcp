@@ -1009,3 +1009,84 @@ describe('createRadarrTools', () => {
     });
   });
 });
+
+describe('Radarr file moves are queued, not synchronous', () => {
+  const commands = (...list: Array<[number, string]>) => list.map(([id, name]) => ({ id, name, status: 'queued' }));
+
+  it('radarr_bulk_edit_movies with moveFiles returns the queued move command id', async () => {
+    const bulkEditMovies = vi.fn().mockResolvedValue([{ id: 1, title: 'One' }, { id: 2, title: 'Two' }]);
+    const listCommands = vi
+      .fn()
+      .mockResolvedValueOnce(commands([10, 'RssSync']))
+      .mockResolvedValueOnce(commands([10, 'RssSync'], [11, 'BulkMoveMovie']));
+    const get = toolsFor({ bulkEditMovies, listCommands });
+
+    const result = (await get('radarr_bulk_edit_movies').handler({
+      movieIds: [1, 2],
+      rootFolderPath: '/archive',
+      moveFiles: true,
+    })) as { updated: number; moveCommandId: number | null };
+
+    expect(result).toMatchObject({ updated: 2, moveCommandId: 11 });
+  });
+
+  it('radarr_bulk_edit_movies returns moveCommandId null with a note when no move command was queued', async () => {
+    const bulkEditMovies = vi.fn().mockResolvedValue([{ id: 1, title: 'One' }]);
+    const listCommands = vi.fn().mockResolvedValue(commands([10, 'RssSync']));
+    const get = toolsFor({ bulkEditMovies, listCommands });
+
+    const result = await get('radarr_bulk_edit_movies').handler({ movieIds: [1], rootFolderPath: '/archive', moveFiles: true });
+
+    expect(result).toMatchObject({ moveCommandId: null, moveCommandNote: expect.stringMatching(/no move command/i) });
+  });
+
+  it('radarr_bulk_edit_movies does not read the command queue when files are not moved', async () => {
+    const bulkEditMovies = vi.fn().mockResolvedValue([{ id: 1, title: 'One' }]);
+    const listCommands = vi.fn();
+    const get = toolsFor({ bulkEditMovies, listCommands });
+
+    const result = await get('radarr_bulk_edit_movies').handler({ movieIds: [1], monitored: false });
+
+    expect(listCommands).not.toHaveBeenCalled();
+    expect(result).not.toHaveProperty('moveCommandId');
+  });
+
+  it('radarr_bulk_edit_movies retried with the same ids returns the same shape and does not throw', async () => {
+    const bulkEditMovies = vi.fn().mockResolvedValue([{ id: 1, title: 'One' }]);
+    const listCommands = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(commands([11, 'BulkMoveMovie']))
+      .mockResolvedValueOnce(commands([11, 'BulkMoveMovie']))
+      .mockResolvedValueOnce(commands([11, 'BulkMoveMovie'], [12, 'BulkMoveMovie']));
+    const get = toolsFor({ bulkEditMovies, listCommands });
+    const args = { movieIds: [1], rootFolderPath: '/archive', moveFiles: true };
+
+    const first = await get('radarr_bulk_edit_movies').handler(args);
+    const second = await get('radarr_bulk_edit_movies').handler(args);
+
+    expect(Object.keys(second as object).sort()).toEqual(Object.keys(first as object).sort());
+    expect(first).toMatchObject({ moveCommandId: 11 });
+    expect(second).toMatchObject({ moveCommandId: 12 });
+  });
+
+  it('radarr_update_movie with moveFiles returns the queued move command id', async () => {
+    const getMovie = vi.fn().mockResolvedValue({ id: 4, title: 'Arrival', path: '/movies/Arrival', folderName: 'Arrival', monitored: true, tags: [] });
+    const updateMovie = vi.fn().mockImplementation((_id: number, payload: unknown) => Promise.resolve(payload));
+    const listCommands = vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce(commands([5, 'MoveMovie']));
+    const get = toolsFor({ getMovie, updateMovie, listCommands });
+
+    const result = await get('radarr_update_movie').handler({ movieId: 4, rootFolderPath: '/archive', moveFiles: true });
+
+    expect(result).toMatchObject({ id: 4, moveCommandId: 5 });
+    expect(updateMovie).toHaveBeenCalledWith(4, expect.anything(), { moveFiles: true });
+  });
+
+  it('describes the move as queued and points at the get_command tool', () => {
+    const get = toolsFor({});
+    for (const name of ['radarr_bulk_edit_movies', 'radarr_update_movie']) {
+      expect(get(name).description).toMatch(/background command/);
+      expect(get(name).description).toMatch(/radarr_get_command/);
+    }
+  });
+});

@@ -1096,3 +1096,84 @@ describe('createSonarrTools', () => {
     });
   });
 });
+
+describe('Sonarr file moves are queued, not synchronous', () => {
+  const commands = (...list: Array<[number, string]>) => list.map(([id, name]) => ({ id, name, status: 'queued' }));
+
+  it('sonarr_bulk_edit_series with moveFiles returns the queued move command id', async () => {
+    const bulkEditSeries = vi.fn().mockResolvedValue([{ id: 1, title: 'One' }, { id: 2, title: 'Two' }]);
+    const listCommands = vi
+      .fn()
+      .mockResolvedValueOnce(commands([10, 'RssSync']))
+      .mockResolvedValueOnce(commands([10, 'RssSync'], [11, 'BulkMoveSeries']));
+    const get = toolsFor({ bulkEditSeries, listCommands });
+
+    const result = (await get('sonarr_bulk_edit_series').handler({
+      seriesIds: [1, 2],
+      rootFolderPath: '/archive',
+      moveFiles: true,
+    })) as { updated: number; moveCommandId: number | null };
+
+    expect(result).toMatchObject({ updated: 2, moveCommandId: 11 });
+  });
+
+  it('sonarr_bulk_edit_series returns moveCommandId null with a note when no move command was queued', async () => {
+    const bulkEditSeries = vi.fn().mockResolvedValue([{ id: 1, title: 'One' }]);
+    const listCommands = vi.fn().mockResolvedValue(commands([10, 'RssSync']));
+    const get = toolsFor({ bulkEditSeries, listCommands });
+
+    const result = await get('sonarr_bulk_edit_series').handler({ seriesIds: [1], rootFolderPath: '/archive', moveFiles: true });
+
+    expect(result).toMatchObject({ moveCommandId: null, moveCommandNote: expect.stringMatching(/no move command/i) });
+  });
+
+  it('sonarr_bulk_edit_series does not read the command queue when files are not moved', async () => {
+    const bulkEditSeries = vi.fn().mockResolvedValue([{ id: 1, title: 'One' }]);
+    const listCommands = vi.fn();
+    const get = toolsFor({ bulkEditSeries, listCommands });
+
+    const result = await get('sonarr_bulk_edit_series').handler({ seriesIds: [1], monitored: false });
+
+    expect(listCommands).not.toHaveBeenCalled();
+    expect(result).not.toHaveProperty('moveCommandId');
+  });
+
+  it('sonarr_bulk_edit_series retried with the same ids returns the same shape and does not throw', async () => {
+    const bulkEditSeries = vi.fn().mockResolvedValue([{ id: 1, title: 'One' }]);
+    const listCommands = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(commands([11, 'BulkMoveSeries']))
+      .mockResolvedValueOnce(commands([11, 'BulkMoveSeries']))
+      .mockResolvedValueOnce(commands([11, 'BulkMoveSeries'], [12, 'BulkMoveSeries']));
+    const get = toolsFor({ bulkEditSeries, listCommands });
+    const args = { seriesIds: [1], rootFolderPath: '/archive', moveFiles: true };
+
+    const first = await get('sonarr_bulk_edit_series').handler(args);
+    const second = await get('sonarr_bulk_edit_series').handler(args);
+
+    expect(Object.keys(second as object).sort()).toEqual(Object.keys(first as object).sort());
+    expect(first).toMatchObject({ moveCommandId: 11 });
+    expect(second).toMatchObject({ moveCommandId: 12 });
+  });
+
+  it('sonarr_update_series with moveFiles returns the queued move command id', async () => {
+    const getSeries = vi.fn().mockResolvedValue({ id: 4, title: 'Severance', path: '/tv/Severance', folder: 'Severance', monitored: true, tags: [] });
+    const updateSeries = vi.fn().mockImplementation((_id: number, payload: unknown) => Promise.resolve(payload));
+    const listCommands = vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce(commands([5, 'MoveSeries']));
+    const get = toolsFor({ getSeries, updateSeries, listCommands });
+
+    const result = await get('sonarr_update_series').handler({ seriesId: 4, rootFolderPath: '/archive', moveFiles: true });
+
+    expect(result).toMatchObject({ id: 4, moveCommandId: 5 });
+    expect(updateSeries).toHaveBeenCalledWith(4, expect.anything(), { moveFiles: true });
+  });
+
+  it('describes the move as queued and points at the get_command tool', () => {
+    const get = toolsFor({});
+    for (const name of ['sonarr_bulk_edit_series', 'sonarr_update_series']) {
+      expect(get(name).description).toMatch(/background command/);
+      expect(get(name).description).toMatch(/sonarr_get_command/);
+    }
+  });
+});
