@@ -403,6 +403,15 @@ npm run build
 
 This emits compiled JavaScript to `dist/index.js`.
 
+### Smoke test
+
+```bash
+npm run build
+npm run smoke
+```
+
+`npm run smoke` starts `dist/index.js` the way it ships and checks the exit codes (2 with no product configured, 2 for the HTTP transport without a token), `/healthz`, a 401 on `/mcp` without the token, an authenticated `tools/list` returning every tool, and a clean exit on SIGTERM. The arr URLs point at `127.0.0.1:9`, so nothing real is contacted. `node scripts/smoke.mjs docker <image>` runs the same checks against a container image; CI runs both. The expected tool count is in `scripts/smoke.mjs` (`EXPECTED_TOOLS`), next to the counts in `test/tools.test.ts`.
+
 ### Running Locally
 
 First build the project, then run it:

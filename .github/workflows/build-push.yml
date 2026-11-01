@@ -38,6 +38,9 @@ jobs:
 
       - run: npm run build
 
+      # Starts dist/index.js: exit codes, /healthz, authenticated tools/list, SIGTERM.
+      - run: npm run smoke
+
       - run: bash scripts/ci/needs-build.test.sh
 
       # Last step of the job: build-push needs test, so this report-only upload must never be able to block a deploy.
@@ -100,6 +103,21 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+
+      # A native single-arch build, loaded locally and started before anything is pushed:
+      # catches a broken CMD, a missing runtime file or a signal regression in the image itself.
+      - name: Build image for the smoke test
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: servarr-mcp:ci
+
+      - name: Smoke-test the image
+        run: node scripts/smoke.mjs docker servarr-mcp:ci
 
       # Deploy target is an all-Raspberry-Pi (arm64) k3s cluster; amd64 is
       # kept too so the image still runs on a dev machine / other runners.

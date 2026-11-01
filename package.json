@@ -5,6 +5,7 @@
   "scripts": {
     "test": "vitest run",
     "build": "tsc",
+    "smoke": "node scripts/smoke.mjs dist",
     "lint": "eslint src test",
     "typecheck": "tsc -p tsconfig.test.json",
     "prepublishOnly": "npm run build"
