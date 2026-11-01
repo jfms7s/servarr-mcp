@@ -148,4 +148,19 @@ describe('startHttp integration', () => {
     });
     expect(unauthenticated.status).toBe(401);
   });
+
+  it('answers an oversized body with a JSON-RPC error, not an HTML stack trace', async () => {
+    const token = 'test-secret-token';
+    handle = await startHttp(() => createServer([testTool]), { port: 0, token });
+
+    const response = await fetch(`http://localhost:${handle.port}/mcp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'x', id: 1, params: { pad: 'a'.repeat(200_000) } }),
+    });
+    expect(response.status).toBe(413);
+    const text = await response.text();
+    expect(text).not.toMatch(/\bat /);
+    expect(JSON.parse(text)).toMatchObject({ jsonrpc: '2.0', error: { code: -32600 }, id: null });
+  });
 });

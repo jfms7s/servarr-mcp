@@ -50,7 +50,8 @@ function readInstance(
     );
   }
   // `localhost:8989` parses with the scheme "localhost:" and only fails on the first call.
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+  // `http:8989` parses too (as http://8989/), so the raw value must spell out the slashes.
+  if ((url.protocol !== 'http:' && url.protocol !== 'https:') || !/^https?:\/\//i.test(rawUrl)) {
     throw new ConfigError(`${product}: ${prefix}_URL must start with http:// or https://`);
   }
   // The client appends /api/... to the base URL, which a query or fragment would swallow.

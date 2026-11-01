@@ -446,6 +446,13 @@ describe('createOverseerrTools', () => {
     });
   });
 
+  it('updates a tv request with is4k and its seasons', async () => {
+    const updateRequest = vi.fn().mockResolvedValue({ ...request, is4k: true });
+    const get = toolsFor({ updateRequest });
+    await get('overseerr_update_request').handler({ requestId: 1, mediaType: 'tv', is4k: true, seasons: [1] });
+    expect(updateRequest).toHaveBeenCalledWith(1, { mediaType: 'tv', is4k: true, seasons: [1] });
+  });
+
   it('updates a request with seasons for tv media', async () => {
     const updateRequest = vi.fn().mockResolvedValue({
       ...request,

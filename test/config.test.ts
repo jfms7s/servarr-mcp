@@ -70,10 +70,14 @@ describe('loadConfig', () => {
     );
   });
 
-  it('rejects a url without an http or https scheme', () => {
-    const load = () => loadConfig({ SONARR_URL: 'localhost:8989', SONARR_API_KEY: 'k' });
+  it.each(['localhost:8989', 'http:8989', 'https:host:8989', 'ftp://h'])('rejects a url without http:// or https://: %s', (url) => {
+    const load = () => loadConfig({ SONARR_URL: url, SONARR_API_KEY: 'k' });
     expect(load).toThrow(ConfigError);
     expect(load).toThrow(/must start with http:\/\/ or https:\/\//);
+  });
+
+  it.each(['HTTPS://h:8989/sonarr', 'http://[::1]:8989'])('accepts %s', (url) => {
+    expect(loadConfig({ SONARR_URL: url, SONARR_API_KEY: 'k' }).sonarr).toBeDefined();
   });
 
   it.each(['http://h/sonarr?x=1', 'http://h/#a', 'http://h/sonarr?', 'http://h/#'])(

@@ -8,15 +8,24 @@ export async function startStdio(server: McpServer): Promise<void> {
   await server.connect(new StdioServerTransport());
 }
 
-// express.json() fails a malformed body with a SyntaxError typed entity.parse.failed, which
-// Express would answer with its HTML error page (stack trace and paths outside production).
-// Answer it as JSON-RPC does instead; anything else goes on to the default handler.
-const jsonParseError: ErrorRequestHandler = (error: unknown, _request, response, next) => {
-  if (error instanceof SyntaxError && (error as SyntaxError & { type?: string }).type === 'entity.parse.failed') {
-    response.status(400).json({ jsonrpc: '2.0', error: { code: -32700, message: 'Parse error' }, id: null });
+// express.json() fails a bad body (malformed JSON, too large, unsupported charset or
+// encoding) with an error carrying a string `type` and a 4xx `status`, which Express would
+// answer with its HTML error page (stack trace and paths outside production). Answer it as
+// JSON-RPC instead, with a fixed message; anything else goes on to the default handler.
+const bodyParserError: ErrorRequestHandler = (error: unknown, _request, response, next) => {
+  const { type, status } = (error ?? {}) as { type?: unknown; status?: unknown };
+  if (typeof type !== 'string' || typeof status !== 'number' || status < 400 || status > 499) {
+    next(error);
     return;
   }
-  next(error);
+  const parseFailed = type === 'entity.parse.failed';
+  response.status(status).json({
+    jsonrpc: '2.0',
+    error: parseFailed
+      ? { code: -32700, message: 'Parse error' }
+      : { code: -32600, message: status === 413 ? 'Invalid Request: body too large' : 'Invalid Request' },
+    id: null,
+  });
 };
 
 export interface HttpHandle {
@@ -56,7 +65,7 @@ export async function startHttp(
   });
 
   // After the /mcp route: bearerAuth runs first, so an unauthenticated malformed body still gets 401.
-  app.use('/mcp', jsonParseError);
+  app.use('/mcp', bodyParserError);
 
   const listener = app.listen(options.port);
   await new Promise<void>((resolve, reject) => {
