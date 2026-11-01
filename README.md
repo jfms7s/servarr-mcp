@@ -31,7 +31,7 @@ The server will start on a stdio interface, expecting MCP protocol messages. Use
 
 ### With Docker
 
-Use the published container image (`linux/amd64` and `linux/arm64`), pinned to a release tag such as `v0.1.2`, or `latest`:
+Use the published container image (`linux/amd64` and `linux/arm64`), pinned to a release tag (`vX.Y.Z`; see the [latest release](https://github.com/jfms7s/servarr-mcp/releases/latest)), or `latest`:
 
 ```bash
 docker run --rm -p 3000:3000 \
@@ -44,7 +44,7 @@ docker run --rm -p 3000:3000 \
   -e PROWLARR_API_KEY=your-prowlarr-api-key \
   -e OVERSEERR_URL=http://overseerr:5055 \
   -e OVERSEERR_API_KEY=your-overseerr-api-key \
-  ghcr.io/jfms7s/servarr-mcp:v0.1.2
+  ghcr.io/jfms7s/servarr-mcp:vX.Y.Z
 ```
 
 **Note:** The image defaults to the HTTP transport (`SERVARR_MCP_TRANSPORT=http`), which requires `SERVARR_MCP_TOKEN` — without it the container exits at startup. The URLs must be reachable from *inside* the container: `localhost` there is the container itself, not your host. Use the arr containers' names on a shared Docker network (as above), or their LAN addresses. For many variables, use `--env-file`:
@@ -99,7 +99,7 @@ export PROWLARR_API_KEY=your-prowlarr-key
 node dist/index.js
 ```
 
-The server will register 42 tools (28 Sonarr + 14 Prowlarr) and start normally. Radarr and Overseerr tools will not be available.
+The server will register only the Sonarr and Prowlarr tools and start normally. Radarr and Overseerr tools will not be available.
 
 ## Claude Desktop / Claude Code Setup
 
