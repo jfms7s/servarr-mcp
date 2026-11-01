@@ -7,6 +7,7 @@ import type {
   QueueRecord,
   Release,
   RenameEpisodeResource,
+  RootFolder,
   Series,
   UnmappedFolder,
 } from './types.js';
@@ -292,15 +293,20 @@ export function summarizeRenamePreview(resource: RenameEpisodeResource): RenameP
 }
 
 export interface UnmappedFolderSummary {
-  name?: string;
-  path?: string;
+  rootFolderId: number;
+  rootFolderPath: string;
+  folderName?: string;
+  folderPath?: string;
   relativePath?: string;
 }
 
-export function summarizeUnmappedFolder(folder: UnmappedFolder): UnmappedFolderSummary {
+/** One unmapped folder, flattened with the root folder it sits in. */
+export function summarizeUnmappedFolder(rootFolder: RootFolder, folder: UnmappedFolder): UnmappedFolderSummary {
   return {
-    name: folder.name,
-    path: folder.path,
+    rootFolderId: rootFolder.id,
+    rootFolderPath: rootFolder.path,
+    folderName: folder.name,
+    folderPath: folder.path,
     relativePath: folder.relativePath,
   };
 }
