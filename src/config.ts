@@ -5,11 +5,24 @@ export interface InstanceConfig {
 
 export type TransportMode = 'stdio' | 'http' | 'both';
 
-interface BaseConfig {
-  sonarr?: InstanceConfig;
-  radarr?: InstanceConfig;
-  prowlarr?: InstanceConfig;
-  overseerr?: InstanceConfig;
+/**
+ * The products this server knows, in registration order (which is also tool order in
+ * tools/list). Adding a product is one entry here plus its factory in src/products.ts.
+ * Kept free of product imports: the product modules import InstanceConfig from here.
+ */
+export const PRODUCT_SETTINGS = [
+  { id: 'sonarr', label: 'Sonarr', envPrefix: 'SONARR' },
+  { id: 'radarr', label: 'Radarr', envPrefix: 'RADARR' },
+  { id: 'prowlarr', label: 'Prowlarr', envPrefix: 'PROWLARR' },
+  { id: 'overseerr', label: 'Overseerr', envPrefix: 'OVERSEERR' },
+] as const;
+
+export type ProductId = (typeof PRODUCT_SETTINGS)[number]['id'];
+
+/** One optional instance per product, e.g. config.sonarr. */
+export type ProductInstances = { [Id in ProductId]?: InstanceConfig };
+
+interface BaseConfig extends ProductInstances {
   port: number;
   host: string;
 }
@@ -113,26 +126,22 @@ export function weakTokenWarning(token: string | undefined): string | undefined 
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServarrConfig {
-  const sonarr = readInstance(env, 'Sonarr', 'SONARR');
-  const radarr = readInstance(env, 'Radarr', 'RADARR');
-  const prowlarr = readInstance(env, 'Prowlarr', 'PROWLARR');
-  const overseerr = readInstance(env, 'Overseerr', 'OVERSEERR');
+  const instances: ProductInstances = {};
+  for (const product of PRODUCT_SETTINGS) {
+    const instance = readInstance(env, product.label, product.envPrefix);
+    if (instance) instances[product.id] = instance;
+  }
 
-  if (!sonarr && !radarr && !prowlarr && !overseerr) {
-    throw new ConfigError(
-      'No products configured. Set at least one of SONARR_URL/SONARR_API_KEY, ' +
-        'RADARR_URL/RADARR_API_KEY, PROWLARR_URL/PROWLARR_API_KEY, OVERSEERR_URL/OVERSEERR_API_KEY.',
-    );
+  if (Object.keys(instances).length === 0) {
+    const pairs = PRODUCT_SETTINGS.map(({ envPrefix }) => `${envPrefix}_URL/${envPrefix}_API_KEY`);
+    throw new ConfigError(`No products configured. Set at least one of ${pairs.join(', ')}.`);
   }
 
   const transport = readTransport(env);
   const token = env.SERVARR_MCP_TOKEN?.trim() || undefined;
 
   const base: BaseConfig = {
-    sonarr,
-    radarr,
-    prowlarr,
-    overseerr,
+    ...instances,
     port: readPort(env),
     host: readHost(env),
   };

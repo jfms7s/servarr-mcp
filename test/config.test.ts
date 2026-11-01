@@ -31,6 +31,13 @@ describe('loadConfig', () => {
     expect(() => loadConfig({})).toThrow(/at least one/i);
   });
 
+  it('keeps the exact no-products message', () => {
+    expect(() => loadConfig({})).toThrow(
+      'No products configured. Set at least one of SONARR_URL/SONARR_API_KEY, ' +
+        'RADARR_URL/RADARR_API_KEY, PROWLARR_URL/PROWLARR_API_KEY, OVERSEERR_URL/OVERSEERR_API_KEY.',
+    );
+  });
+
   it('loads Overseerr configuration', () => {
     const config = loadConfig({
       ...base,
