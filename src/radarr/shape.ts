@@ -10,6 +10,7 @@ import type {
   RenameMovieResource,
 } from './types.js';
 import { redactHistoryData } from '../arr/redact.js';
+import { summarizeMediaFileRef, type MediaFileRef } from '../arr/shape.js';
 
 const MAX_OVERVIEW = 300;
 
@@ -63,6 +64,26 @@ export function summarizeMovie(movie: Movie, options: SummaryOptions = {}): Movi
     ...(options.overview !== false && { overview: truncateOverview(movie.overview) }),
     genres: movie.genres,
     originalLanguage: movie.originalLanguage?.name,
+  };
+}
+
+// radarr_get_movie returns this by default (full: true gives the raw record): the list
+// summary plus what a caller needs to act on one movie, without images,
+// alternateTitles, ratings or the file's mediaInfo.
+export interface MovieDetail extends MovieSummary {
+  rootFolderPath?: string;
+  added?: string;
+  minimumAvailability?: string;
+  movieFile?: MediaFileRef;
+}
+
+export function summarizeMovieDetail(movie: Movie): MovieDetail {
+  return {
+    ...summarizeMovie(movie),
+    rootFolderPath: movie.rootFolderPath,
+    added: movie.added,
+    minimumAvailability: movie.minimumAvailability,
+    movieFile: movie.movieFile ? summarizeMediaFileRef(movie.movieFile) : undefined,
   };
 }
 

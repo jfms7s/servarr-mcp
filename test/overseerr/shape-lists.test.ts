@@ -260,7 +260,7 @@ describe('summarizeMediaRequest', () => {
 });
 
 describe('summarizeUser', () => {
-  it('drops plexUsername', () => {
+  it('drops plexUsername and email', () => {
     const user = {
       id: 1,
       email: 'alice@example.com',
@@ -278,13 +278,13 @@ describe('summarizeUser', () => {
     expect(Object.keys(summary).sort()).toEqual([
       'createdAt',
       'displayName',
-      'email',
       'id',
       'permissions',
       'requestCount',
       'username',
     ]);
     expect(JSON.stringify(summary)).not.toContain('plexUsername');
+    expect(JSON.stringify(summary)).not.toContain('alice@example.com');
     expect(JSON.stringify(summary)).not.toContain('avatar');
   });
 });

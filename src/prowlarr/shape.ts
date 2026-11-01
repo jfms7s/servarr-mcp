@@ -41,12 +41,13 @@ export function summarizeRelease(release: Release): ReleaseSummary {
 // -- often 50+ categories each. categoryCount replaces the array, since the
 // count is the only part of it a caller acts on when choosing an indexer.
 //
-// This shapes the LIST only. prowlarr_get_indexer still returns the full
-// record: the spec's rule is that get-by-id returns everything, and
-// prowlarr_test_indexer round-trips a whole indexer object back to Prowlarr,
-// so its fields[] must survive untouched. That round-trip goes through
-// client.getIndexer directly and is unaffected by anything here, but shaping
-// the client rather than the tool WOULD break it.
+// prowlarr_get_indexer is shaped too (summarizeIndexerDetail): the same summary
+// plus each setting field as { name, value }, without the label/helpText/
+// selectOptions UI metadata that made up most of the record.
+// prowlarr_test_indexer round-trips a whole indexer object back to Prowlarr, so
+// its fields[] must survive untouched. That round-trip goes through
+// client.getIndexer directly and is unaffected by anything here; shaping the
+// client rather than the tools WOULD break it.
 
 export interface IndexerSummary {
   id: number;
@@ -67,6 +68,21 @@ export function summarizeIndexer(indexer: Indexer): IndexerSummary {
     priority: indexer.priority,
     privacy: indexer.privacy,
     categoryCount: indexer.capabilities?.categories?.length ?? 0,
+  };
+}
+
+export interface IndexerDetail extends IndexerSummary {
+  appProfileId?: number;
+  tags: number[];
+  fields: Array<{ name: string; value?: unknown }>;
+}
+
+export function summarizeIndexerDetail(indexer: Indexer): IndexerDetail {
+  return {
+    ...summarizeIndexer(indexer),
+    appProfileId: indexer.appProfileId,
+    tags: indexer.tags ?? [],
+    fields: (indexer.fields ?? []).map((field) => ({ name: field.name, value: field.value })),
   };
 }
 

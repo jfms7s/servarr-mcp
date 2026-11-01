@@ -77,7 +77,7 @@ The server reads configuration from environment variables. Each product is **ind
 | `PROWLARR_URL` | `http://localhost:9696` | No | Base URL of your Prowlarr instance |
 | `PROWLARR_API_KEY` | `abc123def456` | Only if `PROWLARR_URL` is set | API key from Prowlarr Settings → General |
 | `OVERSEERR_URL` | `http://localhost:5055` | No | Base URL of your Overseerr instance |
-| `OVERSEERR_API_KEY` | `abc123def456` | Only if `OVERSEERR_URL` is set | API key from Overseerr Settings → General |
+| `OVERSEERR_API_KEY` | `abc123def456` | Only if `OVERSEERR_URL` is set | API key from Overseerr Settings → General. It is admin-level, so the model can file or reassign requests as any user through `userId` |
 | `SERVARR_MCP_TRANSPORT` | `stdio` or `http` or `both` | No | Transport mode (default `stdio`) |
 | `SERVARR_MCP_PORT` | `3000` | No | Port for HTTP transport (default `3000`) |
 | `SERVARR_MCP_HOST` | `*` | No | Address the HTTP transport binds to: an IP address, or `*` for every interface, IPv4 and IPv6 (default `127.0.0.1`; the Docker image sets `*`) |
@@ -225,13 +225,13 @@ This server exposes 106 tools across the four products.
 | Tool | Purpose |
 |------|---------|
 | `sonarr_list_series` | List series, filterable by root folder, genre, series type, title and monitored state; paginated (default 50); `includeOverview` adds plot summaries |
-| `sonarr_get_series` | Get the full record for one series, including all seasons |
+| `sonarr_get_series` | Get one series: summary, every season's monitored state and counts, root folder (`full: true` for the raw record) |
 | `sonarr_lookup_series` | Search TheTVDB for series matching a search term |
 | `sonarr_add_series` | Add a new series to Sonarr |
 | `sonarr_delete_series` | **Destructive:** Remove a series from Sonarr; deleting files requires an explicit confirm flag |
 | `sonarr_update_series` | Update series settings, including **root folder** and series type, with an explicit choice to move the files on disk or not |
 | `sonarr_list_episodes` | List episodes for a series or season; paginated (`limit` default 100, `offset`); `includeOverview` adds plot summaries |
-| `sonarr_get_episode` | Get the full record for one episode |
+| `sonarr_get_episode` | Get one episode with its file summary (`full: true` for the raw record) |
 | `sonarr_monitor_episodes` | Set monitored state for one or more episodes |
 | `sonarr_list_episode_files` | List downloaded episode files for a series; paginated (`limit` default 100, `offset`) |
 | `sonarr_delete_episode_file` | **Destructive:** Permanently delete an episode file (needs `confirm: true`; otherwise previews the file) |
@@ -252,7 +252,7 @@ This server exposes 106 tools across the four products.
 | `sonarr_import_folder` | Scan a folder and import any episode files found into an existing series |
 | `sonarr_get_rename_preview` | Preview the folder and file names a rename would produce, without renaming |
 | `sonarr_find_duplicate_series` | Report series present under more than one root folder |
-| `sonarr_list_root_folders` | List configured root folders, including unmapped folders |
+| `sonarr_list_root_folders` | List configured root folders with free space and an unmapped folder count |
 | `sonarr_list_tags` | List all tags available for series organization |
 | `sonarr_get_system_status` | Get Sonarr version and system information |
 | `sonarr_get_health` | Check Sonarr health status and warnings |
@@ -263,7 +263,7 @@ This server exposes 106 tools across the four products.
 | Tool | Purpose |
 |------|---------|
 | `radarr_list_movies` | List movies, filterable by root folder, genre, title, file and monitored state; paginated (default 50); `includeOverview` adds plot summaries |
-| `radarr_get_movie` | Get the full record for one movie |
+| `radarr_get_movie` | Get one movie: summary, root folder, minimum availability, file summary (`full: true` for the raw record) |
 | `radarr_lookup_movie` | Search TMDB for movies matching a search term |
 | `radarr_add_movie` | Add a new movie to Radarr |
 | `radarr_update_movie` | Update movie settings, including **root folder**, with an explicit choice to move the files on disk or not |
@@ -288,7 +288,7 @@ This server exposes 106 tools across the four products.
 | `radarr_import_folder` | Scan a folder and import any movie file found into an existing movie |
 | `radarr_get_rename_preview` | Preview the folder and file names a rename would produce, without renaming |
 | `radarr_find_duplicate_movies` | Report films present under more than one root folder |
-| `radarr_list_root_folders` | List configured root folders, including unmapped folders |
+| `radarr_list_root_folders` | List configured root folders with free space and an unmapped folder count |
 | `radarr_list_tags` | List all tags available for movie organization |
 | `radarr_get_system_status` | Get Radarr version and system information |
 | `radarr_get_health` | Check Radarr health status and warnings |
@@ -301,7 +301,7 @@ This server exposes 106 tools across the four products.
 | `prowlarr_search` | Search configured indexers for releases |
 | `prowlarr_grab_release` | Send a release to the download client (bypasses Sonarr/Radarr tracking) |
 | `prowlarr_list_indexers` | List configured indexers with protocol and status |
-| `prowlarr_get_indexer` | Get details about a specific indexer |
+| `prowlarr_get_indexer` | Get one indexer: summary, app profile, tags and its settings as name/value pairs |
 | `prowlarr_test_indexer` | Test connectivity of an indexer |
 | `prowlarr_get_indexer_stats` | Get query and grab statistics for each indexer |
 | `prowlarr_get_indexer_status` | Get health and backoff status of indexers |

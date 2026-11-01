@@ -181,7 +181,6 @@ export function summarizeMediaRequest(request: MediaRequest): MediaRequestSummar
 
 export interface UserSummary {
   id: number;
-  email?: string;
   username?: string;
   displayName?: string;
   permissions?: number;
@@ -192,7 +191,6 @@ export interface UserSummary {
 export function summarizeUser(user: OverseerrUser): UserSummary {
   return {
     id: user.id,
-    email: user.email,
     username: user.username,
     displayName: user.displayName,
     permissions: user.permissions,

@@ -6,6 +6,7 @@ import {
   summarizeDownloadClient,
   summarizeHistoryRecord,
   summarizeIndexer,
+  summarizeIndexerDetail,
   summarizeRelease,
 } from './shape.js';
 
@@ -61,11 +62,13 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
     defineTool({
       name: 'prowlarr_get_indexer',
       effect: 'read',
-      description: 'Get details about a specific configured indexer.',
+      description:
+        'Get one configured indexer: id, name, protocol, enabled, priority, privacy, app profile, tags, ' +
+        'category count and its settings fields as name/value pairs.',
       inputSchema: {
         indexerId: z.number().int().describe('The indexer id'),
       },
-      handler: ({ indexerId }) => client.getIndexer(indexerId),
+      handler: async ({ indexerId }) => summarizeIndexerDetail(await client.getIndexer(indexerId)),
     }),
 
     defineTool({

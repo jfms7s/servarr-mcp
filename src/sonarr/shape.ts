@@ -10,6 +10,7 @@ import type {
   Series,
 } from './types.js';
 import { redactHistoryData } from '../arr/redact.js';
+import { summarizeMediaFileRef, type MediaFileRef } from '../arr/shape.js';
 
 const MAX_OVERVIEW = 300;
 
@@ -74,6 +75,37 @@ export function summarizeSeries(series: Series, options: SummaryOptions = {}): S
   };
 }
 
+// Get-by-id tools return these by default (full: true gives the raw record): the list
+// summary plus what a caller needs to act on one record, without images,
+// alternateTitles, ratings or mediaInfo, which made up most of the raw payload.
+
+export interface SeriesDetail extends SeriesSummary {
+  seasons: Array<{
+    seasonNumber: number;
+    monitored: boolean;
+    episodeFileCount?: number;
+    episodeCount?: number;
+  }>;
+  rootFolderPath?: string;
+  seasonFolder?: boolean;
+  added?: string;
+}
+
+export function summarizeSeriesDetail(series: Series): SeriesDetail {
+  return {
+    ...summarizeSeries(series),
+    seasons: (series.seasons ?? []).map((season) => ({
+      seasonNumber: season.seasonNumber,
+      monitored: season.monitored,
+      episodeFileCount: season.statistics?.episodeFileCount,
+      episodeCount: season.statistics?.episodeCount,
+    })),
+    rootFolderPath: series.rootFolderPath,
+    seasonFolder: series.seasonFolder,
+    added: series.added,
+  };
+}
+
 export interface EpisodeSummary {
   id: number;
   seriesId: number;
@@ -99,6 +131,17 @@ export function summarizeEpisode(episode: Episode, options: SummaryOptions = {})
     monitored: episode.monitored,
     seriesTitle: episode.series?.title,
     ...(options.overview !== false && { overview: truncateOverview(episode.overview) }),
+  };
+}
+
+export interface EpisodeDetail extends EpisodeSummary {
+  episodeFile?: MediaFileRef;
+}
+
+export function summarizeEpisodeDetail(episode: Episode): EpisodeDetail {
+  return {
+    ...summarizeEpisode(episode),
+    episodeFile: episode.episodeFile ? summarizeMediaFileRef(episode.episodeFile) : undefined,
   };
 }
 

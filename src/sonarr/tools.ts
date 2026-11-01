@@ -9,6 +9,7 @@ import type { SeriesBulkEditPayload } from './types.js';
 import {
   summarizeBlocklistRecord,
   summarizeEpisode,
+  summarizeEpisodeDetail,
   summarizeEpisodeFile,
   summarizeHistoryRecord,
   summarizeQualityProfile,
@@ -17,7 +18,9 @@ import {
   summarizeRenamePreview,
   summarizeUnmappedFolder,
   summarizeSeries,
+  summarizeSeriesDetail,
 } from './shape.js';
+import { summarizeRootFolder } from '../arr/shape.js';
 
 const COMMAND_NAMES = [
   'SeriesSearch',
@@ -85,9 +88,17 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
     defineTool({
       name: 'sonarr_get_series',
       effect: 'read',
-      description: 'Get the full Sonarr record for one series, including every season.',
-      inputSchema: { seriesId: z.number().int().describe('Sonarr series id') },
-      handler: ({ seriesId }) => client.getSeries(seriesId),
+      description:
+        'Get one Sonarr series: the list summary plus every season (monitored, file and episode counts), ' +
+        'root folder, season-folder setting and added date. full=true returns the raw Sonarr record.',
+      inputSchema: {
+        seriesId: z.number().int().describe('Sonarr series id'),
+        full: z.boolean().optional().describe('Return the raw Sonarr record instead of the summary (default false)'),
+      },
+      handler: async ({ seriesId, full }) => {
+        const series = await client.getSeries(seriesId);
+        return full ? series : summarizeSeriesDetail(series);
+      },
     }),
 
     defineTool({
@@ -316,11 +327,17 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
     defineTool({
       name: 'sonarr_get_episode',
       effect: 'read',
-      description: 'Get the full Sonarr record for one episode.',
+      description:
+        'Get one Sonarr episode: the list summary plus its file (id, relative path, size, quality) when it has one. ' +
+        'full=true returns the raw Sonarr record.',
       inputSchema: {
         episodeId: z.number().int().describe('Sonarr episode id'),
+        full: z.boolean().optional().describe('Return the raw Sonarr record instead of the summary (default false)'),
       },
-      handler: ({ episodeId }) => client.getEpisode(episodeId),
+      handler: async ({ episodeId, full }) => {
+        const episode = await client.getEpisode(episodeId);
+        return full ? episode : summarizeEpisodeDetail(episode);
+      },
     }),
 
     defineTool({
@@ -473,9 +490,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       name: 'sonarr_list_root_folders',
       effect: 'read',
       description:
-        'List configured root folders where series are stored. Use these paths in sonarr_add_series.',
+        'List configured root folders where series are stored (id, path, accessible, free space, ' +
+        'unmapped folder count). Use these paths in sonarr_add_series; use sonarr_list_unmapped_folders for the folders themselves.',
       inputSchema: {},
-      handler: () => client.listRootFolders(),
+      handler: async () => (await client.listRootFolders()).map(summarizeRootFolder),
     }),
 
     defineTool({

@@ -45,11 +45,84 @@ describe('createSonarrTools', () => {
     expect(result.series).toEqual([expect.objectContaining({ id: 1, title: 'Andor', seasonCount: 0 })]);
   });
 
-  it('returns the full record from get_series', async () => {
-    const getSeries = vi.fn().mockResolvedValue({ id: 7, title: 'Severance', path: '/tv' });
+  it('summarises get_series by default and returns the raw record with full=true', async () => {
+    const raw = {
+      id: 7,
+      title: 'Severance',
+      path: '/tv/Severance',
+      rootFolderPath: '/tv',
+      seasonFolder: true,
+      added: '2022-01-01T00:00:00Z',
+      images: [{ coverType: 'poster', url: '/poster.jpg' }],
+      alternateTitles: [{ title: 'Separacion' }],
+      ratings: { votes: 10, value: 8.7 },
+      seasons: [
+        { seasonNumber: 1, monitored: true, statistics: { episodeFileCount: 9, episodeCount: 9, percentOfEpisodes: 100 } },
+      ],
+    };
+    const getSeries = vi.fn().mockResolvedValue(raw);
     const get = toolsFor({ getSeries });
-    await expect(get('sonarr_get_series').handler({ seriesId: 7 })).resolves.toMatchObject({ id: 7 });
+
+    const summary = (await get('sonarr_get_series').handler({ seriesId: 7 })) as Record<string, unknown>;
     expect(getSeries).toHaveBeenCalledWith(7);
+    expect(summary).not.toHaveProperty('images');
+    expect(summary).not.toHaveProperty('alternateTitles');
+    expect(summary).not.toHaveProperty('ratings');
+    expect(summary).toMatchObject({
+      id: 7,
+      rootFolderPath: '/tv',
+      seasonFolder: true,
+      seasons: [{ seasonNumber: 1, monitored: true, episodeFileCount: 9, episodeCount: 9 }],
+    });
+
+    await expect(get('sonarr_get_series').handler({ seriesId: 7, full: true })).resolves.toBe(raw);
+  });
+
+  it('summarises get_episode with its file, and full=true returns the raw record', async () => {
+    const raw = {
+      id: 11,
+      seriesId: 7,
+      seasonNumber: 1,
+      episodeNumber: 2,
+      title: 'Half Loop',
+      hasFile: true,
+      monitored: true,
+      series: { id: 7, title: 'Severance', images: [{ url: '/poster.jpg' }] },
+      images: [{ url: '/still.jpg' }],
+      episodeFile: {
+        id: 5,
+        seriesId: 7,
+        seasonNumber: 1,
+        relativePath: 'S01E02.mkv',
+        path: '/tv/Severance/S01E02.mkv',
+        size: 123,
+        dateAdded: '2022-01-01T00:00:00Z',
+        quality: { quality: { id: 7, name: 'Bluray-1080p' } },
+        mediaInfo: { videoCodec: 'x265' },
+      },
+    };
+    const get = toolsFor({ getEpisode: vi.fn().mockResolvedValue(raw) });
+    const summary = (await get('sonarr_get_episode').handler({ episodeId: 11 })) as Record<string, unknown>;
+    expect(summary).not.toHaveProperty('images');
+    expect(summary).not.toHaveProperty('series');
+    expect(JSON.stringify(summary)).not.toContain('mediaInfo');
+    expect(summary).toMatchObject({
+      seriesId: 7,
+      seriesTitle: 'Severance',
+      episodeFile: { id: 5, relativePath: 'S01E02.mkv', size: 123, quality: 'Bluray-1080p' },
+    });
+    await expect(get('sonarr_get_episode').handler({ episodeId: 11, full: true })).resolves.toBe(raw);
+  });
+
+  it('shapes root folders with an unmapped folder count', async () => {
+    const get = toolsFor({
+      listRootFolders: vi.fn().mockResolvedValue([
+        { id: 1, path: '/tv', accessible: true, freeSpace: 5, unmappedFolders: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] },
+      ]),
+    });
+    await expect(get('sonarr_list_root_folders').handler({})).resolves.toEqual([
+      { id: 1, path: '/tv', accessible: true, freeSpace: 5, unmappedFolderCount: 3 },
+    ]);
   });
 
   it('passes the add_series arguments straight through', async () => {
