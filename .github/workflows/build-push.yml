@@ -15,16 +15,19 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
           cache: 'npm'
 
       - run: npm ci --ignore-scripts
+
+      # Fails on a new high or critical advisory in the shipped (non-dev) dependency tree.
+      - run: npm audit --omit=dev --audit-level=high
 
       - run: npm run typecheck
 
@@ -44,7 +47,7 @@ jobs:
       - run: bash scripts/ci/needs-build.test.sh
 
       # Last step of the job: build-push needs test, so this report-only upload must never be able to block a deploy.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         continue-on-error: true
         with:
           name: coverage-fragments
@@ -62,7 +65,7 @@ jobs:
     outputs:
       build: ${{ steps.diff.outputs.build }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -87,27 +90,30 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Kept: the Dockerfile's build stages run natively ($BUILDPLATFORM) and the arm64
+      # runtime stage runs no RUN step, so QEMU should do no work -- it stays as a safety
+      # net should a target-platform RUN step ever come back.
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       # A native single-arch build, loaded locally and started before anything is pushed:
       # catches a broken CMD, a missing runtime file or a signal regression in the image itself.
       - name: Build image for the smoke test
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: Dockerfile
@@ -115,6 +121,8 @@ jobs:
           load: true
           push: false
           tags: servarr-mcp:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Smoke-test the image
         run: node scripts/smoke.mjs docker servarr-mcp:ci
@@ -125,12 +133,14 @@ jobs:
       # imagePullPolicy IfNotPresent a floating tag can't tell a node that
       # already cached an older build apart from one that hasn't.
       - name: Build and push
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ghcr.io/${{ github.repository_owner }}/servarr-mcp:latest
             ghcr.io/${{ github.repository_owner }}/servarr-mcp:${{ github.sha }}
@@ -143,16 +153,16 @@ jobs:
     runs-on: ubuntu-latest
     permissions: {contents: read, packages: read}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: {node-version: 22, cache: npm}
       - run: npm ci --ignore-scripts
       - name: Dead code (knip, eng-metrics-lab)
         run: mkdir -p .quality && npx --yes knip@5.88.1 --reporter json --no-exit-code > .quality/deadcode-ts.json
         continue-on-error: true
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: coverage-fragments
           path: .quality
