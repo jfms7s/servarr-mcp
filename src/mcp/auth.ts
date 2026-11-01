@@ -1,5 +1,9 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
+
+function digest(value: string): Buffer {
+  return createHash('sha256').update(value).digest();
+}
 
 export function isAuthorized(authHeader: string | undefined, expected: string): boolean {
   if (!authHeader) return false;
@@ -7,11 +11,9 @@ export function isAuthorized(authHeader: string | undefined, expected: string): 
   const match = /^Bearer\s+(.+)$/i.exec(authHeader.trim());
   if (!match?.[1]) return false;
 
-  const provided = Buffer.from(match[1]);
-  const reference = Buffer.from(expected);
-  if (provided.length !== reference.length) return false;
-
-  return timingSafeEqual(provided, reference);
+  // Compare fixed-length digests so the comparison takes the same time whatever the
+  // provided token's length: a length check first would tell an attacker the real length.
+  return timingSafeEqual(digest(match[1]), digest(expected));
 }
 
 export function bearerAuth(expected: string): RequestHandler {

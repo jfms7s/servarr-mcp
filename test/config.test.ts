@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, loadConfig } from '../src/config.js';
+import { ConfigError, MIN_TOKEN_LENGTH, loadConfig, weakTokenWarning } from '../src/config.js';
 
 const base = {
   SONARR_URL: 'http://localhost:8989',
@@ -127,6 +127,37 @@ describe('loadConfig', () => {
     expect(config.transport).toBe('http');
     expect(config.token).toBe('secret');
     expect(config.port).toBe(8080);
+  });
+
+  it('binds the http transport to loopback by default', () => {
+    expect(loadConfig({ ...base }).host).toBe('127.0.0.1');
+  });
+
+  it('honours SERVARR_MCP_HOST', () => {
+    expect(loadConfig({ ...base, SERVARR_MCP_HOST: ' 0.0.0.0 ' }).host).toBe('0.0.0.0');
+    expect(loadConfig({ ...base, SERVARR_MCP_HOST: '*' }).host).toBe('*');
+  });
+
+  it('treats a blank SERVARR_MCP_HOST as unset, like the other variables', () => {
+    expect(loadConfig({ ...base, SERVARR_MCP_HOST: ' ' }).host).toBe('127.0.0.1');
+  });
+
+  it('warns about a token shorter than the minimum without echoing it', () => {
+    const short = 'x'.repeat(MIN_TOKEN_LENGTH - 1);
+    const warning = weakTokenWarning(short);
+    expect(warning).toMatch(/at least 32/);
+    expect(warning).toContain('31 characters');
+    expect(warning).not.toContain(short);
+  });
+
+  it('does not warn about a token of the minimum length or when there is none', () => {
+    expect(weakTokenWarning('x'.repeat(MIN_TOKEN_LENGTH))).toBeUndefined();
+    expect(weakTokenWarning(undefined)).toBeUndefined();
+  });
+
+  it('still loads a short token, so an existing deployment keeps starting', () => {
+    const config = loadConfig({ ...base, SERVARR_MCP_TRANSPORT: 'http', SERVARR_MCP_TOKEN: 'short' });
+    expect(config.token).toBe('short');
   });
 
   it('rejects a non-numeric port', () => {

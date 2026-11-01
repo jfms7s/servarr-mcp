@@ -20,4 +20,8 @@ COPY --from=build /app/dist ./dist
 USER 1000:1000
 EXPOSE 3000
 ENV SERVARR_MCP_TRANSPORT=http
+# The server binds to 127.0.0.1 by default; in a container it must listen on every
+# interface so the port mapping or a Kubernetes Service can reach it. `*` is every
+# interface, IPv4 and IPv6 (dual-stack where the pod has IPv6), not 0.0.0.0 (IPv4 only).
+ENV SERVARR_MCP_HOST=*
 CMD ["node", "dist/index.js"]

@@ -35,7 +35,7 @@ Use the published container image (`linux/amd64` and `linux/arm64`), pinned to a
 
 ```bash
 docker run --rm -p 3000:3000 \
-  -e SERVARR_MCP_TOKEN=a-long-random-secret \
+  -e SERVARR_MCP_TOKEN=your-token-of-32-or-more-characters \
   -e SONARR_URL=http://sonarr:8989 \
   -e SONARR_API_KEY=your-sonarr-api-key \
   -e RADARR_URL=http://radarr:7878 \
@@ -80,7 +80,8 @@ The server reads configuration from environment variables. Each product is **ind
 | `OVERSEERR_API_KEY` | `abc123def456` | Only if `OVERSEERR_URL` is set | API key from Overseerr Settings → General |
 | `SERVARR_MCP_TRANSPORT` | `stdio` or `http` or `both` | No | Transport mode (default `stdio`) |
 | `SERVARR_MCP_PORT` | `3000` | No | Port for HTTP transport (default `3000`) |
-| `SERVARR_MCP_TOKEN` | `a-long-random-secret` | Required if transport is `http` or `both` | Bearer token for HTTP client authentication |
+| `SERVARR_MCP_HOST` | `*` | No | Address the HTTP transport binds to: an IP address, or `*` for every interface, IPv4 and IPv6 (default `127.0.0.1`; the Docker image sets `*`) |
+| `SERVARR_MCP_TOKEN` | output of `openssl rand -hex 32` | Required if transport is `http` or `both` | Bearer token for HTTP client authentication. Use at least 32 characters; a shorter token still works but logs a warning at startup |
 
 Each `*_URL` must start with `http://` or `https://` and carry no credentials, query string or fragment; the server refuses to start otherwise. `SERVARR_MCP_PORT` must be a plain integer.
 
@@ -177,7 +178,8 @@ For a remote setup (e.g., accessing Sonarr from a separate machine), use the HTT
 ```bash
 export SERVARR_MCP_TRANSPORT=http
 export SERVARR_MCP_PORT=3000
-export SERVARR_MCP_TOKEN=your-shared-bearer-token
+export SERVARR_MCP_TOKEN="$(openssl rand -hex 32)"   # at least 32 characters
+export SERVARR_MCP_HOST='*'   # every interface; the default 127.0.0.1 lets only this machine connect
 node dist/index.js
 ```
 
@@ -187,13 +189,13 @@ node dist/index.js
 docker run --rm -p 3000:3000 \
   -e SERVARR_MCP_TRANSPORT=http \
   -e SERVARR_MCP_PORT=3000 \
-  -e SERVARR_MCP_TOKEN=your-shared-bearer-token \
+  -e SERVARR_MCP_TOKEN=your-shared-bearer-token-of-32-or-more-characters \
   -e SONARR_URL=http://sonarr:8989 \
   -e SONARR_API_KEY=your-sonarr-api-key \
   ghcr.io/jfms7s/servarr-mcp:latest
 ```
 
-The server will listen on the specified port on all interfaces, authenticated with a single bearer token. Control which interfaces can reach it using your container networking, firewall, or reverse proxy configuration.
+Run from source, the server listens on `127.0.0.1` unless `SERVARR_MCP_HOST` says otherwise, so set `SERVARR_MCP_HOST='*'` (every interface) or a specific address to reach it from another machine. The Docker image sets `SERVARR_MCP_HOST=*`, so a container listens on all of its interfaces, IPv4 and IPv6, as before. Either way it is authenticated with a single bearer token. Control which interfaces can reach it using your container networking, firewall, or reverse proxy configuration.
 
 Two routes are served:
 

@@ -4,7 +4,7 @@ import { annotationsFor } from '../src/mcp/types.js';
 import { buildTools } from '../src/tools.js';
 
 const instance = { baseUrl: 'http://localhost', apiKey: 'k' };
-const base: ServarrConfig = { transport: 'stdio', port: 3000 };
+const base: ServarrConfig = { transport: 'stdio', port: 3000, host: '127.0.0.1' };
 
 describe('buildTools', () => {
   it('registers only the configured products', () => {

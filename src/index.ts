@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { ConfigError, loadConfig } from './config.js';
+import { ConfigError, loadConfig, weakTokenWarning } from './config.js';
 import { createServer } from './mcp/server.js';
 import { startHttp, startStdio } from './mcp/transport.js';
 import { buildTools } from './tools.js';
@@ -19,11 +19,15 @@ async function main(): Promise<void> {
   console.error(`servarr-mcp: ${tools.length} tools from ${enabled.join(', ')}`);
 
   if (config.transport === 'http' || config.transport === 'both') {
+    const warning = weakTokenWarning(config.token);
+    if (warning) console.error(`servarr-mcp: warning: ${warning}`);
+
     const http = await startHttp(() => createServer(tools), {
       port: config.port,
+      host: config.host,
       token: config.token as string,
     });
-    console.error(`servarr-mcp: http transport listening on port ${config.port}`);
+    console.error(`servarr-mcp: http transport listening on ${config.host}:${config.port}`);
 
     // This process is PID 1 in a container, and the kernel applies no default
     // signal disposition to PID 1 -- without these handlers SIGTERM is ignored
