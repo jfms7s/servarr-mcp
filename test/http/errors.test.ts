@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ArrApiError, describeError } from '../../src/http/errors.js';
+import { ArrApiError, describeError, hasUserinfo, stripUserinfo } from '../../src/http/errors.js';
 
 describe('ArrApiError', () => {
   it('formats a message with status, method and path', () => {
@@ -95,5 +95,49 @@ describe('describeError', () => {
   it('stringifies a non-Error value', () => {
     expect(describeError('kaboom')).toBe('kaboom');
     expect(describeError(42)).toBe('42');
+  });
+});
+
+describe('stripUserinfo', () => {
+  it('removes userinfo from every URL in the text', () => {
+    expect(
+      stripUserinfo('Request failed: http://admin:hunter2@h:8989/api and https://u@x.test/a'),
+    ).toBe('Request failed: http://h:8989/api and https://x.test/a');
+  });
+
+  it('removes a password containing a raw @', () => {
+    expect(stripUserinfo('http://u:p@ss@h/x')).toBe('http://h/x');
+  });
+
+  it('does not join a quoted URL to a later email address', () => {
+    const json = '{"a":"http://h:8989","email":"x@y.z"}';
+    expect(stripUserinfo(json)).toBe(json);
+  });
+
+  it('leaves URLs without userinfo and plain emails alone', () => {
+    const text = 'http://h:8989/a?x=b@c see admin@example.com';
+    expect(stripUserinfo(text)).toBe(text);
+  });
+});
+
+describe('ArrApiError detail', () => {
+  it('strips userinfo from the detail and the message', () => {
+    const error = new ArrApiError({
+      product: 'Sonarr',
+      method: 'GET',
+      path: '/api/v3/series',
+      detail: 'cannot use http://admin:hunter2@h/api/v3/series',
+    });
+    expect(error.detail).toBe('cannot use http://h/api/v3/series');
+    expect(error.message).not.toContain('hunter2');
+  });
+});
+
+describe('hasUserinfo', () => {
+  it('detects a username or password', () => {
+    expect(hasUserinfo('http://u:p@h')).toBe(true);
+    expect(hasUserinfo('http://u@h')).toBe(true);
+    expect(hasUserinfo('http://h:8989')).toBe(false);
+    expect(hasUserinfo('not a url')).toBe(false);
   });
 });

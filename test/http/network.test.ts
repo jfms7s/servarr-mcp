@@ -26,6 +26,41 @@ describe('createArrClient network failures', () => {
   });
 });
 
+describe('createArrClient with credentials in the base url', () => {
+  // loadConfig rejects such a URL; this proves the client does not leak it either.
+  // fetch refuses a URL with userinfo before connecting, so no network is needed.
+  it('keeps the password out of the error message and detail', async () => {
+    const client = createArrClient({
+      product: 'Sonarr',
+      baseUrl: 'http://admin:hunter2@127.0.0.1:1',
+      apiKey: 'test-key',
+      apiBase: '/api/v3',
+    });
+
+    const error = (await client.get('/series').catch((e: unknown) => e)) as ArrApiError;
+    expect(error).toBeInstanceOf(ArrApiError);
+    expect(error.message).not.toContain('hunter2');
+    expect(error.detail).not.toContain('hunter2');
+    expect(error.message).not.toContain('admin');
+    expect(error.detail).not.toContain('admin');
+  });
+
+  it('never hands a credentialed base url to fetch, whatever the password holds', async () => {
+    // A space ends a URL in free text, so only refusing up front keeps this one out.
+    const client = createArrClient({
+      product: 'Sonarr',
+      baseUrl: 'http://u:pa ss@127.0.0.1:1',
+      apiKey: 'test-key',
+      apiBase: '/api/v3',
+    });
+
+    const error = (await client.get('/series').catch((e: unknown) => e)) as ArrApiError;
+    expect(error).toBeInstanceOf(ArrApiError);
+    expect(error.detail).toMatch(/base URL contains credentials/);
+    expect(`${error.message} ${error.detail}`).not.toMatch(/pa ss|u:pa/);
+  });
+});
+
 describe('createArrClient timeouts', () => {
   const servers: Array<net.Server> = [];
 
