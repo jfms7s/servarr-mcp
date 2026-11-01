@@ -56,6 +56,26 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ SONARR_URL: 'not a url', SONARR_API_KEY: 'k' })).toThrow(ConfigError);
   });
 
+  it('rejects a url with credentials without echoing them', () => {
+    const load = () => loadConfig({ SONARR_URL: 'http://u:p4ss@h:8989', SONARR_API_KEY: 'k' });
+    expect(load).toThrow(ConfigError);
+    expect(load).toThrow(/must not contain credentials/);
+    expect(load).not.toThrow(/p4ss/);
+    expect(load).not.toThrow(/u:/);
+  });
+
+  it('rejects a url with only a username', () => {
+    expect(() => loadConfig({ SONARR_URL: 'http://admin@h:8989', SONARR_API_KEY: 'k' })).toThrow(
+      /must not contain credentials/,
+    );
+  });
+
+  it('does not echo an unparseable url', () => {
+    const load = () => loadConfig({ SONARR_URL: 'http://u:p4ss@h:99999', SONARR_API_KEY: 'k' });
+    expect(load).toThrow(/SONARR_URL is not a valid URL/);
+    expect(load).not.toThrow(/p4ss/);
+  });
+
   it('defaults to stdio transport on port 3000', () => {
     const config = loadConfig({ ...base });
     expect(config.transport).toBe('stdio');

@@ -36,10 +36,18 @@ function readInstance(
   if (!rawUrl) throw new ConfigError(`${product}: ${prefix}_API_KEY is set but ${prefix}_URL is not`);
   if (!apiKey) throw new ConfigError(`${product}: ${prefix}_URL is set but ${prefix}_API_KEY is not`);
 
+  // Neither message echoes the value: it may carry credentials.
+  let url: URL;
   try {
-    new URL(rawUrl);
+    url = new URL(rawUrl);
   } catch {
-    throw new ConfigError(`${product}: ${prefix}_URL is not a valid URL: ${rawUrl}`);
+    throw new ConfigError(`${product}: ${prefix}_URL is not a valid URL`);
+  }
+  // fetch refuses a URL with userinfo on every request, so such a URL can never work.
+  if (url.username || url.password) {
+    throw new ConfigError(
+      `${product}: ${prefix}_URL must not contain credentials (user:password@); use the API key only`,
+    );
   }
 
   return { baseUrl: rawUrl.replace(/\/+$/, ''), apiKey };
