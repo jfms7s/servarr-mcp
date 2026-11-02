@@ -1,0 +1,273 @@
+{
+  "source": "Prowlarr v2.7.0.5723 (src/Prowlarr.Api.V1/openapi.json), schema IndexerResource, for GET /api/v1/indexer; synthetic values",
+  "records": [
+    {
+      "id": 1,
+      "name": "name-1",
+      "fields": [
+        {
+          "order": 1,
+          "name": "name-1",
+          "label": "label-1",
+          "unit": "unit-1",
+          "helpText": "helpText-1",
+          "helpTextWarning": "helpTextWarning-1",
+          "helpLink": "helpLink-1",
+          "value": "value-1",
+          "type": "type-1",
+          "advanced": true,
+          "selectOptions": [{}],
+          "selectOptionsProviderAction": "selectOptionsProviderAction-1",
+          "section": "section-1",
+          "hidden": "hidden-1",
+          "privacy": "normal",
+          "placeholder": "placeholder-1",
+          "isFloat": true
+        }
+      ],
+      "implementationName": "implementationName-1",
+      "implementation": "implementation-1",
+      "configContract": "configContract-1",
+      "infoLink": "infoLink-1",
+      "message": {
+        "message": "message-1",
+        "type": "info"
+      },
+      "tags": [1],
+      "presets": [
+        {
+          "id": 1,
+          "name": "name-1",
+          "fields": [{}],
+          "implementationName": "implementationName-1",
+          "implementation": "implementation-1",
+          "configContract": "configContract-1",
+          "infoLink": "infoLink-1",
+          "message": {
+            "message": "message-1",
+            "type": "info"
+          },
+          "tags": [1],
+          "presets": [{}],
+          "indexerUrls": ["indexerUrls-1"],
+          "legacyUrls": ["legacyUrls-1"],
+          "definitionName": "definitionName-1",
+          "description": "description-1",
+          "language": "language-1",
+          "encoding": "encoding-1",
+          "enable": true,
+          "redirect": true,
+          "supportsRss": true,
+          "supportsSearch": true,
+          "supportsRedirect": true,
+          "supportsPagination": true,
+          "appProfileId": 1,
+          "protocol": "unknown",
+          "privacy": "public",
+          "capabilities": {
+            "id": 1,
+            "limitsMax": 1,
+            "limitsDefault": 1,
+            "categories": [],
+            "supportsRawSearch": true,
+            "searchParams": [],
+            "tvSearchParams": [],
+            "movieSearchParams": [],
+            "musicSearchParams": [],
+            "bookSearchParams": []
+          },
+          "priority": 1,
+          "downloadClientId": 1,
+          "added": "2026-01-01T00:00:00Z",
+          "status": {
+            "id": 1,
+            "indexerId": 1,
+            "disabledTill": "2026-01-01T00:00:00Z",
+            "mostRecentFailure": "2026-01-01T00:00:00Z",
+            "initialFailure": "2026-01-01T00:00:00Z"
+          },
+          "sortName": "sortName-1"
+        }
+      ],
+      "indexerUrls": ["indexerUrls-1"],
+      "legacyUrls": ["legacyUrls-1"],
+      "definitionName": "definitionName-1",
+      "description": "description-1",
+      "language": "language-1",
+      "encoding": "encoding-1",
+      "enable": true,
+      "redirect": true,
+      "supportsRss": true,
+      "supportsSearch": true,
+      "supportsRedirect": true,
+      "supportsPagination": true,
+      "appProfileId": 1,
+      "protocol": "unknown",
+      "privacy": "public",
+      "capabilities": {
+        "id": 1,
+        "limitsMax": 1,
+        "limitsDefault": 1,
+        "categories": [
+          {
+            "id": 1,
+            "name": "name-1",
+            "description": "description-1",
+            "subCategories": []
+          }
+        ],
+        "supportsRawSearch": true,
+        "searchParams": ["q"],
+        "tvSearchParams": ["q"],
+        "movieSearchParams": ["q"],
+        "musicSearchParams": ["q"],
+        "bookSearchParams": ["q"]
+      },
+      "priority": 1,
+      "downloadClientId": 1,
+      "added": "2026-01-01T00:00:00Z",
+      "status": {
+        "id": 1,
+        "indexerId": 1,
+        "disabledTill": "2026-01-01T00:00:00Z",
+        "mostRecentFailure": "2026-01-01T00:00:00Z",
+        "initialFailure": "2026-01-01T00:00:00Z"
+      },
+      "sortName": "sortName-1"
+    },
+    {
+      "id": 2,
+      "name": "name-2",
+      "fields": [
+        {
+          "order": 2,
+          "name": "name-2",
+          "label": "label-2",
+          "unit": "unit-2",
+          "helpText": "helpText-2",
+          "helpTextWarning": "helpTextWarning-2",
+          "helpLink": "helpLink-2",
+          "value": "value-2",
+          "type": "type-2",
+          "advanced": false,
+          "selectOptions": [{}],
+          "selectOptionsProviderAction": "selectOptionsProviderAction-2",
+          "section": "section-2",
+          "hidden": "hidden-2",
+          "privacy": "password",
+          "placeholder": "placeholder-2",
+          "isFloat": false
+        }
+      ],
+      "implementationName": "implementationName-2",
+      "implementation": "implementation-2",
+      "configContract": "configContract-2",
+      "infoLink": "infoLink-2",
+      "message": {
+        "message": "message-2",
+        "type": "warning"
+      },
+      "tags": [2],
+      "presets": [
+        {
+          "id": 2,
+          "name": "name-2",
+          "fields": [{}],
+          "implementationName": "implementationName-2",
+          "implementation": "implementation-2",
+          "configContract": "configContract-2",
+          "infoLink": "infoLink-2",
+          "message": {
+            "message": "message-2",
+            "type": "warning"
+          },
+          "tags": [2],
+          "presets": [{}],
+          "indexerUrls": ["indexerUrls-2"],
+          "legacyUrls": ["legacyUrls-2"],
+          "definitionName": "definitionName-2",
+          "description": "description-2",
+          "language": "language-2",
+          "encoding": "encoding-2",
+          "enable": false,
+          "redirect": false,
+          "supportsRss": false,
+          "supportsSearch": false,
+          "supportsRedirect": false,
+          "supportsPagination": false,
+          "appProfileId": 2,
+          "protocol": "usenet",
+          "privacy": "semiPrivate",
+          "capabilities": {
+            "id": 2,
+            "limitsMax": 2,
+            "limitsDefault": 2,
+            "categories": [],
+            "supportsRawSearch": false,
+            "searchParams": [],
+            "tvSearchParams": [],
+            "movieSearchParams": [],
+            "musicSearchParams": [],
+            "bookSearchParams": []
+          },
+          "priority": 2,
+          "downloadClientId": 2,
+          "added": "2026-01-02T00:00:00Z",
+          "status": {
+            "id": 2,
+            "indexerId": 2,
+            "disabledTill": "2026-01-02T00:00:00Z",
+            "mostRecentFailure": "2026-01-02T00:00:00Z",
+            "initialFailure": "2026-01-02T00:00:00Z"
+          },
+          "sortName": "sortName-2"
+        }
+      ],
+      "indexerUrls": ["indexerUrls-2"],
+      "legacyUrls": ["legacyUrls-2"],
+      "definitionName": "definitionName-2",
+      "description": "description-2",
+      "language": "language-2",
+      "encoding": "encoding-2",
+      "enable": false,
+      "redirect": false,
+      "supportsRss": false,
+      "supportsSearch": false,
+      "supportsRedirect": false,
+      "supportsPagination": false,
+      "appProfileId": 2,
+      "protocol": "usenet",
+      "privacy": "semiPrivate",
+      "capabilities": {
+        "id": 2,
+        "limitsMax": 2,
+        "limitsDefault": 2,
+        "categories": [
+          {
+            "id": 2,
+            "name": "name-2",
+            "description": "description-2",
+            "subCategories": []
+          }
+        ],
+        "supportsRawSearch": false,
+        "searchParams": ["q"],
+        "tvSearchParams": ["season"],
+        "movieSearchParams": ["imdbId"],
+        "musicSearchParams": ["album"],
+        "bookSearchParams": ["title"]
+      },
+      "priority": 2,
+      "downloadClientId": 2,
+      "added": "2026-01-02T00:00:00Z",
+      "status": {
+        "id": 2,
+        "indexerId": 2,
+        "disabledTill": "2026-01-02T00:00:00Z",
+        "mostRecentFailure": "2026-01-02T00:00:00Z",
+        "initialFailure": "2026-01-02T00:00:00Z"
+      },
+      "sortName": "sortName-2"
+    }
+  ]
+}

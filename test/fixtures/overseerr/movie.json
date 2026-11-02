@@ -1,0 +1,291 @@
+{
+  "source": "Seerr v3.5.1 (seerr-api.yml), schema MovieDetails, for GET /api/v1/movie/{movieId}; synthetic values",
+  "records": [
+    {
+      "id": 1.5,
+      "imdbId": "imdbId-1",
+      "adult": true,
+      "backdropPath": "/data/backdropPath-1",
+      "posterPath": "/data/posterPath-1",
+      "budget": 1.5,
+      "genres": [
+        {
+          "id": 1.5,
+          "name": "name-1"
+        }
+      ],
+      "homepage": "homepage-1",
+      "relatedVideos": [
+        {
+          "url": "url-1",
+          "key": "key-1",
+          "name": "name-1",
+          "size": 1.5,
+          "type": "Clip",
+          "site": "YouTube"
+        }
+      ],
+      "originalLanguage": "originalLanguage-1",
+      "originalTitle": "originalTitle-1",
+      "overview": "overview-1",
+      "popularity": 1.5,
+      "productionCompanies": [
+        {
+          "id": 1.5,
+          "logoPath": "/data/logoPath-1",
+          "originCountry": "originCountry-1",
+          "name": "name-1"
+        }
+      ],
+      "productionCountries": [
+        {
+          "iso_3166_1": "iso_3166_1-1",
+          "name": "name-1"
+        }
+      ],
+      "releaseDate": "releaseDate-1",
+      "releases": {
+        "results": [
+          {
+            "iso_3166_1": "iso_3166_1-1",
+            "rating": "rating-1",
+            "release_dates": []
+          }
+        ]
+      },
+      "revenue": 1.5,
+      "runtime": 1.5,
+      "spokenLanguages": [
+        {
+          "englishName": "englishName-1",
+          "iso_639_1": "iso_639_1-1",
+          "name": "name-1"
+        }
+      ],
+      "status": "status-1",
+      "tagline": "tagline-1",
+      "title": "title-1",
+      "video": true,
+      "voteAverage": 1.5,
+      "voteCount": 1.5,
+      "credits": {
+        "cast": [
+          {
+            "id": 1.5,
+            "castId": 1.5,
+            "character": "character-1",
+            "creditId": "creditId-1",
+            "gender": 1.5,
+            "name": "name-1",
+            "order": 1.5,
+            "profilePath": "/data/profilePath-1"
+          }
+        ],
+        "crew": [
+          {
+            "id": 1.5,
+            "creditId": "creditId-1",
+            "gender": 1.5,
+            "name": "name-1",
+            "job": "job-1",
+            "department": "department-1",
+            "profilePath": "/data/profilePath-1"
+          }
+        ]
+      },
+      "collection": {
+        "id": 1.5,
+        "name": "name-1",
+        "posterPath": "/data/posterPath-1",
+        "backdropPath": "/data/backdropPath-1"
+      },
+      "externalIds": {
+        "facebookId": "facebookId-1",
+        "freebaseId": "freebaseId-1",
+        "freebaseMid": "freebaseMid-1",
+        "imdbId": "imdbId-1",
+        "instagramId": "instagramId-1",
+        "tvdbId": 1.5,
+        "tvrageId": 1.5,
+        "twitterId": "twitterId-1"
+      },
+      "mediaInfo": {
+        "id": 1.5,
+        "tmdbId": 1.5,
+        "tvdbId": 1.5,
+        "status": 1.5,
+        "requests": [
+          {
+            "id": 1.5,
+            "status": 1.5,
+            "media": {},
+            "createdAt": "createdAt-1",
+            "updatedAt": "updatedAt-1",
+            "requestedBy": {},
+            "modifiedBy": {},
+            "is4k": true,
+            "serverId": 1.5,
+            "profileId": 1.5,
+            "rootFolder": "rootFolder-1",
+            "ignoreQuota": true
+          }
+        ],
+        "createdAt": "createdAt-1",
+        "updatedAt": "updatedAt-1"
+      },
+      "watchProviders": [
+        [
+          {
+            "iso_3166_1": "iso_3166_1-1",
+            "link": "link-1",
+            "buy": [],
+            "flatrate": "flatrate-1"
+          }
+        ]
+      ]
+    },
+    {
+      "id": 2.5,
+      "imdbId": "imdbId-2",
+      "adult": false,
+      "backdropPath": "/data/backdropPath-2",
+      "posterPath": "/data/posterPath-2",
+      "budget": 2.5,
+      "genres": [
+        {
+          "id": 2.5,
+          "name": "name-2"
+        }
+      ],
+      "homepage": "homepage-2",
+      "relatedVideos": [
+        {
+          "url": "url-2",
+          "key": "key-2",
+          "name": "name-2",
+          "size": 2.5,
+          "type": "Teaser",
+          "site": "YouTube"
+        }
+      ],
+      "originalLanguage": "originalLanguage-2",
+      "originalTitle": "originalTitle-2",
+      "overview": "overview-2",
+      "popularity": 2.5,
+      "productionCompanies": [
+        {
+          "id": 2.5,
+          "logoPath": "/data/logoPath-2",
+          "originCountry": "originCountry-2",
+          "name": "name-2"
+        }
+      ],
+      "productionCountries": [
+        {
+          "iso_3166_1": "iso_3166_1-2",
+          "name": "name-2"
+        }
+      ],
+      "releaseDate": "releaseDate-2",
+      "releases": {
+        "results": [
+          {
+            "iso_3166_1": "iso_3166_1-2",
+            "rating": "rating-2",
+            "release_dates": []
+          }
+        ]
+      },
+      "revenue": 2.5,
+      "runtime": 2.5,
+      "spokenLanguages": [
+        {
+          "englishName": "englishName-2",
+          "iso_639_1": "iso_639_1-2",
+          "name": "name-2"
+        }
+      ],
+      "status": "status-2",
+      "tagline": "tagline-2",
+      "title": "title-2",
+      "video": false,
+      "voteAverage": 2.5,
+      "voteCount": 2.5,
+      "credits": {
+        "cast": [
+          {
+            "id": 2.5,
+            "castId": 2.5,
+            "character": "character-2",
+            "creditId": "creditId-2",
+            "gender": 2.5,
+            "name": "name-2",
+            "order": 2.5,
+            "profilePath": "/data/profilePath-2"
+          }
+        ],
+        "crew": [
+          {
+            "id": 2.5,
+            "creditId": "creditId-2",
+            "gender": 2.5,
+            "name": "name-2",
+            "job": "job-2",
+            "department": "department-2",
+            "profilePath": "/data/profilePath-2"
+          }
+        ]
+      },
+      "collection": {
+        "id": 2.5,
+        "name": "name-2",
+        "posterPath": "/data/posterPath-2",
+        "backdropPath": "/data/backdropPath-2"
+      },
+      "externalIds": {
+        "facebookId": "facebookId-2",
+        "freebaseId": "freebaseId-2",
+        "freebaseMid": "freebaseMid-2",
+        "imdbId": "imdbId-2",
+        "instagramId": "instagramId-2",
+        "tvdbId": 2.5,
+        "tvrageId": 2.5,
+        "twitterId": "twitterId-2"
+      },
+      "mediaInfo": {
+        "id": 2.5,
+        "tmdbId": 2.5,
+        "tvdbId": 2.5,
+        "status": 2.5,
+        "requests": [
+          {
+            "id": 2.5,
+            "status": 2.5,
+            "media": {},
+            "createdAt": "createdAt-2",
+            "updatedAt": "updatedAt-2",
+            "requestedBy": {},
+            "modifiedBy": {},
+            "is4k": false,
+            "serverId": 2.5,
+            "profileId": 2.5,
+            "rootFolder": "rootFolder-2",
+            "ignoreQuota": false
+          }
+        ],
+        "createdAt": "createdAt-2",
+        "updatedAt": "updatedAt-2"
+      },
+      "watchProviders": [
+        [
+          {
+            "iso_3166_1": "iso_3166_1-2",
+            "link": "link-2",
+            "buy": [],
+            "flatrate": "flatrate-2"
+          }
+        ]
+      ]
+    }
+  ]
+}

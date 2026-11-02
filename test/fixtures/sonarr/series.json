@@ -1,0 +1,199 @@
+{
+  "source": "Sonarr v4.0.20.3014 (src/Sonarr.Api.V3/openapi.json), schema SeriesResource, for GET /api/v3/series; synthetic values",
+  "records": [
+    {
+      "id": 1,
+      "title": "title-1",
+      "alternateTitles": [
+        {
+          "title": "title-1",
+          "seasonNumber": 1,
+          "sceneSeasonNumber": 1,
+          "sceneOrigin": "sceneOrigin-1",
+          "comment": "comment-1"
+        }
+      ],
+      "sortTitle": "sortTitle-1",
+      "status": "continuing",
+      "ended": true,
+      "profileName": "profileName-1",
+      "overview": "overview-1",
+      "nextAiring": "2026-01-01T00:00:00Z",
+      "previousAiring": "2026-01-01T00:00:00Z",
+      "network": "network-1",
+      "airTime": "airTime-1",
+      "images": [
+        {
+          "coverType": "unknown",
+          "url": "url-1",
+          "remoteUrl": "remoteUrl-1"
+        }
+      ],
+      "originalLanguage": {
+        "id": 1,
+        "name": "name-1"
+      },
+      "remotePoster": "remotePoster-1",
+      "seasons": [
+        {
+          "seasonNumber": 1,
+          "monitored": true,
+          "statistics": {
+            "nextAiring": "2026-01-01T00:00:00Z",
+            "previousAiring": "2026-01-01T00:00:00Z",
+            "episodeFileCount": 1,
+            "episodeCount": 1,
+            "totalEpisodeCount": 1,
+            "sizeOnDisk": 1,
+            "releaseGroups": [],
+            "percentOfEpisodes": 1.5
+          },
+          "images": [{}]
+        }
+      ],
+      "year": 1,
+      "path": "/data/path-1",
+      "qualityProfileId": 1,
+      "seasonFolder": true,
+      "monitored": true,
+      "monitorNewItems": "all",
+      "useSceneNumbering": true,
+      "runtime": 1,
+      "tvdbId": 1,
+      "tvRageId": 1,
+      "tvMazeId": 1,
+      "tmdbId": 1,
+      "firstAired": "2026-01-01T00:00:00Z",
+      "lastAired": "2026-01-01T00:00:00Z",
+      "seriesType": "standard",
+      "cleanTitle": "cleanTitle-1",
+      "imdbId": "imdbId-1",
+      "titleSlug": "titleSlug-1",
+      "rootFolderPath": "/data/rootFolderPath-1",
+      "folder": "folder-1",
+      "certification": "certification-1",
+      "genres": ["genres-1"],
+      "tags": [1],
+      "added": "2026-01-01T00:00:00Z",
+      "addOptions": {
+        "ignoreEpisodesWithFiles": true,
+        "ignoreEpisodesWithoutFiles": true,
+        "monitor": "unknown",
+        "searchForMissingEpisodes": true,
+        "searchForCutoffUnmetEpisodes": true
+      },
+      "ratings": {
+        "votes": 1,
+        "value": 1.5
+      },
+      "statistics": {
+        "seasonCount": 1,
+        "episodeFileCount": 1,
+        "episodeCount": 1,
+        "totalEpisodeCount": 1,
+        "sizeOnDisk": 1,
+        "releaseGroups": ["releaseGroups-1"],
+        "percentOfEpisodes": 1.5
+      },
+      "episodesChanged": true,
+      "languageProfileId": 1
+    },
+    {
+      "id": 2,
+      "title": "title-2",
+      "alternateTitles": [
+        {
+          "title": "title-2",
+          "seasonNumber": 2,
+          "sceneSeasonNumber": 2,
+          "sceneOrigin": "sceneOrigin-2",
+          "comment": "comment-2"
+        }
+      ],
+      "sortTitle": "sortTitle-2",
+      "status": "ended",
+      "ended": false,
+      "profileName": "profileName-2",
+      "overview": "overview-2",
+      "nextAiring": "2026-01-02T00:00:00Z",
+      "previousAiring": "2026-01-02T00:00:00Z",
+      "network": "network-2",
+      "airTime": "airTime-2",
+      "images": [
+        {
+          "coverType": "poster",
+          "url": "url-2",
+          "remoteUrl": "remoteUrl-2"
+        }
+      ],
+      "originalLanguage": {
+        "id": 2,
+        "name": "name-2"
+      },
+      "remotePoster": "remotePoster-2",
+      "seasons": [
+        {
+          "seasonNumber": 2,
+          "monitored": false,
+          "statistics": {
+            "nextAiring": "2026-01-02T00:00:00Z",
+            "previousAiring": "2026-01-02T00:00:00Z",
+            "episodeFileCount": 2,
+            "episodeCount": 2,
+            "totalEpisodeCount": 2,
+            "sizeOnDisk": 2,
+            "releaseGroups": [],
+            "percentOfEpisodes": 2.5
+          },
+          "images": [{}]
+        }
+      ],
+      "year": 2,
+      "path": "/data/path-2",
+      "qualityProfileId": 2,
+      "seasonFolder": false,
+      "monitored": false,
+      "monitorNewItems": "none",
+      "useSceneNumbering": false,
+      "runtime": 2,
+      "tvdbId": 2,
+      "tvRageId": 2,
+      "tvMazeId": 2,
+      "tmdbId": 2,
+      "firstAired": "2026-01-02T00:00:00Z",
+      "lastAired": "2026-01-02T00:00:00Z",
+      "seriesType": "daily",
+      "cleanTitle": "cleanTitle-2",
+      "imdbId": "imdbId-2",
+      "titleSlug": "titleSlug-2",
+      "rootFolderPath": "/data/rootFolderPath-2",
+      "folder": "folder-2",
+      "certification": "certification-2",
+      "genres": ["genres-2"],
+      "tags": [2],
+      "added": "2026-01-02T00:00:00Z",
+      "addOptions": {
+        "ignoreEpisodesWithFiles": false,
+        "ignoreEpisodesWithoutFiles": false,
+        "monitor": "all",
+        "searchForMissingEpisodes": false,
+        "searchForCutoffUnmetEpisodes": false
+      },
+      "ratings": {
+        "votes": 2,
+        "value": 2.5
+      },
+      "statistics": {
+        "seasonCount": 2,
+        "episodeFileCount": 2,
+        "episodeCount": 2,
+        "totalEpisodeCount": 2,
+        "sizeOnDisk": 2,
+        "releaseGroups": ["releaseGroups-2"],
+        "percentOfEpisodes": 2.5
+      },
+      "episodesChanged": false,
+      "languageProfileId": 2
+    }
+  ]
+}

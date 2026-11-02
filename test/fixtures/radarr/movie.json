@@ -1,0 +1,339 @@
+{
+  "source": "Radarr v6.4.4.10685 (src/Radarr.Api.V3/openapi.json), schema MovieResource, for GET /api/v3/movie; synthetic values",
+  "records": [
+    {
+      "id": 1,
+      "title": "title-1",
+      "originalTitle": "originalTitle-1",
+      "originalLanguage": {
+        "id": 1,
+        "name": "name-1"
+      },
+      "alternateTitles": [
+        {
+          "id": 1,
+          "sourceType": "tmdb",
+          "movieMetadataId": 1,
+          "title": "title-1",
+          "cleanTitle": "cleanTitle-1"
+        }
+      ],
+      "secondaryYear": 1,
+      "secondaryYearSourceId": 1,
+      "sortTitle": "sortTitle-1",
+      "sizeOnDisk": 1,
+      "status": "tba",
+      "overview": "overview-1",
+      "inCinemas": "2026-01-01T00:00:00Z",
+      "physicalRelease": "2026-01-01T00:00:00Z",
+      "digitalRelease": "2026-01-01T00:00:00Z",
+      "releaseDate": "2026-01-01T00:00:00Z",
+      "physicalReleaseNote": "physicalReleaseNote-1",
+      "images": [
+        {
+          "coverType": "unknown",
+          "url": "url-1",
+          "remoteUrl": "remoteUrl-1"
+        }
+      ],
+      "website": "website-1",
+      "remotePoster": "remotePoster-1",
+      "year": 1,
+      "youTubeTrailerId": "youTubeTrailerId-1",
+      "studio": "studio-1",
+      "path": "/data/path-1",
+      "qualityProfileId": 1,
+      "hasFile": true,
+      "movieFileId": 1,
+      "monitored": true,
+      "minimumAvailability": "tba",
+      "isAvailable": true,
+      "folderName": "folderName-1",
+      "runtime": 1,
+      "cleanTitle": "cleanTitle-1",
+      "imdbId": "imdbId-1",
+      "tmdbId": 1,
+      "titleSlug": "titleSlug-1",
+      "rootFolderPath": "/data/rootFolderPath-1",
+      "folder": "folder-1",
+      "certification": "certification-1",
+      "genres": ["genres-1"],
+      "keywords": ["keywords-1"],
+      "tags": [1],
+      "added": "2026-01-01T00:00:00Z",
+      "addOptions": {
+        "ignoreEpisodesWithFiles": true,
+        "ignoreEpisodesWithoutFiles": true,
+        "monitor": "movieOnly",
+        "searchForMovie": true,
+        "addMethod": "manual"
+      },
+      "ratings": {
+        "imdb": {
+          "votes": 1,
+          "value": 1.5,
+          "type": "user"
+        },
+        "tmdb": {
+          "votes": 1,
+          "value": 1.5,
+          "type": "user"
+        },
+        "metacritic": {
+          "votes": 1,
+          "value": 1.5,
+          "type": "user"
+        },
+        "rottenTomatoes": {
+          "votes": 1,
+          "value": 1.5,
+          "type": "user"
+        },
+        "trakt": {
+          "votes": 1,
+          "value": 1.5,
+          "type": "user"
+        }
+      },
+      "movieFile": {
+        "id": 1,
+        "movieId": 1,
+        "relativePath": "/data/relativePath-1",
+        "path": "/data/path-1",
+        "size": 1,
+        "dateAdded": "2026-01-01T00:00:00Z",
+        "sceneName": "sceneName-1",
+        "releaseGroup": "releaseGroup-1",
+        "edition": "edition-1",
+        "languages": [
+          {
+            "id": 1,
+            "name": "name-1"
+          }
+        ],
+        "quality": {
+          "quality": {
+            "id": 1,
+            "name": "name-1",
+            "source": "unknown",
+            "resolution": 1,
+            "modifier": "none"
+          },
+          "revision": {
+            "version": 1,
+            "real": 1,
+            "isRepack": true
+          }
+        },
+        "customFormats": [
+          {
+            "id": 1,
+            "name": "name-1",
+            "includeCustomFormatWhenRenaming": true,
+            "specifications": []
+          }
+        ],
+        "customFormatScore": 1,
+        "indexerFlags": 1,
+        "mediaInfo": {
+          "id": 1,
+          "audioBitrate": 1,
+          "audioChannels": 1.5,
+          "audioCodec": "audioCodec-1",
+          "audioLanguages": "audioLanguages-1",
+          "audioStreamCount": 1,
+          "videoBitDepth": 1,
+          "videoBitrate": 1,
+          "videoCodec": "videoCodec-1",
+          "videoFps": 1.5,
+          "videoDynamicRange": "videoDynamicRange-1",
+          "videoDynamicRangeType": "videoDynamicRangeType-1",
+          "resolution": "resolution-1",
+          "runTime": "runTime-1",
+          "scanType": "scanType-1",
+          "subtitles": "subtitles-1"
+        },
+        "originalFilePath": "/data/originalFilePath-1",
+        "qualityCutoffNotMet": true
+      },
+      "collection": {
+        "title": "title-1",
+        "tmdbId": 1
+      },
+      "popularity": 1.5,
+      "lastSearchTime": "2026-01-01T00:00:00Z",
+      "statistics": {
+        "movieFileCount": 1,
+        "sizeOnDisk": 1,
+        "releaseGroups": ["releaseGroups-1"]
+      }
+    },
+    {
+      "id": 2,
+      "title": "title-2",
+      "originalTitle": "originalTitle-2",
+      "originalLanguage": {
+        "id": 2,
+        "name": "name-2"
+      },
+      "alternateTitles": [
+        {
+          "id": 2,
+          "sourceType": "mappings",
+          "movieMetadataId": 2,
+          "title": "title-2",
+          "cleanTitle": "cleanTitle-2"
+        }
+      ],
+      "secondaryYear": 2,
+      "secondaryYearSourceId": 2,
+      "sortTitle": "sortTitle-2",
+      "sizeOnDisk": 2,
+      "status": "announced",
+      "overview": "overview-2",
+      "inCinemas": "2026-01-02T00:00:00Z",
+      "physicalRelease": "2026-01-02T00:00:00Z",
+      "digitalRelease": "2026-01-02T00:00:00Z",
+      "releaseDate": "2026-01-02T00:00:00Z",
+      "physicalReleaseNote": "physicalReleaseNote-2",
+      "images": [
+        {
+          "coverType": "poster",
+          "url": "url-2",
+          "remoteUrl": "remoteUrl-2"
+        }
+      ],
+      "website": "website-2",
+      "remotePoster": "remotePoster-2",
+      "year": 2,
+      "youTubeTrailerId": "youTubeTrailerId-2",
+      "studio": "studio-2",
+      "path": "/data/path-2",
+      "qualityProfileId": 2,
+      "hasFile": false,
+      "movieFileId": 2,
+      "monitored": false,
+      "minimumAvailability": "announced",
+      "isAvailable": false,
+      "folderName": "folderName-2",
+      "runtime": 2,
+      "cleanTitle": "cleanTitle-2",
+      "imdbId": "imdbId-2",
+      "tmdbId": 2,
+      "titleSlug": "titleSlug-2",
+      "rootFolderPath": "/data/rootFolderPath-2",
+      "folder": "folder-2",
+      "certification": "certification-2",
+      "genres": ["genres-2"],
+      "keywords": ["keywords-2"],
+      "tags": [2],
+      "added": "2026-01-02T00:00:00Z",
+      "addOptions": {
+        "ignoreEpisodesWithFiles": false,
+        "ignoreEpisodesWithoutFiles": false,
+        "monitor": "movieAndCollection",
+        "searchForMovie": false,
+        "addMethod": "list"
+      },
+      "ratings": {
+        "imdb": {
+          "votes": 2,
+          "value": 2.5,
+          "type": "critic"
+        },
+        "tmdb": {
+          "votes": 2,
+          "value": 2.5,
+          "type": "critic"
+        },
+        "metacritic": {
+          "votes": 2,
+          "value": 2.5,
+          "type": "critic"
+        },
+        "rottenTomatoes": {
+          "votes": 2,
+          "value": 2.5,
+          "type": "critic"
+        },
+        "trakt": {
+          "votes": 2,
+          "value": 2.5,
+          "type": "critic"
+        }
+      },
+      "movieFile": {
+        "id": 2,
+        "movieId": 2,
+        "relativePath": "/data/relativePath-2",
+        "path": "/data/path-2",
+        "size": 2,
+        "dateAdded": "2026-01-02T00:00:00Z",
+        "sceneName": "sceneName-2",
+        "releaseGroup": "releaseGroup-2",
+        "edition": "edition-2",
+        "languages": [
+          {
+            "id": 2,
+            "name": "name-2"
+          }
+        ],
+        "quality": {
+          "quality": {
+            "id": 2,
+            "name": "name-2",
+            "source": "cam",
+            "resolution": 2,
+            "modifier": "regional"
+          },
+          "revision": {
+            "version": 2,
+            "real": 2,
+            "isRepack": false
+          }
+        },
+        "customFormats": [
+          {
+            "id": 2,
+            "name": "name-2",
+            "includeCustomFormatWhenRenaming": false,
+            "specifications": []
+          }
+        ],
+        "customFormatScore": 2,
+        "indexerFlags": 2,
+        "mediaInfo": {
+          "id": 2,
+          "audioBitrate": 2,
+          "audioChannels": 2.5,
+          "audioCodec": "audioCodec-2",
+          "audioLanguages": "audioLanguages-2",
+          "audioStreamCount": 2,
+          "videoBitDepth": 2,
+          "videoBitrate": 2,
+          "videoCodec": "videoCodec-2",
+          "videoFps": 2.5,
+          "videoDynamicRange": "videoDynamicRange-2",
+          "videoDynamicRangeType": "videoDynamicRangeType-2",
+          "resolution": "resolution-2",
+          "runTime": "runTime-2",
+          "scanType": "scanType-2",
+          "subtitles": "subtitles-2"
+        },
+        "originalFilePath": "/data/originalFilePath-2",
+        "qualityCutoffNotMet": false
+      },
+      "collection": {
+        "title": "title-2",
+        "tmdbId": 2
+      },
+      "popularity": 2.5,
+      "lastSearchTime": "2026-01-02T00:00:00Z",
+      "statistics": {
+        "movieFileCount": 2,
+        "sizeOnDisk": 2,
+        "releaseGroups": ["releaseGroups-2"]
+      }
+    }
+  ]
+}
