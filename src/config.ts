@@ -17,6 +17,11 @@ export interface ProductSettings {
   readonly envPrefix: string;
   /** An older prefix still accepted when envPrefix is unset; both set and different is an error. */
   readonly legacyEnvPrefix?: string;
+  /**
+   * Set for a product with no tools of its own: it only feeds cross-product tools, so it needs
+   * one of these products configured too, and on its own it does not count as configured.
+   */
+  readonly companionOf?: readonly string[];
 }
 
 export const PRODUCT_SETTINGS = [
@@ -26,6 +31,8 @@ export const PRODUCT_SETTINGS = [
   // Overseerr and Jellyseerr merged into Seerr, which serves the same /api/v1. The module,
   // its tools and its label keep the Overseerr name; the env accepts both spellings.
   { id: 'overseerr', label: 'Overseerr', envPrefix: 'SEERR', legacyEnvPrefix: 'OVERSEERR' },
+  // Plays from Tautulli feed servarr_media_cleanup_report only; there are no tautulli_* tools.
+  { id: 'tautulli', label: 'Tautulli', envPrefix: 'TAUTULLI', companionOf: ['radarr', 'sonarr'] },
 ] as const satisfies readonly ProductSettings[];
 
 export type ProductId = (typeof PRODUCT_SETTINGS)[number]['id'];
@@ -168,13 +175,28 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServarrConfig 
     if (instance) instances[product.id] = instance;
   }
 
-  if (Object.keys(instances).length === 0) {
-    const pairs = PRODUCT_SETTINGS.map((product: ProductSettings) => {
+  const settings: readonly ProductSettings[] = PRODUCT_SETTINGS;
+  const standalone = settings.filter((product) => !product.companionOf);
+  if (!standalone.some((product) => instances[product.id as ProductId])) {
+    const pairs = standalone.map((product) => {
       const pair = `${product.envPrefix}_URL/${product.envPrefix}_API_KEY`;
       const legacy = product.legacyEnvPrefix;
       return legacy ? `${pair} (or ${legacy}_URL/${legacy}_API_KEY)` : pair;
     });
     throw new ConfigError(`No products configured. Set at least one of ${pairs.join(', ')}.`);
+  }
+  for (const product of settings) {
+    const needs = product.companionOf;
+    if (!needs || !instances[product.id as ProductId]) continue;
+    if (needs.some((id) => instances[id as ProductId])) continue;
+    const pairs = settings
+      .filter((other) => needs.includes(other.id))
+      .sort((a, b) => needs.indexOf(a.id) - needs.indexOf(b.id))
+      .map((other) => `${other.envPrefix}_URL/${other.envPrefix}_API_KEY`);
+    throw new ConfigError(
+      `${product.label}: ${product.envPrefix}_URL is set, but ${product.label} only feeds ` +
+        `reports that also need ${pairs.join(' or ')}`,
+    );
   }
 
   const transport = readTransport(env);

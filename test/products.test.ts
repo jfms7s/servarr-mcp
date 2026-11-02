@@ -13,10 +13,13 @@ describe('PRODUCTS', () => {
       'radarr',
       'prowlarr',
       'overseerr',
+      'tautulli',
     ]);
   });
 
-  it.each(PRODUCTS.map((product) => [product.id, product] as const))(
+  const standalone = PRODUCTS.filter((product) => !product.companionOf);
+
+  it.each(standalone.map((product) => [product.id, product] as const))(
     '%s produces its own tools when configured, and loadConfig reads its env pair',
     (id, product) => {
       const names = buildTools({ ...base, [id]: instance }).map((tool) => tool.name);
@@ -47,18 +50,35 @@ describe('PRODUCTS', () => {
       expect(error).toBeInstanceOf(ConfigError);
       message = (error as Error).message;
     }
-    for (const { envPrefix } of PRODUCTS)
+    for (const { envPrefix } of standalone)
       expect(message).toContain(`${envPrefix}_URL/${envPrefix}_API_KEY`);
+    expect(message).not.toContain('TAUTULLI');
     expect(message).toContain('OVERSEERR_URL/OVERSEERR_API_KEY');
   });
 
   it('registers tools in product order', () => {
     const all = Object.fromEntries(PRODUCTS.map((product) => [product.id, instance]));
     const names = buildTools({ ...base, ...all }).map((tool) => tool.name);
-    const firstIndex = PRODUCTS.map((product) =>
+    const firstIndex = standalone.map((product) =>
       names.findIndex((name) => name.startsWith(`${product.id}_`)),
     );
     expect(firstIndex.every((index) => index >= 0)).toBe(true);
     expect([...firstIndex].sort((a, b) => a - b)).toEqual(firstIndex);
+  });
+
+  it('registers no tautulli_* tools; Tautulli with an arr adds the cleanup report last', () => {
+    const tautulliOnly = buildTools({ ...base, tautulli: instance }).map((tool) => tool.name);
+    expect(tautulliOnly).toEqual([]);
+
+    const prowlarr = buildTools({ ...base, tautulli: instance, prowlarr: instance });
+    expect(prowlarr.some((tool) => tool.name === 'servarr_media_cleanup_report')).toBe(false);
+
+    for (const arr of ['radarr', 'sonarr'] as const) {
+      const names = buildTools({ ...base, tautulli: instance, [arr]: instance }).map((t) => t.name);
+      expect(names.filter((name) => name.startsWith('tautulli_'))).toEqual([]);
+      expect(names.at(-1)).toBe('servarr_media_cleanup_report');
+    }
+    const arrOnly = buildTools({ ...base, radarr: instance }).map((tool) => tool.name);
+    expect(arrOnly).not.toContain('servarr_media_cleanup_report');
   });
 });
