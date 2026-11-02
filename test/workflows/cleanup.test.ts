@@ -238,6 +238,18 @@ describe('buildCleanupReport', () => {
     expect(report.items).toEqual([]);
   });
 
+  it('holds back an item whose recently played copy has a different year or none', async () => {
+    for (const year of [2022, undefined]) {
+      const clients = clientsFor(
+        [{ rating_key: 1, title: 'Dune', year: 2021, guid: 'tmdb://438631', last_played: null }],
+        [],
+        [{ rating_key: 9, title: 'Dune', year, guid: 'plex://movie/4k', last_played: daysAgo(1) }],
+      );
+      const report = await buildCleanupReport(clients, { ...options, mediaType: 'movie' });
+      expect(report.items).toEqual([]);
+    }
+  });
+
   it('holds back every arr item a recently played but ambiguous copy could be', async () => {
     const clients = clientsFor(
       [

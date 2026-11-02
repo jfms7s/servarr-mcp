@@ -46,7 +46,10 @@ export function createTautulliClient(config: InstanceConfig): TautulliClient {
     } catch (error) {
       // The shared client keeps the query string out of its messages, but an upstream error
       // body (a proxy page, a stack trace) can quote the request URL, key included.
-      if (error instanceof Error) error.message = redact(error.message);
+      if (error instanceof Error) {
+        error.message = redact(error.message);
+        if (error.stack) error.stack = redact(error.stack);
+      }
       throw error;
     }
     const response = envelope?.response;

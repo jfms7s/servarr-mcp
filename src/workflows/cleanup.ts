@@ -86,17 +86,23 @@ export function parseGuid(guid: string | null | undefined): { tmdb?: number; tvd
  * Lowercased, accents, punctuation and a leading article dropped, "&" read as "and":
  * "The Amélie & Co." -> "amelie and co". Letters of every script are kept.
  */
+export function normalizeTitle(title: string): string {
+  return (
+    title
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/&/g, ' and ')
+      .replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ')
+      .trim()
+      // "The Matrix" in Plex is "Matrix" in some arr setups; leading articles never decide a match.
+      .replace(/^(the|a|an) /, '')
+  );
+}
+
 export function titleKey(title: string, year: number | undefined): string | undefined {
   if (year === undefined) return undefined;
-  const normalised = title
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim()
-    // "The Matrix" in Plex is "Matrix" in some arr setups; leading articles never decide a match.
-    .replace(/^(the|a|an) /, '');
+  const normalised = normalizeTitle(title);
   return normalised ? `${normalised}|${year}` : undefined;
 }
 
@@ -229,8 +235,8 @@ export async function buildCleanupReport(
 
   const grouped = new Map<string, Grouped>();
   const unmatched: UnmatchedRow[] = [];
-  /** Title keys of copies played within the window that matched no single arr item. */
-  const recentUnmatchedKeys = new Set<string>();
+  /** Titles (any year) of copies played within the window that matched no single arr item. */
+  const recentUnmatchedTitles = new Set<string>();
   for (const { type, items } of media) {
     const index = indexes[type];
     for (const entry of items) {
@@ -239,10 +245,11 @@ export async function buildCleanupReport(
       const match = matchItem(index, entry);
       if ('reason' in match) {
         const recent = lastPlayed !== undefined && lastPlayed * 1000 >= cutoffMs;
-        const key = titleKey(entry.title, toNumber(entry.year));
         // A recent play on a copy we could not pin to one arr item may still be a copy of a
-        // ranked item: hold back every arr item with the same title and year.
-        if (recent && key) recentUnmatchedKeys.add(`${type}:${key}`);
+        // ranked item (a wrong or missing year is the usual reason a match fails): hold back
+        // every arr item with the same title, whatever its year.
+        const title = normalizeTitle(entry.title);
+        if (recent && title) recentUnmatchedTitles.add(`${type}:${title}`);
         if (!recent) {
           unmatched.push({
             title: entry.title,
@@ -277,10 +284,7 @@ export async function buildCleanupReport(
 
   const rows: CleanupRow[] = [...grouped.values()]
     .filter((g) => g.lastPlayed === undefined || g.lastPlayed * 1000 < cutoffMs)
-    .filter((g) => {
-      const key = titleKey(g.item.title, g.item.year);
-      return !key || !recentUnmatchedKeys.has(`${g.mediaType}:${key}`);
-    })
+    .filter((g) => !recentUnmatchedTitles.has(`${g.mediaType}:${normalizeTitle(g.item.title)}`))
     .filter((g) => g.item.sizeOnDisk > 0 && g.item.sizeOnDisk >= minBytes)
     .map((g): CleanupRow => ({
       arr: g.index.arr,
