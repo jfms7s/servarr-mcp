@@ -28,6 +28,14 @@ describe('PRODUCTS', () => {
         [`${product.envPrefix}_API_KEY`]: 'k',
       });
       expect(config[id]).toEqual({ baseUrl: 'http://localhost:1', apiKey: 'k' });
+
+      if (product.legacyEnvPrefix) {
+        const legacy = loadConfig({
+          [`${product.legacyEnvPrefix}_URL`]: 'http://localhost:2',
+          [`${product.legacyEnvPrefix}_API_KEY`]: 'k',
+        });
+        expect(legacy[id]).toEqual({ baseUrl: 'http://localhost:2', apiKey: 'k' });
+      }
     },
   );
 
@@ -41,6 +49,7 @@ describe('PRODUCTS', () => {
     }
     for (const { envPrefix } of PRODUCTS)
       expect(message).toContain(`${envPrefix}_URL/${envPrefix}_API_KEY`);
+    expect(message).toContain('OVERSEERR_URL/OVERSEERR_API_KEY');
   });
 
   it('registers tools in product order', () => {

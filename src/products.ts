@@ -20,6 +20,7 @@ export interface Product {
   id: ProductId;
   label: string;
   envPrefix: string;
+  legacyEnvPrefix?: string;
   createTools: (instance: InstanceConfig) => ToolDefinition[];
 }
 
