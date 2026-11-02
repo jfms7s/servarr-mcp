@@ -1,19 +1,38 @@
 import { PRODUCT_SETTINGS, type InstanceConfig, type ProductId } from './config.js';
 import type { ToolDefinition } from './mcp/types.js';
-import { createOverseerrClient } from './overseerr/client.js';
+import { createOverseerrClient, type OverseerrClient } from './overseerr/client.js';
 import { createOverseerrTools } from './overseerr/tools.js';
-import { createProwlarrClient } from './prowlarr/client.js';
+import { createProwlarrClient, type ProwlarrClient } from './prowlarr/client.js';
 import { createProwlarrTools } from './prowlarr/tools.js';
-import { createRadarrClient } from './radarr/client.js';
+import { createRadarrClient, type RadarrClient } from './radarr/client.js';
 import { createRadarrTools } from './radarr/tools.js';
-import { createSonarrClient } from './sonarr/client.js';
+import { createSonarrClient, type SonarrClient } from './sonarr/client.js';
 import { createSonarrTools } from './sonarr/tools.js';
+import { createTautulliClient, type TautulliClient } from './tautulli/client.js';
 
-const FACTORIES: Record<ProductId, (instance: InstanceConfig) => ToolDefinition[]> = {
-  sonarr: (instance) => createSonarrTools(createSonarrClient(instance)),
-  radarr: (instance) => createRadarrTools(createRadarrClient(instance)),
-  prowlarr: (instance) => createProwlarrTools(createProwlarrClient(instance)),
-  overseerr: (instance) => createOverseerrTools(createOverseerrClient(instance)),
+/** The configured products' clients, each built once and shared with the cross-product tools. */
+export interface ProductClients {
+  sonarr?: SonarrClient;
+  radarr?: RadarrClient;
+  prowlarr?: ProwlarrClient;
+  overseerr?: OverseerrClient;
+  tautulli?: TautulliClient;
+}
+
+type Factory = (instance: InstanceConfig, clients: ProductClients) => ToolDefinition[];
+
+/** Each factory builds the product's client, records it in `clients`, and returns its own tools. */
+const FACTORIES: Record<ProductId, Factory> = {
+  sonarr: (instance, clients) => createSonarrTools((clients.sonarr = createSonarrClient(instance))),
+  radarr: (instance, clients) => createRadarrTools((clients.radarr = createRadarrClient(instance))),
+  prowlarr: (instance, clients) =>
+    createProwlarrTools((clients.prowlarr = createProwlarrClient(instance))),
+  overseerr: (instance, clients) =>
+    createOverseerrTools((clients.overseerr = createOverseerrClient(instance))),
+  tautulli: (instance, clients) => {
+    clients.tautulli = createTautulliClient(instance);
+    return [];
+  },
 };
 
 export interface Product {
@@ -21,11 +40,14 @@ export interface Product {
   label: string;
   envPrefix: string;
   legacyEnvPrefix?: string;
-  createTools: (instance: InstanceConfig) => ToolDefinition[];
+  /** Set for a product with no tools of its own (see ProductSettings.companionOf). */
+  companionOf?: readonly string[];
+  createTools: (instance: InstanceConfig, clients?: ProductClients) => ToolDefinition[];
 }
 
-/** The product registry, in PRODUCT_SETTINGS order: Sonarr, Radarr, Prowlarr, Overseerr. */
+/** The product registry, in PRODUCT_SETTINGS order: Sonarr, Radarr, Prowlarr, Overseerr, Tautulli. */
 export const PRODUCTS: readonly Product[] = PRODUCT_SETTINGS.map((settings) => ({
   ...settings,
-  createTools: FACTORIES[settings.id],
+  createTools: (instance: InstanceConfig, clients: ProductClients = {}) =>
+    FACTORIES[settings.id](instance, clients),
 }));

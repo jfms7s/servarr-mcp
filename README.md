@@ -79,6 +79,8 @@ The server reads configuration from environment variables. Each product is **ind
 | `SEERR_URL` | `http://localhost:5055` | No | Base URL of your Seerr (or Overseerr) instance |
 | `SEERR_API_KEY` | `abc123def456` | Only if `SEERR_URL` is set | API key from Seerr/Overseerr Settings → General. It is admin-level, so the model can file or reassign requests as any user through `userId` |
 | `OVERSEERR_URL` / `OVERSEERR_API_KEY` | | No | Older names for `SEERR_URL` / `SEERR_API_KEY`, still accepted. If both pairs are set they must hold the same URL (after trimming a trailing `/`) and key, or the server refuses to start |
+| `TAUTULLI_URL` | `http://localhost:8181` | No | Base URL of your Tautulli instance. Tautulli has no tools of its own: it feeds `servarr_media_cleanup_report`, so it also needs Radarr or Sonarr configured, or the server refuses to start |
+| `TAUTULLI_API_KEY` | `abc123def456` | Only if `TAUTULLI_URL` is set | API key from Tautulli Settings → Web Interface → API. Tautulli takes it as a query parameter; the server redacts it from every Tautulli error |
 | `SERVARR_MCP_TRANSPORT` | `stdio` or `http` | No | Transport mode (default `stdio`). `both` was removed in v0.8.0 and now fails startup |
 | `SERVARR_MCP_PORT` | `3000` | No | Port for HTTP transport (default `3000`) |
 | `SERVARR_MCP_HOST` | `*` | No | Address the HTTP transport binds to: an IP address, or `*` for every interface, IPv4 and IPv6 (default `127.0.0.1`; the Docker image sets `*`) |
@@ -219,7 +221,7 @@ A compromised bearer token gives an attacker complete control to delete your lib
 
 ## Tools
 
-This server exposes 108 tools across the four products.
+This server exposes 108 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (109).
 
 ### Sonarr (34 tools)
 
@@ -350,6 +352,14 @@ Overseerr and Jellyseerr merged into [Seerr](https://github.com/seerr-team/seerr
 | `overseerr_list_radarr_servers` | List the Radarr servers Overseerr routes to, with each one's default root folder |
 | `overseerr_get_radarr_profiles` | List quality profiles available on one of those Radarr servers |
 | `overseerr_update_request` | Change a request's root folder, quality profile or target server |
+
+### Cross-product (1 tool, with Tautulli)
+
+| Tool | Purpose |
+|------|---------|
+| `servarr_media_cleanup_report` | Rank movies and shows nobody has played in `unwatchedDays` (default 365) by size on disk, with the Radarr/Sonarr id and the tool that deletes them. Read-only |
+
+`servarr_media_cleanup_report` reads Tautulli's libraries and play history and joins each Plex item to Radarr (movies) or Sonarr (shows): by TMDB or TVDB id when Plex's guid carries one (older Plex agents), else by title and year. Every row says how it matched in `matchedBy` (`tmdb`, `tvdb` or `title`); check the `title` ones before deleting. Plex items that match nothing, or whose title and year match more than one arr item, are listed under `unmatched` with a reason. All Plex copies of a title (a 4K library next to the main one) count as one, so a copy watched recently keeps the item off the list; a recently played copy that matches no single arr item holds back every arr item with the same title, whatever its year. Titles compare without case, accents, punctuation or a leading "The"/"A"/"An". Sizes are the arr's `sizeOnDisk`. The report deletes nothing: each row names `deleteWith` (`radarr_delete_movie` or `sonarr_delete_series`), which previews first and deletes files only with `confirmDeleteFiles: true`. Options: `minSizeGb`, `mediaType` (`movie`, `show`, `all`) and `limit` (default 50, at most 100, for both `items` and `unmatched`; the totals count everything).
 
 ### Organising a library
 

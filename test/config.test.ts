@@ -39,6 +39,42 @@ describe('loadConfig', () => {
     );
   });
 
+  it('loads Tautulli next to an arr', () => {
+    const config = loadConfig({
+      ...base,
+      TAUTULLI_URL: 'http://localhost:8181/',
+      TAUTULLI_API_KEY: 'tautulli-key',
+    });
+    expect(config.tautulli).toEqual({ baseUrl: 'http://localhost:8181', apiKey: 'tautulli-key' });
+  });
+
+  it('rejects TAUTULLI_URL without its key, and the key without the URL', () => {
+    expect(() => loadConfig({ ...base, TAUTULLI_URL: 'http://localhost:8181' })).toThrow(
+      'Tautulli: TAUTULLI_URL is set but TAUTULLI_API_KEY is not',
+    );
+    expect(() => loadConfig({ ...base, TAUTULLI_API_KEY: 'k' })).toThrow(ConfigError);
+  });
+
+  it('rejects Tautulli alone, naming the products it needs', () => {
+    expect(() =>
+      loadConfig({ TAUTULLI_URL: 'http://localhost:8181', TAUTULLI_API_KEY: 'k' }),
+    ).toThrow(/Tautulli only feeds reports that also need RADARR_URL\/RADARR_API_KEY/);
+  });
+
+  it('rejects Tautulli without Radarr or Sonarr, naming both', () => {
+    expect(() =>
+      loadConfig({
+        PROWLARR_URL: 'http://localhost:9696',
+        PROWLARR_API_KEY: 'k',
+        TAUTULLI_URL: 'http://localhost:8181',
+        TAUTULLI_API_KEY: 'k',
+      }),
+    ).toThrow(
+      'Tautulli: TAUTULLI_URL is set, but Tautulli only feeds reports that also need ' +
+        'RADARR_URL/RADARR_API_KEY or SONARR_URL/SONARR_API_KEY',
+    );
+  });
+
   it('loads Overseerr configuration', () => {
     const config = loadConfig({
       ...base,
