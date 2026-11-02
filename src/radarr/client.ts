@@ -86,6 +86,8 @@ export interface RadarrClient {
   deleteQueueItem(id: number, options?: DeleteQueueItemOptions): Promise<void>;
   getHistory(options?: HistoryOptions): Promise<PagedResponse<HistoryRecord>>;
   getWantedMissing(options?: PageParams): Promise<PagedResponse<Movie>>;
+  /** Movies with a file below the quality profile's cutoff: the upgrade list. */
+  getWantedCutoff(options?: PageParams): Promise<PagedResponse<Movie>>;
   getBlocklist(options?: PageParams): Promise<PagedResponse<BlocklistRecord>>;
   deleteBlocklistItem(id: number): Promise<void>;
   listCollections(): Promise<Collection[]>;
@@ -136,6 +138,7 @@ export function createRadarrClient(config: InstanceConfig): RadarrClient {
     deleteQueueItem: (id, options) => http.del(`/queue/${id}`, { ...options }),
     getHistory: (options) => http.get('/history', { ...options }),
     getWantedMissing: (options) => http.get('/wanted/missing', { ...options }),
+    getWantedCutoff: (options) => http.get('/wanted/cutoff', { ...options }),
     getBlocklist: (options) => http.get('/blocklist', { ...options }),
     deleteBlocklistItem: (id) => http.del(`/blocklist/${id}`),
     listCollections: () => http.get('/collection'),

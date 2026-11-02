@@ -513,6 +513,25 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
     }),
 
     defineTool({
+      name: 'radarr_get_wanted_cutoff',
+      effect: 'read',
+      description:
+        "List movies whose file is below the quality profile's cutoff (upgrades Radarr still looks for). " +
+        'Each row adds currentQuality, the quality of the file on disk. Rows omit the plot overview.',
+      inputSchema: { ...page },
+      handler: async ({ page: pageNum, pageSize }) => {
+        const response = await client.getWantedCutoff({ page: pageNum, pageSize });
+        return {
+          ...response,
+          records: response.records.map((m) => ({
+            ...summarizeMovie(m, { overview: false }),
+            currentQuality: m.movieFile?.quality?.quality.name,
+          })),
+        };
+      },
+    }),
+
+    defineTool({
       name: 'radarr_get_blocklist',
       effect: 'read',
       description: 'List releases on the blocklist (failed imports or manually blocked).',

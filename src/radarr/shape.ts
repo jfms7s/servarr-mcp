@@ -91,7 +91,11 @@ export interface QueueSummary {
   movieId?: number;
   title: string;
   status: string;
+  /** The arr's verdict on the import: ok, warning or error. */
+  trackedDownloadStatus?: string;
   trackedDownloadState?: string;
+  /** The download client's id, the join key into the client. */
+  downloadId?: string;
   percentComplete: number;
   timeleft?: string;
   indexer?: string;
@@ -110,7 +114,9 @@ export function summarizeQueueRecord(record: QueueRecord): QueueSummary {
     movieId: record.movieId,
     title: record.title,
     status: record.status,
+    trackedDownloadStatus: record.trackedDownloadStatus,
     trackedDownloadState: record.trackedDownloadState,
+    downloadId: record.downloadId,
     percentComplete,
     timeleft: record.timeleft,
     indexer: record.indexer,
