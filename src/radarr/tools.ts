@@ -7,7 +7,11 @@ import {
 } from '../arr/bulk.js';
 import { CACHED_LIBRARY_NOTE, refreshInput } from '../arr/library.js';
 import { listWindow, page, pageOf } from '../arr/paging.js';
-import { isWithinRoot, normalizeTitle, rootFolderOf, relocatePath } from '../arr/paths.js';
+import { isWithinRoot, rootFolderOf, relocatePath } from '../arr/paths.js';
+import { findDuplicates } from '../arr/duplicates.js';
+import { pickDefined } from '../arr/payload.js';
+import { capPreviews, rankAndFilterReleases } from '../arr/releases.js';
+import { createArrCommonTools, createUnmappedFoldersTool } from '../arr/tools.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { RadarrClient } from './client.js';
 import type { MovieEditorPayload } from './types.js';
@@ -18,13 +22,10 @@ import {
   summarizeMovie,
   summarizeMovieDetail,
   summarizeMovieFile,
-  summarizeQualityProfile,
   summarizeQueueRecord,
   summarizeRelease,
   summarizeRenamePreview,
-  summarizeUnmappedFolder,
 } from './shape.js';
-import { summarizeRootFolder } from '../arr/shape.js';
 
 const COMMAND_NAMES = [
   'MoviesSearch',
@@ -294,29 +295,24 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           .optional()
           .describe('How to apply tags: add, remove, or replace (default replace)'),
       },
-      handler: async ({
-        movieIds,
-        monitored,
-        qualityProfileId,
-        minimumAvailability,
-        rootFolderPath,
-        moveFiles,
-        tags,
-        applyTags,
-      }) => {
+      handler: async (args) => {
+        const { movieIds, rootFolderPath, moveFiles } = args;
         assertMoveFilesChosen(rootFolderPath, moveFiles, 'radarr_bulk_edit_movies');
         assertMoveBatchSize(movieIds, moveFiles, 'radarr_bulk_edit_movies');
 
-        // Build payload with only defined fields
-        const payload: MovieEditorPayload = { movieIds };
-
-        if (monitored !== undefined) payload.monitored = monitored;
-        if (qualityProfileId !== undefined) payload.qualityProfileId = qualityProfileId;
-        if (minimumAvailability !== undefined) payload.minimumAvailability = minimumAvailability;
-        if (rootFolderPath !== undefined) payload.rootFolderPath = rootFolderPath;
-        if (moveFiles !== undefined) payload.moveFiles = moveFiles;
-        if (tags !== undefined) payload.tags = tags;
-        if (applyTags !== undefined) payload.applyTags = applyTags;
+        // Only the fields that were set, so an omitted field is not blanked upstream.
+        const payload: MovieEditorPayload = {
+          movieIds,
+          ...pickDefined(args, [
+            'monitored',
+            'qualityProfileId',
+            'minimumAvailability',
+            'rootFolderPath',
+            'moveFiles',
+            'tags',
+            'applyTags',
+          ]),
+        };
 
         const edit = () => client.bulkEditMovies(payload);
         const summarize = (result: Awaited<ReturnType<typeof edit>>) => ({
@@ -617,33 +613,8 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           .optional()
           .describe('Maximum results to return (default 20)'),
       },
-      handler: async ({ movieId, titleContains, approvedOnly, limit: userLimit }) => {
-        const releases = await client.searchReleases(movieId);
-        const defaultLimit = 20;
-        const finalLimit = userLimit ?? defaultLimit;
-
-        let filtered = releases.map((release, index) => summarizeRelease(release, index + 1));
-
-        if (titleContains) {
-          const lowerFilter = titleContains.toLowerCase();
-          filtered = filtered.filter((r) => r.title.toLowerCase().includes(lowerFilter));
-        }
-
-        if (approvedOnly) {
-          filtered = filtered.filter((r) => r.approved);
-        }
-
-        const matched = filtered.length;
-        const returned = Math.min(matched, finalLimit);
-        const result = filtered.slice(0, finalLimit);
-
-        return {
-          total: releases.length,
-          matched,
-          returned,
-          releases: result,
-        };
-      },
+      handler: async ({ movieId, ...filters }) =>
+        rankAndFilterReleases(await client.searchReleases(movieId), summarizeRelease, filters),
     }),
 
     defineTool({
@@ -673,20 +644,12 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       },
     }),
 
-    defineTool({
-      name: 'radarr_list_unmapped_folders',
-      effect: 'read',
-      description:
-        'List folders in each root folder that Radarr has not yet mapped to any movie. ' +
+    createUnmappedFoldersTool(
+      client,
+      'radarr',
+      'List folders in each root folder that Radarr has not yet mapped to any movie. ' +
         'Use this to find media that needs to be imported or organized.',
-      inputSchema: {},
-      handler: async () => {
-        const rootFolders = await client.listRootFolders();
-        return rootFolders.flatMap((rf) =>
-          (rf.unmappedFolders ?? []).map((folder) => summarizeUnmappedFolder(rf, folder)),
-        );
-      },
-    }),
+    ),
 
     defineTool({
       name: 'radarr_get_rename_preview',
@@ -699,14 +662,7 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         movieIds: z.array(z.number().int()).min(1).describe('Movie ids to preview rename for'),
       },
       handler: async ({ movieIds }) => {
-        const previews = await client.renamePreview(movieIds);
-        const MAX_PREVIEW = 100;
-        const shown = previews.slice(0, MAX_PREVIEW).map(summarizeRenamePreview);
-        return {
-          total: previews.length,
-          shown: shown.length,
-          previews: shown,
-        };
+        return capPreviews(await client.renamePreview(movieIds), summarizeRenamePreview);
       },
     }),
 
@@ -726,62 +682,39 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         ]);
         const rootPaths = rootFolders.map((root) => root.path);
 
-        // Group by tmdbId for exact duplicates
-        const byTmdbId = new Map<number, typeof movies>();
-        for (const movie of movies) {
-          const existing = byTmdbId.get(movie.tmdbId) ?? [];
-          existing.push(movie);
-          byTmdbId.set(movie.tmdbId, existing);
-        }
-
-        // Find exactDuplicates (same tmdbId, multiple entries)
-        const exactDuplicates = Array.from(byTmdbId.entries())
-          .filter(([, group]) => group.length > 1)
-          .map(([tmdbId, group]) => ({
-            tmdbId,
-            count: group.length,
-            movies: group.map((m) => ({
-              id: m.id,
-              title: m.title,
-              year: m.year,
-              path: m.path,
-              hasFile: m.hasFile,
-            })),
-          }));
-
-        // Group by normalized title+year for misplaced copies. Titles that normalize to nothing
-        // carry no key and are skipped.
-        const byTitle = new Map<string, typeof movies>();
-        for (const movie of movies) {
-          const title = normalizeTitle(movie.title);
-          if (title === '') continue;
-          const key = `${title}:${movie.year}`;
-          const existing = byTitle.get(key) ?? [];
-          existing.push(movie);
-          byTitle.set(key, existing);
-        }
-
         // Radarr's movie list often carries only `path`, so derive each movie's root folder from
         // the configured root folders before comparing.
-        const rootOf = (m: (typeof movies)[number]) =>
-          rootFolderOf(m.path, rootPaths, m.rootFolderPath);
+        const { exact, misplaced } = findDuplicates(movies, {
+          idOf: (movie) => movie.tmdbId,
+          title: (movie) => movie.title,
+          year: (movie) => movie.year,
+          rootOf: (movie) => rootFolderOf(movie.path, rootPaths, movie.rootFolderPath),
+        });
 
-        const misplacedCopies = Array.from(byTitle.entries())
-          .filter(([, group]) => group.length > 1)
-          .filter(([, group]) => new Set(group.map((m) => m.tmdbId)).size > 1) // Different tmdbIds
-          .filter(([, group]) => new Set(group.map(rootOf)).size > 1) // Different root folders
-          .map(([, group]) => ({
-            title: group[0]!.title,
-            year: group[0]!.year,
-            count: group.length,
-            movies: group.map((m) => ({
-              id: m.id,
-              title: m.title,
-              tmdbId: m.tmdbId,
-              path: m.path,
-              hasFile: m.hasFile,
-            })),
-          }));
+        const exactDuplicates = exact.map(({ id, items }) => ({
+          tmdbId: id,
+          count: items.length,
+          movies: items.map((m) => ({
+            id: m.id,
+            title: m.title,
+            year: m.year,
+            path: m.path,
+            hasFile: m.hasFile,
+          })),
+        }));
+
+        const misplacedCopies = misplaced.map((group) => ({
+          title: group[0]!.title,
+          year: group[0]!.year,
+          count: group.length,
+          movies: group.map((m) => ({
+            id: m.id,
+            title: m.title,
+            tmdbId: m.tmdbId,
+            path: m.path,
+            hasFile: m.hasFile,
+          })),
+        }));
 
         return {
           total: movies.length,
@@ -791,55 +724,12 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       },
     }),
 
-    defineTool({
-      name: 'radarr_list_quality_profiles',
-      effect: 'read',
-      description:
-        'List available quality profiles. Use these ids in radarr_add_movie and radarr_update_movie.',
-      inputSchema: {},
-      handler: async () => (await client.listQualityProfiles()).map(summarizeQualityProfile),
-    }),
-
-    defineTool({
-      name: 'radarr_list_root_folders',
-      effect: 'read',
-      description:
-        'List configured root folders where movies are stored (id, path, accessible, free space, ' +
-        'unmapped folder count). Use these paths in radarr_add_movie; use radarr_list_unmapped_folders for the folders themselves.',
-      inputSchema: {},
-      handler: async () => (await client.listRootFolders()).map(summarizeRootFolder),
-    }),
-
-    defineTool({
-      name: 'radarr_list_tags',
-      effect: 'read',
-      description: 'List all tags available for movie organization.',
-      inputSchema: {},
-      handler: () => client.listTags(),
-    }),
-
-    defineTool({
-      name: 'radarr_get_system_status',
-      effect: 'read',
-      description: 'Get Radarr version, OS, Docker status and other system information.',
-      inputSchema: {},
-      handler: () => client.getSystemStatus(),
-    }),
-
-    defineTool({
-      name: 'radarr_get_health',
-      effect: 'read',
-      description: 'Check Radarr health status. Returns warnings or errors about the installation.',
-      inputSchema: {},
-      handler: () => client.getHealth(),
-    }),
-
-    defineTool({
-      name: 'radarr_get_disk_space',
-      effect: 'read',
-      description: 'List disk space on each drive containing movies or root folders.',
-      inputSchema: {},
-      handler: () => client.getDiskSpace(),
+    ...createArrCommonTools(client, 'radarr', {
+      product: 'Radarr',
+      item: 'movie',
+      items: 'movies',
+      addTool: 'radarr_add_movie',
+      updateTool: 'radarr_update_movie',
     }),
 
     defineTool({

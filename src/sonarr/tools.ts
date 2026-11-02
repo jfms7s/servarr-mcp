@@ -7,7 +7,11 @@ import {
 } from '../arr/bulk.js';
 import { CACHED_LIBRARY_NOTE, refreshInput } from '../arr/library.js';
 import { listWindow, page, pageOf } from '../arr/paging.js';
-import { isWithinRoot, normalizeTitle, relocatePath } from '../arr/paths.js';
+import { isWithinRoot, relocatePath } from '../arr/paths.js';
+import { findDuplicates } from '../arr/duplicates.js';
+import { pickDefined } from '../arr/payload.js';
+import { capPreviews, rankAndFilterReleases } from '../arr/releases.js';
+import { createArrCommonTools, createUnmappedFoldersTool } from '../arr/tools.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { SonarrClient } from './client.js';
 import type { SeriesBulkEditPayload } from './types.js';
@@ -17,15 +21,12 @@ import {
   summarizeEpisodeDetail,
   summarizeEpisodeFile,
   summarizeHistoryRecord,
-  summarizeQualityProfile,
   summarizeQueueRecord,
   summarizeRelease,
   summarizeRenamePreview,
-  summarizeUnmappedFolder,
   summarizeSeries,
   summarizeSeriesDetail,
 } from './shape.js';
-import { summarizeRootFolder } from '../arr/shape.js';
 
 const COMMAND_NAMES = [
   'SeriesSearch',
@@ -596,55 +597,12 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       handler: ({ commandId }) => client.getCommand(commandId),
     }),
 
-    defineTool({
-      name: 'sonarr_list_quality_profiles',
-      effect: 'read',
-      description:
-        'List available quality profiles. Use these ids in sonarr_add_series and sonarr_update_series.',
-      inputSchema: {},
-      handler: async () => (await client.listQualityProfiles()).map(summarizeQualityProfile),
-    }),
-
-    defineTool({
-      name: 'sonarr_list_root_folders',
-      effect: 'read',
-      description:
-        'List configured root folders where series are stored (id, path, accessible, free space, ' +
-        'unmapped folder count). Use these paths in sonarr_add_series; use sonarr_list_unmapped_folders for the folders themselves.',
-      inputSchema: {},
-      handler: async () => (await client.listRootFolders()).map(summarizeRootFolder),
-    }),
-
-    defineTool({
-      name: 'sonarr_list_tags',
-      effect: 'read',
-      description: 'List all tags available for series organization.',
-      inputSchema: {},
-      handler: () => client.listTags(),
-    }),
-
-    defineTool({
-      name: 'sonarr_get_system_status',
-      effect: 'read',
-      description: 'Get Sonarr version, OS, Docker status and other system information.',
-      inputSchema: {},
-      handler: () => client.getSystemStatus(),
-    }),
-
-    defineTool({
-      name: 'sonarr_get_health',
-      effect: 'read',
-      description: 'Check Sonarr health status. Returns warnings or errors about the installation.',
-      inputSchema: {},
-      handler: () => client.getHealth(),
-    }),
-
-    defineTool({
-      name: 'sonarr_get_disk_space',
-      effect: 'read',
-      description: 'List disk space on each drive containing series or root folders.',
-      inputSchema: {},
-      handler: () => client.getDiskSpace(),
+    ...createArrCommonTools(client, 'sonarr', {
+      product: 'Sonarr',
+      item: 'series',
+      items: 'series',
+      addTool: 'sonarr_add_series',
+      updateTool: 'sonarr_update_series',
     }),
 
     defineTool({
@@ -697,31 +655,11 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         const searchParams = hasEpisodeId
           ? { episodeId: args.episodeId }
           : { seriesId: args.seriesId, seasonNumber: args.seasonNumber };
-        const allReleases = await client.searchReleases(searchParams);
-
-        // Rank over the full list first, so a release keeps Sonarr's rank
-        // after the filters below drop the ones ahead of it.
-        let filtered = allReleases.map((release, index) => summarizeRelease(release, index + 1));
-
-        if (args.titleContains) {
-          const lowerFilter = args.titleContains.toLowerCase();
-          filtered = filtered.filter((r) => r.title.toLowerCase().includes(lowerFilter));
-        }
-
-        if (args.approvedOnly) {
-          filtered = filtered.filter((r) => r.approved);
-        }
-
-        const matched = filtered.length;
-        const returned = Math.min(args.limit ?? 20, matched);
-        const releases = filtered.slice(0, returned);
-
-        return {
-          total: allReleases.length,
-          matched,
-          returned,
-          releases,
-        };
+        return rankAndFilterReleases(
+          await client.searchReleases(searchParams),
+          summarizeRelease,
+          args,
+        );
       },
     }),
 
@@ -784,16 +722,20 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
         assertMoveFilesChosen(args.rootFolderPath, args.moveFiles, 'sonarr_bulk_edit_series');
         assertMoveBatchSize(args.seriesIds, args.moveFiles, 'sonarr_bulk_edit_series');
 
-        // Build payload with only defined fields to avoid blanking unspecified fields
-        const payload: SeriesBulkEditPayload = { seriesIds: args.seriesIds };
-        if (args.monitored !== undefined) payload.monitored = args.monitored;
-        if (args.qualityProfileId !== undefined) payload.qualityProfileId = args.qualityProfileId;
-        if (args.seriesType !== undefined) payload.seriesType = args.seriesType;
-        if (args.seasonFolder !== undefined) payload.seasonFolder = args.seasonFolder;
-        if (args.rootFolderPath !== undefined) payload.rootFolderPath = args.rootFolderPath;
-        if (args.tags !== undefined) payload.tags = args.tags;
-        if (args.applyTags !== undefined) payload.applyTags = args.applyTags;
-        if (args.moveFiles !== undefined) payload.moveFiles = args.moveFiles;
+        // Only the fields that were set, so an omitted field is not blanked upstream.
+        const payload: SeriesBulkEditPayload = {
+          seriesIds: args.seriesIds,
+          ...pickDefined(args, [
+            'monitored',
+            'qualityProfileId',
+            'seriesType',
+            'seasonFolder',
+            'rootFolderPath',
+            'tags',
+            'applyTags',
+            'moveFiles',
+          ]),
+        };
 
         const edit = () => client.bulkEditSeries(payload);
         const summarize = (result: Awaited<ReturnType<typeof edit>>) => ({
@@ -810,20 +752,12 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       },
     }),
 
-    defineTool({
-      name: 'sonarr_list_unmapped_folders',
-      effect: 'read',
-      description:
-        'List folders in each root folder that are not yet mapped to any series. ' +
+    createUnmappedFoldersTool(
+      client,
+      'sonarr',
+      'List folders in each root folder that are not yet mapped to any series. ' +
         'Use this to find media that needs to be imported or organized.',
-      inputSchema: {},
-      handler: async () => {
-        const rootFolders = await client.listRootFolders();
-        return rootFolders.flatMap((rf) =>
-          (rf.unmappedFolders ?? []).map((folder) => summarizeUnmappedFolder(rf, folder)),
-        );
-      },
-    }),
+    ),
 
     defineTool({
       name: 'sonarr_get_rename_preview',
@@ -841,14 +775,10 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
           .describe('Season number (all seasons if omitted)'),
       },
       handler: async ({ seriesId, seasonNumber }) => {
-        const previews = await client.getRenamePreview(seriesId, seasonNumber);
-        const MAX_PREVIEW = 100;
-        const shown = previews.slice(0, MAX_PREVIEW).map(summarizeRenamePreview);
-        return {
-          total: previews.length,
-          shown: shown.length,
-          previews: shown,
-        };
+        return capPreviews(
+          await client.getRenamePreview(seriesId, seasonNumber),
+          summarizeRenamePreview,
+        );
       },
     }),
 
@@ -863,52 +793,29 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       inputSchema: { refresh: refreshInput },
       handler: async ({ refresh }) => {
         const allSeries = await client.listSeries({ refresh });
+        const { exact, misplaced } = findDuplicates(allSeries, {
+          idOf: (series) => series.tvdbId,
+          title: (series) => series.title,
+          year: (series) => series.year,
+          rootOf: (series) => series.rootFolderPath,
+        });
+        const identify = (s: (typeof allSeries)[number]) => ({
+          id: s.id,
+          title: s.title,
+          path: s.path,
+        });
 
-        // Find series with duplicate tvdbIds (exact duplicates)
-        const tvdbMap = new Map<number, typeof allSeries>();
-        for (const series of allSeries) {
-          if (!tvdbMap.has(series.tvdbId)) {
-            tvdbMap.set(series.tvdbId, []);
-          }
-          tvdbMap.get(series.tvdbId)!.push(series);
-        }
-
-        const exactDuplicates = Array.from(tvdbMap.values())
-          .filter((group) => group.length > 1)
-          .map((group) => {
-            const first = group[0]!;
-            return {
-              tvdbId: first.tvdbId,
-              count: group.length,
-              series: group.map((s) => ({ id: s.id, title: s.title, path: s.path })),
-            };
-          });
-
-        // Find different series (distinct tvdbIds) with the same normalized title+year in different
-        // root folders. Titles that normalize to nothing carry no key and are skipped.
-        const titleYearMap = new Map<string, typeof allSeries>();
-        for (const series of allSeries) {
-          const title = normalizeTitle(series.title);
-          if (title === '') continue;
-          const key = `${title}:${series.year}`;
-          const group = titleYearMap.get(key) ?? [];
-          group.push(series);
-          titleYearMap.set(key, group);
-        }
-
-        const misplacedCopies = Array.from(titleYearMap.values())
-          .filter((group) => group.length > 1)
-          .filter((group) => new Set(group.map((s) => s.tvdbId)).size > 1)
-          .filter((group) => new Set(group.map((s) => s.rootFolderPath)).size > 1)
-          .map((group) => {
-            const first = group[0]!;
-            return {
-              title: first.title,
-              year: first.year,
-              count: group.length,
-              series: group.map((s) => ({ id: s.id, title: s.title, path: s.path })),
-            };
-          });
+        const exactDuplicates = exact.map(({ id, items }) => ({
+          tvdbId: id,
+          count: items.length,
+          series: items.map(identify),
+        }));
+        const misplacedCopies = misplaced.map((group) => ({
+          title: group[0]!.title,
+          year: group[0]!.year,
+          count: group.length,
+          series: group.map(identify),
+        }));
 
         return {
           total: allSeries.length,

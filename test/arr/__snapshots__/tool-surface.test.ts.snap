@@ -1,0 +1,1811 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`arr tool surface > keeps every Radarr tool as it is 1`] = `
+[
+  {
+    "description": "List movies in Radarr with optional filtering and pagination. Results are returned as { totalMatched, offset, limit, movies } so pagination is visible. Default limit is 50 (pass limit and offset for different ranges). Filters are applied client-side after fetching all movies, so titleContains and genre matches are case-insensitive substring/array searches. Rows omit the plot overview unless includeOverview is true. Results may be up to 30 s old (writes made through this server show up at once); pass refresh: true for a fresh read.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "genre": {
+          "description": "Case-insensitive match against genres array",
+          "type": "string",
+        },
+        "hasFile": {
+          "description": "Filter by whether a file exists",
+          "type": "boolean",
+        },
+        "includeOverview": {
+          "description": "Include each row's plot overview (default false)",
+          "type": "boolean",
+        },
+        "limit": {
+          "description": "Maximum results to return (default 50)",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "monitored": {
+          "description": "Filter by monitored state",
+          "type": "boolean",
+        },
+        "offset": {
+          "description": "Skip this many results (default 0)",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "refresh": {
+          "description": "Download the library again instead of reusing a copy up to 30 s old (default false)",
+          "type": "boolean",
+        },
+        "rootFolder": {
+          "description": "Folder to filter by: a root folder or any folder beneath it, matched against the movie folder. Matches whole path segments, so /media/movies does not match /media/movies-anime",
+          "type": "string",
+        },
+        "titleContains": {
+          "description": "Case-insensitive substring match against title",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "radarr_list_movies",
+  },
+  {
+    "description": "Get one Radarr movie: the list summary plus root folder, added date, minimum availability and its file (id, relative path, size, quality) when it has one. full=true returns the raw Radarr record.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "full": {
+          "description": "Return the raw Radarr record instead of the summary (default false)",
+          "type": "boolean",
+        },
+        "movieId": {
+          "description": "Radarr movie id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "movieId",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_get_movie",
+  },
+  {
+    "description": "Search TMDB for movies matching a search term. Use this to find the tmdbId needed by radarr_add_movie. Does not modify the library.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "term": {
+          "description": "Movie title to search for",
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "term",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_lookup_movie",
+  },
+  {
+    "description": "Add a new movie to Radarr. Get tmdbId from radarr_lookup_movie, qualityProfileId from radarr_list_quality_profiles, and rootFolderPath from radarr_list_root_folders.",
+    "effect": "write",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "minimumAvailability": {
+          "description": "When Radarr may start searching (default released)",
+          "enum": [
+            "tba",
+            "announced",
+            "inCinemas",
+            "released",
+          ],
+          "type": "string",
+        },
+        "monitored": {
+          "description": "Monitor the movie (default true)",
+          "type": "boolean",
+        },
+        "qualityProfileId": {
+          "description": "From radarr_list_quality_profiles",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "rootFolderPath": {
+          "description": "From radarr_list_root_folders",
+          "type": "string",
+        },
+        "searchForMovie": {
+          "description": "Search immediately (default false)",
+          "type": "boolean",
+        },
+        "tags": {
+          "description": "Tag ids from radarr_list_tags",
+          "items": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "type": "array",
+        },
+        "title": {
+          "description": "Movie title",
+          "type": "string",
+        },
+        "tmdbId": {
+          "description": "TMDB id, from radarr_lookup_movie",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "title",
+        "tmdbId",
+        "qualityProfileId",
+        "rootFolderPath",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_add_movie",
+  },
+  {
+    "description": "Update a movie, changing only the provided fields (monitored, qualityProfileId, minimumAvailability, rootFolderPath, tags). All other fields are read from the current record. When rootFolderPath is given, path is automatically updated to the new root (preserving the existing folder name), and moveFiles is required: true moves the files with the record, false repoints the record only (the files stay put and Radarr reports the movie missing after a rescan). With moveFiles true, Radarr queues the move as a background command and returns before the files move: the result carries moveCommandId to poll with radarr_get_command (null when none was found).",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "minimumAvailability": {
+          "description": "When Radarr may start searching",
+          "enum": [
+            "tba",
+            "announced",
+            "inCinemas",
+            "released",
+          ],
+          "type": "string",
+        },
+        "monitored": {
+          "description": "Monitor the movie",
+          "type": "boolean",
+        },
+        "moveFiles": {
+          "description": "Required with rootFolderPath: true moves the files, false repoints the record only",
+          "type": "boolean",
+        },
+        "movieId": {
+          "description": "Radarr movie id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "qualityProfileId": {
+          "description": "From radarr_list_quality_profiles",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "rootFolderPath": {
+          "description": "New root folder path from radarr_list_root_folders",
+          "type": "string",
+        },
+        "tags": {
+          "description": "Tag ids from radarr_list_tags",
+          "items": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "movieId",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_update_movie",
+  },
+  {
+    "description": "Bulk-edit multiple movies with a single API call. Only provided fields are sent to the API, others are left unchanged. Use applyTags to control how tags are merged: add, remove, or replace. When rootFolderPath is given, moveFiles is required: true moves the files with the records, false repoints the records only (the files stay put and Radarr reports the movies missing after a rescan). With moveFiles true, Radarr queues the move as a background command and returns before the files move: the result carries moveCommandId to poll with radarr_get_command (null when none was found). At most 10 ids are accepted per call when moveFiles is true; send larger sets as sequential batches, and poll each moveCommandId until it completes before the next batch or a retry.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "applyTags": {
+          "description": "How to apply tags: add, remove, or replace (default replace)",
+          "enum": [
+            "add",
+            "remove",
+            "replace",
+          ],
+          "type": "string",
+        },
+        "minimumAvailability": {
+          "description": "When Radarr may start searching",
+          "enum": [
+            "tba",
+            "announced",
+            "inCinemas",
+            "released",
+          ],
+          "type": "string",
+        },
+        "monitored": {
+          "description": "Set monitored state",
+          "type": "boolean",
+        },
+        "moveFiles": {
+          "description": "Required with rootFolderPath: true moves the files, false repoints the records only",
+          "type": "boolean",
+        },
+        "movieIds": {
+          "description": "Radarr movie ids to edit (minimum 1)",
+          "items": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "qualityProfileId": {
+          "description": "From radarr_list_quality_profiles",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "rootFolderPath": {
+          "description": "New root folder path",
+          "type": "string",
+        },
+        "tags": {
+          "description": "Tag ids from radarr_list_tags",
+          "items": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "movieIds",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_bulk_edit_movies",
+  },
+  {
+    "description": "Remove a movie from Radarr. When deleteFiles=true without confirmDeleteFiles=true, returns what would be deleted as a safety check. Set confirmDeleteFiles=true to confirm the destructive operation.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "addImportExclusion": {
+          "description": "Prevent lists re-adding it (default false)",
+          "type": "boolean",
+        },
+        "confirmDeleteFiles": {
+          "description": "Required when deleteFiles=true, prevents accidental deletion",
+          "type": "boolean",
+        },
+        "deleteFiles": {
+          "description": "Also delete the movie file (default false)",
+          "type": "boolean",
+        },
+        "movieId": {
+          "description": "Radarr movie id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "movieId",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_delete_movie",
+  },
+  {
+    "description": "List downloaded movie files for a movie. Shows file path, size, and quality information.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "movieId": {
+          "description": "Radarr movie id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "movieId",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_list_movie_files",
+  },
+  {
+    "description": "Destructive: permanently delete a movie file on disk and its record. Without confirm=true, deletes nothing and returns the file that would be deleted as a safety check.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "confirm": {
+          "description": "Required to delete, prevents accidental deletion",
+          "type": "boolean",
+        },
+        "movieFileId": {
+          "description": "Radarr movie file id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "movieFileId",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_delete_movie_file",
+  },
+  {
+    "description": "List movies with releases in a date range. Pass start and end for a predictable window; if they are omitted Radarr chooses its own short range around today. Use this to see upcoming releases. Results are returned as { totalMatched, offset, limit, movies }; default limit is 100 (pass limit and offset for other ranges). Rows omit the plot overview.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "description": "ISO date, exclusive",
+          "type": "string",
+        },
+        "limit": {
+          "description": "Maximum results to return (default 100)",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "offset": {
+          "description": "Skip this many results (default 0)",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "start": {
+          "description": "ISO date, inclusive",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "radarr_get_calendar",
+  },
+  {
+    "description": "List items currently downloading or awaiting import, with percent complete and any error messages. Use this to diagnose stuck or failed downloads.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "description": "Page number, starting at 1",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "pageSize": {
+          "description": "Records per page (default 20)",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "radarr_get_queue",
+  },
+  {
+    "description": "Destructive: remove an item from the download queue. Use removeFromClient to also request removal from the torrent/usenet client, and blocklist to prevent re-importing.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "blocklist": {
+          "description": "Add to blocklist (default false)",
+          "type": "boolean",
+        },
+        "id": {
+          "description": "Queue item id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "removeFromClient": {
+          "description": "Remove from download client (default false)",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "id",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_delete_queue_item",
+  },
+  {
+    "description": "List history of download, import and grab events.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "eventType": {
+          "description": "Filter by event type: 1 grabbed, 2 downloadFolderImported, 3 downloadFailed, 4 movieFileDeleted, 5 movieFileRenamed, 6 downloadIgnored. Omit for all events.",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "page": {
+          "description": "Page number, starting at 1",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "pageSize": {
+          "description": "Records per page (default 20)",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "radarr_get_history",
+  },
+  {
+    "description": "List wanted but missing movies (monitored but not downloaded yet). Rows omit the plot overview.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "description": "Page number, starting at 1",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "pageSize": {
+          "description": "Records per page (default 20)",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "radarr_get_wanted_missing",
+  },
+  {
+    "description": "List releases on the blocklist (failed imports or manually blocked).",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "description": "Page number, starting at 1",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "pageSize": {
+          "description": "Records per page (default 20)",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "radarr_get_blocklist",
+  },
+  {
+    "description": "Destructive: remove a release from the blocklist.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Blocklist item id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "id",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_delete_blocklist_item",
+  },
+  {
+    "description": "List all movie collections defined in Radarr.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "radarr_list_collections",
+  },
+  {
+    "description": "Trigger a Radarr background command, for example searching for a movie or rescanning its folder. Returns a command id; poll it with radarr_get_command. MissingMoviesSearch searches (and may download) every missing monitored movie, so without confirm=true it only returns { wouldRun: { command, missingCount }, confirmRequired: true } and runs nothing.",
+    "effect": "write",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "confirm": {
+          "description": "Required to run MissingMoviesSearch, prevents an accidental library-wide search",
+          "type": "boolean",
+        },
+        "movieIds": {
+          "description": "Target movie ids",
+          "items": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "type": "array",
+        },
+        "name": {
+          "description": "Command to run",
+          "enum": [
+            "MoviesSearch",
+            "MissingMoviesSearch",
+            "RefreshMovie",
+            "RescanMovie",
+            "RenameFiles",
+            "DownloadedMoviesScan",
+            "RenameMovie",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_run_command",
+  },
+  {
+    "description": "Poll the status of a background command launched by radarr_run_command or radarr_import_folder, or the moveCommandId returned by radarr_update_movie and radarr_bulk_edit_movies.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "commandId": {
+          "description": "Command id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "commandId",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_get_command",
+  },
+  {
+    "description": "Search for releases to download a movie. Runs a live interactive search across indexers (can take several seconds); results are in Radarr's preference order with \`rank\`. \`rejections\` are Radarr's verbatim reasons for not choosing a release automatically. Use guid + indexerId with radarr_grab_release to download a release.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "approvedOnly": {
+          "description": "Only show approved releases (default false)",
+          "type": "boolean",
+        },
+        "limit": {
+          "description": "Maximum results to return (default 20)",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "movieId": {
+          "description": "Radarr movie id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "titleContains": {
+          "description": "Filter results by title substring (case-insensitive)",
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "movieId",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_search_releases",
+  },
+  {
+    "description": "Download a release from a previous search. Note two caveats: (a) Radarr grabs from its cached search results, which expire after about 30 minutes — if the grab fails, run radarr_search_releases again first. (b) Grabbing a rejected release overrides Radarr's decision to DOWNLOAD it, not necessarily its decision to IMPORT it — the rejection reasons (e.g. not an upgrade, quality not wanted in profile) can still block import, leaving the item stuck in the queue. This starts a real download that Radarr tracks and imports (unlike prowlarr_grab_release, which bypasses Radarr).",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "guid": {
+          "description": "Release guid from radarr_search_releases",
+          "minLength": 1,
+          "type": "string",
+        },
+        "indexerId": {
+          "description": "Release indexerId from radarr_search_releases",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "guid",
+        "indexerId",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_grab_release",
+  },
+  {
+    "description": "List folders in each root folder that Radarr has not yet mapped to any movie. Use this to find media that needs to be imported or organized.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "radarr_list_unmapped_folders",
+  },
+  {
+    "description": "Preview how files would be renamed without actually renaming them. At most 100 previews are returned; \`total\` gives the full count. Useful to verify rename patterns before applying them.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "movieIds": {
+          "description": "Movie ids to preview rename for",
+          "items": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+      },
+      "required": [
+        "movieIds",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_get_rename_preview",
+  },
+  {
+    "description": "Find movies that appear to be the same film in more than one place. Reports exact duplicates (same tmdbId) and misplaced copies (same title+year under different root folders). Returns a compact grouping suitable for cleanup decisions. Results may be up to 30 s old (writes made through this server show up at once); pass refresh: true for a fresh read.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "refresh": {
+          "description": "Download the library again instead of reusing a copy up to 30 s old (default false)",
+          "type": "boolean",
+        },
+      },
+      "type": "object",
+    },
+    "name": "radarr_find_duplicate_movies",
+  },
+  {
+    "description": "List available quality profiles. Use these ids in radarr_add_movie and radarr_update_movie.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "radarr_list_quality_profiles",
+  },
+  {
+    "description": "List configured root folders where movies are stored (id, path, accessible, free space, unmapped folder count). Use these paths in radarr_add_movie; use radarr_list_unmapped_folders for the folders themselves.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "radarr_list_root_folders",
+  },
+  {
+    "description": "List all tags available for movie organization.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "radarr_list_tags",
+  },
+  {
+    "description": "Get Radarr version, OS, Docker status and other system information.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "radarr_get_system_status",
+  },
+  {
+    "description": "Check Radarr health status. Returns warnings or errors about the installation.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "radarr_get_health",
+  },
+  {
+    "description": "List disk space on each drive containing movies or root folders.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "radarr_get_disk_space",
+  },
+  {
+    "description": "Scan a folder and import any movie file found into an existing movie entry in Radarr. This is asynchronous — it returns a command id that can be polled with radarr_get_command. Important: the movie must already exist in Radarr for the file to attach to it; otherwise the scan will not import it. Use folderPath from radarr_list_unmapped_folders.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "importMode": {
+          "description": "How to handle the file: Auto (default, let Radarr decide), Move (relocate to configured library), Copy (keep original, duplicate to library)",
+          "enum": [
+            "Auto",
+            "Move",
+            "Copy",
+          ],
+          "type": "string",
+        },
+        "path": {
+          "description": "Absolute path to the folder to import, as returned by radarr_list_unmapped_folders (folderPath field)",
+          "type": "string",
+        },
+      },
+      "required": [
+        "path",
+      ],
+      "type": "object",
+    },
+    "name": "radarr_import_folder",
+  },
+]
+`;
+
+exports[`arr tool surface > keeps every Sonarr tool as it is 1`] = `
+[
+  {
+    "description": "List TV series in the Sonarr library with optional filters. Results are returned as { totalMatched, offset, limit, series } so pagination is visible. Default limit is 50 (pass limit and offset for different ranges). Filters are applied client-side after fetching all series, so titleContains and genre matches are case-insensitive substring/array searches. Rows omit the plot overview unless includeOverview is true. Results may be up to 30 s old (writes made through this server show up at once); pass refresh: true for a fresh read.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "genre": {
+          "description": "Filter by genre (case-insensitive match against genres array)",
+          "type": "string",
+        },
+        "includeOverview": {
+          "description": "Include each row's plot overview (default false)",
+          "type": "boolean",
+        },
+        "limit": {
+          "description": "Maximum results to return (default 50)",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "monitored": {
+          "description": "Filter by monitored state",
+          "type": "boolean",
+        },
+        "offset": {
+          "description": "Skip this many results (default 0)",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "refresh": {
+          "description": "Download the library again instead of reusing a copy up to 30 s old (default false)",
+          "type": "boolean",
+        },
+        "rootFolder": {
+          "description": "Folder to filter by: a root folder or any folder beneath it, matched against the series folder. Matches whole path segments, so /media/shows does not match /media/shows-anime",
+          "type": "string",
+        },
+        "seriesType": {
+          "description": "Filter by series type",
+          "enum": [
+            "standard",
+            "daily",
+            "anime",
+          ],
+          "type": "string",
+        },
+        "titleContains": {
+          "description": "Filter by title (case-insensitive substring match)",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "sonarr_list_series",
+  },
+  {
+    "description": "Get one Sonarr series: the list summary plus every season (monitored, file and episode counts), root folder, season-folder setting and added date. full=true returns the raw Sonarr record.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "full": {
+          "description": "Return the raw Sonarr record instead of the summary (default false)",
+          "type": "boolean",
+        },
+        "seriesId": {
+          "description": "Sonarr series id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "seriesId",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_get_series",
+  },
+  {
+    "description": "Search TheTVDB for series matching a search term. Use this to find the tvdbId needed by sonarr_add_series. Does not modify the library.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "term": {
+          "description": "Series title to search for",
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "term",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_lookup_series",
+  },
+  {
+    "description": "Add a new series to Sonarr. Get tvdbId from sonarr_lookup_series, qualityProfileId from sonarr_list_quality_profiles, and rootFolderPath from sonarr_list_root_folders.",
+    "effect": "write",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "monitored": {
+          "description": "Monitor the series (default true)",
+          "type": "boolean",
+        },
+        "qualityProfileId": {
+          "description": "From sonarr_list_quality_profiles",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "rootFolderPath": {
+          "description": "From sonarr_list_root_folders",
+          "type": "string",
+        },
+        "searchForMissingEpisodes": {
+          "description": "Start searching for episodes immediately (default false)",
+          "type": "boolean",
+        },
+        "seasonFolder": {
+          "description": "Use season folders (default true)",
+          "type": "boolean",
+        },
+        "tags": {
+          "description": "Tag ids from sonarr_list_tags",
+          "items": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "type": "array",
+        },
+        "title": {
+          "description": "Series title",
+          "type": "string",
+        },
+        "tvdbId": {
+          "description": "TheTVDB id, from sonarr_lookup_series",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "title",
+        "tvdbId",
+        "qualityProfileId",
+        "rootFolderPath",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_add_series",
+  },
+  {
+    "description": "Remove a series from Sonarr. When deleteFiles=true without confirmDeleteFiles=true, returns what would be deleted as a safety check. Set confirmDeleteFiles=true to confirm the destructive operation.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "addImportListExclusion": {
+          "description": "Prevent import lists re-adding it (default false)",
+          "type": "boolean",
+        },
+        "confirmDeleteFiles": {
+          "description": "Required when deleteFiles=true, prevents accidental deletion",
+          "type": "boolean",
+        },
+        "deleteFiles": {
+          "description": "Also delete episode files (default false)",
+          "type": "boolean",
+        },
+        "seriesId": {
+          "description": "Sonarr series id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "seriesId",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_delete_series",
+  },
+  {
+    "description": "List items currently downloading or awaiting import, with percent complete and any error messages. Use this to diagnose stuck or failed downloads.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "description": "Page number, starting at 1",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "pageSize": {
+          "description": "Records per page (default 20)",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "sonarr_get_queue",
+  },
+  {
+    "description": "Trigger a Sonarr background command, for example searching for a series or rescanning its folder. Returns a command id; poll it with sonarr_get_command. MissingEpisodeSearch searches (and may download) every missing monitored episode, so without confirm=true it only returns { wouldRun: { command, missingCount }, confirmRequired: true } and runs nothing.",
+    "effect": "write",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "confirm": {
+          "description": "Required to run MissingEpisodeSearch, prevents an accidental library-wide search",
+          "type": "boolean",
+        },
+        "episodeIds": {
+          "description": "Target episodes, for EpisodeSearch",
+          "items": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "type": "array",
+        },
+        "name": {
+          "description": "Command to run",
+          "enum": [
+            "SeriesSearch",
+            "EpisodeSearch",
+            "SeasonSearch",
+            "MissingEpisodeSearch",
+            "RefreshSeries",
+            "RescanSeries",
+            "RenameFiles",
+            "DownloadedEpisodesScan",
+          ],
+          "type": "string",
+        },
+        "seasonNumber": {
+          "description": "Target season, for SeasonSearch",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "seriesId": {
+          "description": "Target series, for series-scoped commands",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_run_command",
+  },
+  {
+    "description": "List episodes airing in a date range. Pass start and end for a predictable window; if they are omitted Sonarr chooses its own short range around today. Results are returned as { totalMatched, offset, limit, episodes }; default limit is 100 (pass limit and offset for other ranges). Rows omit the plot overview.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "description": "ISO date, exclusive",
+          "type": "string",
+        },
+        "limit": {
+          "description": "Maximum results to return (default 100)",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "offset": {
+          "description": "Skip this many results (default 0)",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "start": {
+          "description": "ISO date, inclusive",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "sonarr_get_calendar",
+  },
+  {
+    "description": "Update a series, changing only the provided fields (monitored, qualityProfileId, seasonFolder, tags, rootFolderPath, seriesType). When rootFolderPath is provided, the series path is automatically updated to <rootFolderPath>/<folderName>, and moveFiles is required: true moves the episode files with the record, false repoints the record only (the files stay put and Sonarr reports the episodes missing after a rescan). With moveFiles true, Sonarr queues the move as a background command and returns before the files move: the result carries moveCommandId to poll with sonarr_get_command (null when none was found).",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "monitored": {
+          "description": "Monitor the series",
+          "type": "boolean",
+        },
+        "moveFiles": {
+          "description": "Required with rootFolderPath: true moves the files, false repoints the record only",
+          "type": "boolean",
+        },
+        "qualityProfileId": {
+          "description": "From sonarr_list_quality_profiles",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "rootFolderPath": {
+          "description": "Root folder path from sonarr_list_root_folders. Updates the series path automatically.",
+          "type": "string",
+        },
+        "seasonFolder": {
+          "description": "Use season folders",
+          "type": "boolean",
+        },
+        "seriesId": {
+          "description": "Sonarr series id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "seriesType": {
+          "description": "Series type affects episode numbering for anime",
+          "enum": [
+            "standard",
+            "daily",
+            "anime",
+          ],
+          "type": "string",
+        },
+        "tags": {
+          "description": "Tag ids from sonarr_list_tags",
+          "items": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "seriesId",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_update_series",
+  },
+  {
+    "description": "List episodes for a series or season, summarised with file state and air dates. Omit seasonNumber to list all seasons. Results are returned as { totalMatched, offset, limit, episodes }; default limit is 100 (pass limit and offset for other ranges). Rows omit the plot overview unless includeOverview is true.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "includeOverview": {
+          "description": "Include each row's plot overview (default false)",
+          "type": "boolean",
+        },
+        "limit": {
+          "description": "Maximum results to return (default 100)",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "offset": {
+          "description": "Skip this many results (default 0)",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "seasonNumber": {
+          "description": "Season number (all seasons if omitted)",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "seriesId": {
+          "description": "Sonarr series id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "seriesId",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_list_episodes",
+  },
+  {
+    "description": "Get one Sonarr episode: the list summary plus its file (id, relative path, size, quality) when it has one. full=true returns the raw Sonarr record.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "episodeId": {
+          "description": "Sonarr episode id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "full": {
+          "description": "Return the raw Sonarr record instead of the summary (default false)",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "episodeId",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_get_episode",
+  },
+  {
+    "description": "Set the monitored state for one or more episodes.",
+    "effect": "write",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "episodeIds": {
+          "description": "Episode ids to update",
+          "items": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "monitored": {
+          "description": "New monitored state",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "episodeIds",
+        "monitored",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_monitor_episodes",
+  },
+  {
+    "description": "List episode files (downloaded episodes) for a series. Results are returned as { totalMatched, offset, limit, files }; default limit is 100 (pass limit and offset for other ranges).",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "description": "Maximum results to return (default 100)",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "offset": {
+          "description": "Skip this many results (default 0)",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "seriesId": {
+          "description": "Sonarr series id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "seriesId",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_list_episode_files",
+  },
+  {
+    "description": "Destructive: permanently delete an episode file on disk and its record. Without confirm=true, deletes nothing and returns the file that would be deleted as a safety check.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "confirm": {
+          "description": "Required to delete, prevents accidental deletion",
+          "type": "boolean",
+        },
+        "episodeFileId": {
+          "description": "Sonarr episode file id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "episodeFileId",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_delete_episode_file",
+  },
+  {
+    "description": "Destructive: remove an item from the download queue. Use removeFromClient to also request removal from the torrent/usenet client, and blocklist to prevent re-importing.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "blocklist": {
+          "description": "Add to blocklist (default false)",
+          "type": "boolean",
+        },
+        "id": {
+          "description": "Queue item id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "removeFromClient": {
+          "description": "Remove from download client (default false)",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "id",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_delete_queue_item",
+  },
+  {
+    "description": "List history of download, import and grab events.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "eventType": {
+          "description": "Filter by event type: 1 grabbed, 2 seriesFolderImported, 3 downloadFolderImported, 4 downloadFailed, 5 episodeFileDeleted, 6 episodeFileRenamed, 7 downloadIgnored. Omit for all events.",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "page": {
+          "description": "Page number, starting at 1",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "pageSize": {
+          "description": "Records per page (default 20)",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "sonarr_get_history",
+  },
+  {
+    "description": "List wanted but missing episodes (not downloaded yet). Rows omit the plot overview.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "description": "Page number, starting at 1",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "pageSize": {
+          "description": "Records per page (default 20)",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "sonarr_get_wanted_missing",
+  },
+  {
+    "description": "List releases on the blocklist (failed imports or manually blocked).",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "description": "Page number, starting at 1",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "pageSize": {
+          "description": "Records per page (default 20)",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "sonarr_get_blocklist",
+  },
+  {
+    "description": "Destructive: remove a release from the blocklist.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Blocklist item id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "id",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_delete_blocklist_item",
+  },
+  {
+    "description": "Poll the status of a background command launched by sonarr_run_command or sonarr_import_folder, or the moveCommandId returned by sonarr_update_series and sonarr_bulk_edit_series.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "commandId": {
+          "description": "Command id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "commandId",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_get_command",
+  },
+  {
+    "description": "List available quality profiles. Use these ids in sonarr_add_series and sonarr_update_series.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "sonarr_list_quality_profiles",
+  },
+  {
+    "description": "List configured root folders where series are stored (id, path, accessible, free space, unmapped folder count). Use these paths in sonarr_add_series; use sonarr_list_unmapped_folders for the folders themselves.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "sonarr_list_root_folders",
+  },
+  {
+    "description": "List all tags available for series organization.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "sonarr_list_tags",
+  },
+  {
+    "description": "Get Sonarr version, OS, Docker status and other system information.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "sonarr_get_system_status",
+  },
+  {
+    "description": "Check Sonarr health status. Returns warnings or errors about the installation.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "sonarr_get_health",
+  },
+  {
+    "description": "List disk space on each drive containing series or root folders.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "sonarr_get_disk_space",
+  },
+  {
+    "description": "Run a live interactive search across indexers for episode or season releases (can take several seconds). Results are in Sonarr's preference order with rank. Rejections are Sonarr's verbatim reasons for not choosing a release automatically. Use guid + indexerId with sonarr_grab_release.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "approvedOnly": {
+          "description": "Show only Sonarr-approved releases (default false)",
+          "type": "boolean",
+        },
+        "episodeId": {
+          "description": "Episode id for single-episode search",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "limit": {
+          "description": "Maximum results to return (default 20)",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "seasonNumber": {
+          "description": "Season number for season-pack search",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "seriesId": {
+          "description": "Series id for season-pack search",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "titleContains": {
+          "description": "Case-insensitive substring filter (e.g. "MeGusta")",
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "sonarr_search_releases",
+  },
+  {
+    "description": "Download a release via Sonarr. Grab uses cached search results (expire ~30 minutes); if grab fails, run sonarr_search_releases again. Grab overrides Sonarr's decision to DOWNLOAD but rejections can still block IMPORT, leaving items stuck in queue. Starts a real download tracked and imported by Sonarr (unlike prowlarr_grab_release, which bypasses Sonarr).",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "guid": {
+          "description": "Release guid from sonarr_search_releases",
+          "minLength": 1,
+          "type": "string",
+        },
+        "indexerId": {
+          "description": "Release indexerId from sonarr_search_releases",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "guid",
+        "indexerId",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_grab_release",
+  },
+  {
+    "description": "Bulk edit multiple series at once. Only fields explicitly provided are updated; omitted fields are not changed. Supports changing root folder, quality profile, series type, monitored state, season folder setting, and tags. When rootFolderPath is given, moveFiles is required: true moves the files with the records, false repoints the records only (the files stay put and Sonarr reports the episodes missing after a rescan). With moveFiles true, Sonarr queues the move as a background command and returns before the files move: the result carries moveCommandId to poll with sonarr_get_command (null when none was found). At most 10 ids are accepted per call when moveFiles is true; send larger sets as sequential batches, and poll each moveCommandId until it completes before the next batch or a retry.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "applyTags": {
+          "description": "How to apply tags (default replace)",
+          "enum": [
+            "add",
+            "remove",
+            "replace",
+          ],
+          "type": "string",
+        },
+        "monitored": {
+          "description": "Set monitored state",
+          "type": "boolean",
+        },
+        "moveFiles": {
+          "description": "Required with rootFolderPath: true moves the files, false repoints the records only",
+          "type": "boolean",
+        },
+        "qualityProfileId": {
+          "description": "From sonarr_list_quality_profiles",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "rootFolderPath": {
+          "description": "Root folder path from sonarr_list_root_folders",
+          "type": "string",
+        },
+        "seasonFolder": {
+          "description": "Use season folders",
+          "type": "boolean",
+        },
+        "seriesIds": {
+          "description": "Series ids to update",
+          "items": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "seriesType": {
+          "description": "Series type",
+          "enum": [
+            "standard",
+            "daily",
+            "anime",
+          ],
+          "type": "string",
+        },
+        "tags": {
+          "description": "Tag ids from sonarr_list_tags",
+          "items": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "seriesIds",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_bulk_edit_series",
+  },
+  {
+    "description": "List folders in each root folder that are not yet mapped to any series. Use this to find media that needs to be imported or organized.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+    "name": "sonarr_list_unmapped_folders",
+  },
+  {
+    "description": "Preview how Sonarr will rename episode files for a series or season without actually running the rename. Useful for verifying your naming rules are working correctly. At most 100 previews are returned; \`total\` gives the full count.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "seasonNumber": {
+          "description": "Season number (all seasons if omitted)",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "seriesId": {
+          "description": "Sonarr series id",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "seriesId",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_get_rename_preview",
+  },
+  {
+    "description": "Find potential duplicate series in the library. Detects series with the same tvdbId (exact duplicate) and different series (distinct tvdbIds) with the same normalized title + year under different root folders (likely misplaced copies). Helps identify library organization issues. Results may be up to 30 s old (writes made through this server show up at once); pass refresh: true for a fresh read.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "refresh": {
+          "description": "Download the library again instead of reusing a copy up to 30 s old (default false)",
+          "type": "boolean",
+        },
+      },
+      "type": "object",
+    },
+    "name": "sonarr_find_duplicate_series",
+  },
+  {
+    "description": "Scan a folder and import any episode files found into existing series entries in Sonarr. This is asynchronous — it returns a command id that can be polled with sonarr_get_command. Important: the series must already exist in Sonarr for files to attach to it; otherwise the scan will not import them. Use folderPath from sonarr_list_unmapped_folders.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "importMode": {
+          "description": "How to handle files: Auto (default, let Sonarr decide), Move (relocate to configured library), Copy (keep original, duplicate to library)",
+          "enum": [
+            "Auto",
+            "Move",
+            "Copy",
+          ],
+          "type": "string",
+        },
+        "path": {
+          "description": "Absolute path to the folder to import, as returned by sonarr_list_unmapped_folders (folderPath field)",
+          "type": "string",
+        },
+      },
+      "required": [
+        "path",
+      ],
+      "type": "object",
+    },
+    "name": "sonarr_import_folder",
+  },
+]
+`;
