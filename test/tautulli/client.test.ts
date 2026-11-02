@@ -79,4 +79,61 @@ describe('TautulliClient', () => {
     expect(rows).toHaveLength(total);
     expect(starts).toEqual(['0', String(MEDIA_INFO_PAGE)]);
   });
+
+  it('redacts the key from an error body that quotes the request URL', async () => {
+    server.use(
+      http.get(
+        api,
+        ({ request }) => new HttpResponse(`bad request ${request.url}`, { status: 400 }),
+      ),
+    );
+    const error = await client.getLibraries().then(
+      () => new Error('expected a rejection'),
+      (e: unknown) => e as Error,
+    );
+    expect(error.message).toContain('Tautulli returned 400');
+    expect(error.message).toContain('[redacted]');
+    expect(error.message).not.toContain(KEY);
+  });
+
+  it('turns a success envelope without data into an error', async () => {
+    server.use(http.get(api, () => HttpResponse.json({ response: { result: 'success' } })));
+    await expect(client.getLibraries()).rejects.toThrow('the response carried no data');
+  });
+
+  it('keeps paging past a short page and a blank total until a page comes back empty', async () => {
+    const all = 1200;
+    const cap = 500;
+    const starts: number[] = [];
+    server.use(
+      http.get(api, ({ request }) => {
+        const start = Number(new URL(request.url).searchParams.get('start'));
+        starts.push(start);
+        const count = Math.max(0, Math.min(cap, all - start));
+        return ok({
+          recordsFiltered: '',
+          data: Array.from({ length: count }, (_, i) => ({ rating_key: start + i, title: 't' })),
+        });
+      }),
+    );
+    const rows = await client.listLibraryMedia(1);
+    expect(rows).toHaveLength(all);
+    expect(starts).toEqual([0, 500, 1000, 1200]);
+  });
+
+  it('refuses to return a partial library when it never ends', async () => {
+    server.use(
+      http.get(api, ({ request }) => {
+        const start = Number(new URL(request.url).searchParams.get('start'));
+        return ok({
+          recordsFiltered: '',
+          data: Array.from({ length: MEDIA_INFO_PAGE }, (_, i) => ({
+            rating_key: start + i,
+            title: 't',
+          })),
+        });
+      }),
+    );
+    await expect(client.listLibraryMedia(1)).rejects.toThrow(/not reading a partial library/);
+  });
 });

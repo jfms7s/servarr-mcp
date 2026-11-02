@@ -177,14 +177,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServarrConfig 
 
   const settings: readonly ProductSettings[] = PRODUCT_SETTINGS;
   const standalone = settings.filter((product) => !product.companionOf);
-  if (!standalone.some((product) => instances[product.id as ProductId])) {
-    const pairs = standalone.map((product) => {
-      const pair = `${product.envPrefix}_URL/${product.envPrefix}_API_KEY`;
-      const legacy = product.legacyEnvPrefix;
-      return legacy ? `${pair} (or ${legacy}_URL/${legacy}_API_KEY)` : pair;
-    });
-    throw new ConfigError(`No products configured. Set at least one of ${pairs.join(', ')}.`);
-  }
   for (const product of settings) {
     const needs = product.companionOf;
     if (!needs || !instances[product.id as ProductId]) continue;
@@ -197,6 +189,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServarrConfig 
       `${product.label}: ${product.envPrefix}_URL is set, but ${product.label} only feeds ` +
         `reports that also need ${pairs.join(' or ')}`,
     );
+  }
+  if (!standalone.some((product) => instances[product.id as ProductId])) {
+    const pairs = standalone.map((product) => {
+      const pair = `${product.envPrefix}_URL/${product.envPrefix}_API_KEY`;
+      const legacy = product.legacyEnvPrefix;
+      return legacy ? `${pair} (or ${legacy}_URL/${legacy}_API_KEY)` : pair;
+    });
+    throw new ConfigError(`No products configured. Set at least one of ${pairs.join(', ')}.`);
   }
 
   const transport = readTransport(env);

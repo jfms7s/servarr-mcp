@@ -86,6 +86,9 @@ describe('parseGuid and titleKey', () => {
     expect(titleKey('Amélie', 2001)).toBe(titleKey('amelie', 2001));
     expect(titleKey('Tom & Jerry!', 1990)).toBe('tom and jerry|1990');
     expect(titleKey('Dune', undefined)).toBeUndefined();
+    expect(titleKey('The Matrix', 1999)).toBe(titleKey('Matrix', 1999));
+    expect(titleKey('Léon', 1994)).toBe('leon|1994');
+    expect(titleKey('千と千尋の神隠し', 2001)).not.toBe(titleKey('となりのトトロ', 2001));
   });
 });
 
@@ -215,6 +218,47 @@ describe('buildCleanupReport', () => {
     );
     const report = await buildCleanupReport(clients, { ...options, mediaType: 'movie' });
     expect(report.items).toEqual([]);
+  });
+
+  it('folds a "The ..." copy with a plex:// guid into the arr item, so its recent play counts', async () => {
+    const clients = clientsFor(
+      [{ rating_key: 1, title: 'Dune', year: 2021, guid: 'tmdb://438631', last_played: null }],
+      [],
+      [
+        {
+          rating_key: 9,
+          title: 'The Dune',
+          year: 2021,
+          guid: 'plex://movie/4k',
+          last_played: daysAgo(1),
+        },
+      ],
+    );
+    const report = await buildCleanupReport(clients, { ...options, mediaType: 'movie' });
+    expect(report.items).toEqual([]);
+  });
+
+  it('holds back every arr item a recently played but ambiguous copy could be', async () => {
+    const clients = clientsFor(
+      [
+        { rating_key: 1, title: 'Twin', year: 2010, guid: 'tmdb://501', last_played: null },
+        { rating_key: 2, title: 'Twin', year: 2010, guid: 'tmdb://502', last_played: null },
+        { rating_key: 3, title: 'Dune', year: 2021, guid: 'tmdb://438631', last_played: null },
+      ],
+      [],
+      [
+        {
+          rating_key: 9,
+          title: 'Twin',
+          year: 2010,
+          guid: 'plex://movie/x',
+          last_played: daysAgo(1),
+        },
+      ],
+    );
+    const report = await buildCleanupReport(clients, { ...options, mediaType: 'movie' });
+    expect(report.items.map((row) => row.arrId)).toEqual([10]);
+    expect(report.unmatched).toEqual([]);
   });
 
   it('skips libraries whose arr is not configured, and honours mediaType', async () => {

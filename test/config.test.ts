@@ -55,10 +55,10 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...base, TAUTULLI_API_KEY: 'k' })).toThrow(ConfigError);
   });
 
-  it('does not count Tautulli alone as a configured product', () => {
+  it('rejects Tautulli alone, naming the products it needs', () => {
     expect(() =>
       loadConfig({ TAUTULLI_URL: 'http://localhost:8181', TAUTULLI_API_KEY: 'k' }),
-    ).toThrow(/No products configured/);
+    ).toThrow(/Tautulli only feeds reports that also need RADARR_URL\/RADARR_API_KEY/);
   });
 
   it('rejects Tautulli without Radarr or Sonarr, naming both', () => {
