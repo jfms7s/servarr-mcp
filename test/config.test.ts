@@ -203,7 +203,21 @@ describe('loadConfig', () => {
 
   it('requires a token when the http transport is enabled', () => {
     expect(() => loadConfig({ ...base, SERVARR_MCP_TRANSPORT: 'http' })).toThrow(/token/i);
-    expect(() => loadConfig({ ...base, SERVARR_MCP_TRANSPORT: 'both' })).toThrow(/token/i);
+  });
+
+  it('rejects the removed both transport, naming the allowed values', () => {
+    expect(() =>
+      loadConfig({ ...base, SERVARR_MCP_TRANSPORT: 'both', SERVARR_MCP_TOKEN: 'x'.repeat(32) }),
+    ).toThrow(ConfigError);
+    expect(() => loadConfig({ ...base, SERVARR_MCP_TRANSPORT: 'both' })).toThrow(
+      'SERVARR_MCP_TRANSPORT must be one of stdio, http (got: both)',
+    );
+  });
+
+  it('lists only stdio and http for an unknown transport', () => {
+    expect(() => loadConfig({ ...base, SERVARR_MCP_TRANSPORT: 'grpc' })).toThrow(
+      'SERVARR_MCP_TRANSPORT must be one of stdio, http (got: grpc)',
+    );
   });
 
   it('accepts the http transport when a token is set', () => {

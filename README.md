@@ -79,10 +79,10 @@ The server reads configuration from environment variables. Each product is **ind
 | `SEERR_URL` | `http://localhost:5055` | No | Base URL of your Seerr (or Overseerr) instance |
 | `SEERR_API_KEY` | `abc123def456` | Only if `SEERR_URL` is set | API key from Seerr/Overseerr Settings → General. It is admin-level, so the model can file or reassign requests as any user through `userId` |
 | `OVERSEERR_URL` / `OVERSEERR_API_KEY` | | No | Older names for `SEERR_URL` / `SEERR_API_KEY`, still accepted. If both pairs are set they must hold the same URL (after trimming a trailing `/`) and key, or the server refuses to start |
-| `SERVARR_MCP_TRANSPORT` | `stdio` or `http` or `both` | No | Transport mode (default `stdio`) |
+| `SERVARR_MCP_TRANSPORT` | `stdio` or `http` | No | Transport mode (default `stdio`). `both` was removed in v0.8.0 and now fails startup |
 | `SERVARR_MCP_PORT` | `3000` | No | Port for HTTP transport (default `3000`) |
 | `SERVARR_MCP_HOST` | `*` | No | Address the HTTP transport binds to: an IP address, or `*` for every interface, IPv4 and IPv6 (default `127.0.0.1`; the Docker image sets `*`) |
-| `SERVARR_MCP_TOKEN` | output of `openssl rand -hex 32` | Required if transport is `http` or `both` | Bearer token for HTTP client authentication. Use at least 32 characters; a shorter token still works but logs a warning at startup |
+| `SERVARR_MCP_TOKEN` | output of `openssl rand -hex 32` | Required if transport is `http` | Bearer token for HTTP client authentication. Use at least 32 characters; a shorter token still works but logs a warning at startup |
 
 Each `*_URL` must start with `http://` or `https://` and carry no credentials, query string or fragment; the server refuses to start otherwise. `SERVARR_MCP_PORT` must be a plain integer.
 
