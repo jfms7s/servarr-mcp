@@ -3,7 +3,7 @@ export interface InstanceConfig {
   apiKey: string;
 }
 
-export type TransportMode = 'stdio' | 'http' | 'both';
+export type TransportMode = 'stdio' | 'http';
 
 /**
  * The products this server knows, in registration order (which is also tool order in
@@ -41,7 +41,7 @@ interface BaseConfig extends ProductInstances {
 /** The HTTP transport cannot be configured without its bearer token. */
 export type ServarrConfig =
   | (BaseConfig & { transport: 'stdio'; token?: string })
-  | (BaseConfig & { transport: 'http' | 'both'; token: string });
+  | (BaseConfig & { transport: 'http'; token: string });
 
 /** Shorter bearer tokens are allowed, with a startup warning (see weakTokenWarning). */
 export const MIN_TOKEN_LENGTH = 32;
@@ -53,7 +53,7 @@ export class ConfigError extends Error {
   }
 }
 
-const TRANSPORTS: readonly TransportMode[] = ['stdio', 'http', 'both'];
+const TRANSPORTS: readonly TransportMode[] = ['stdio', 'http'];
 
 function readInstance(
   env: NodeJS.ProcessEnv,

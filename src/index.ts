@@ -14,7 +14,7 @@ async function main(): Promise<void> {
   // stdout carries the MCP protocol on the stdio transport, so log to stderr.
   console.error(`servarr-mcp: ${tools.length} tools from ${enabled.join(', ')}`);
 
-  if (config.transport === 'http' || config.transport === 'both') {
+  if (config.transport === 'http') {
     const warning = weakTokenWarning(config.token);
     if (warning) console.error(`servarr-mcp: warning: ${warning}`);
 
@@ -44,9 +44,7 @@ async function main(): Promise<void> {
         );
       });
     }
-  }
-
-  if (config.transport === 'stdio' || config.transport === 'both') {
+  } else {
     await startStdio(createServer(tools));
   }
 }
