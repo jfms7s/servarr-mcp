@@ -1,4 +1,20 @@
-import type { RootFolder, UnmappedFolder } from './types.js';
+import type { QualityProfile, RootFolder, UnmappedFolder } from './types.js';
+
+export interface QualityProfileSummary {
+  id: number;
+  name: string;
+  upgradeAllowed: boolean;
+  cutoff: number;
+}
+
+export function summarizeQualityProfile(profile: QualityProfile): QualityProfileSummary {
+  return {
+    id: profile.id,
+    name: profile.name,
+    upgradeAllowed: profile.upgradeAllowed,
+    cutoff: profile.cutoff,
+  };
+}
 
 export interface RootFolderSummary {
   id: number;

@@ -4,7 +4,6 @@ import type {
   HistoryRecord,
   Movie,
   MovieFile,
-  QualityProfile,
   QueueRecord,
   Release,
   RenameMovieResource,
@@ -127,21 +126,7 @@ export function summarizeQueueRecord(record: QueueRecord): QueueSummary {
 // array is kept but reduced to identity, since an upstream collection
 // carries a full Movie object per entry.
 
-export interface QualityProfileSummary {
-  id: number;
-  name: string;
-  upgradeAllowed: boolean;
-  cutoff: number;
-}
-
-export function summarizeQualityProfile(profile: QualityProfile): QualityProfileSummary {
-  return {
-    id: profile.id,
-    name: profile.name,
-    upgradeAllowed: profile.upgradeAllowed,
-    cutoff: profile.cutoff,
-  };
-}
+export { summarizeQualityProfile, type QualityProfileSummary } from '../arr/shape.js';
 
 export interface MovieFileSummary {
   id: number;

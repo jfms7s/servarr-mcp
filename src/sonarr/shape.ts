@@ -3,7 +3,6 @@ import type {
   Episode,
   EpisodeFile,
   HistoryRecord,
-  QualityProfile,
   QueueRecord,
   Release,
   RenameEpisodeResource,
@@ -190,21 +189,7 @@ export function summarizeQueueRecord(record: QueueRecord): QueueSummary {
 // block, and history/blocklist records carry the whole embedded series.
 // Asserting the exact key set is how the tests pin that down.
 
-export interface QualityProfileSummary {
-  id: number;
-  name: string;
-  upgradeAllowed: boolean;
-  cutoff: number;
-}
-
-export function summarizeQualityProfile(profile: QualityProfile): QualityProfileSummary {
-  return {
-    id: profile.id,
-    name: profile.name,
-    upgradeAllowed: profile.upgradeAllowed,
-    cutoff: profile.cutoff,
-  };
-}
+export { summarizeQualityProfile, type QualityProfileSummary } from '../arr/shape.js';
 
 export interface EpisodeFileSummary {
   id: number;
