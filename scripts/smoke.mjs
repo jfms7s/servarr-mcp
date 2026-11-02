@@ -19,7 +19,8 @@ if (mode !== 'dist' && !(mode === 'docker' && image)) {
 }
 
 const products = Object.fromEntries(
-  ['SONARR', 'RADARR', 'PROWLARR', 'OVERSEERR'].flatMap((p) => [
+  // SEERR is the Overseerr module's preferred prefix; OVERSEERR_* is covered by test/config.test.ts.
+  ['SONARR', 'RADARR', 'PROWLARR', 'SEERR'].flatMap((p) => [
     [`${p}_URL`, 'http://127.0.0.1:9'],
     [`${p}_API_KEY`, 'x'],
   ]),

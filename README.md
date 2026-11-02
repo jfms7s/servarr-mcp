@@ -42,8 +42,8 @@ docker run --rm -p 3000:3000 \
   -e RADARR_API_KEY=your-radarr-api-key \
   -e PROWLARR_URL=http://prowlarr:9696 \
   -e PROWLARR_API_KEY=your-prowlarr-api-key \
-  -e OVERSEERR_URL=http://overseerr:5055 \
-  -e OVERSEERR_API_KEY=your-overseerr-api-key \
+  -e SEERR_URL=http://seerr:5055 \
+  -e SEERR_API_KEY=your-seerr-api-key \
   ghcr.io/jfms7s/servarr-mcp:vX.Y.Z
 ```
 
@@ -76,8 +76,9 @@ The server reads configuration from environment variables. Each product is **ind
 | `RADARR_API_KEY` | `abc123def456` | Only if `RADARR_URL` is set | API key from Radarr Settings → General |
 | `PROWLARR_URL` | `http://localhost:9696` | No | Base URL of your Prowlarr instance |
 | `PROWLARR_API_KEY` | `abc123def456` | Only if `PROWLARR_URL` is set | API key from Prowlarr Settings → General |
-| `OVERSEERR_URL` | `http://localhost:5055` | No | Base URL of your Overseerr instance |
-| `OVERSEERR_API_KEY` | `abc123def456` | Only if `OVERSEERR_URL` is set | API key from Overseerr Settings → General. It is admin-level, so the model can file or reassign requests as any user through `userId` |
+| `SEERR_URL` | `http://localhost:5055` | No | Base URL of your Seerr (or Overseerr) instance |
+| `SEERR_API_KEY` | `abc123def456` | Only if `SEERR_URL` is set | API key from Seerr/Overseerr Settings → General. It is admin-level, so the model can file or reassign requests as any user through `userId` |
+| `OVERSEERR_URL` / `OVERSEERR_API_KEY` | | No | Older names for `SEERR_URL` / `SEERR_API_KEY`, still accepted. If both pairs are set they must hold the same URL (after trimming a trailing `/`) and key, or the server refuses to start |
 | `SERVARR_MCP_TRANSPORT` | `stdio` or `http` or `both` | No | Transport mode (default `stdio`) |
 | `SERVARR_MCP_PORT` | `3000` | No | Port for HTTP transport (default `3000`) |
 | `SERVARR_MCP_HOST` | `*` | No | Address the HTTP transport binds to: an IP address, or `*` for every interface, IPv4 and IPv6 (default `127.0.0.1`; the Docker image sets `*`) |
@@ -120,8 +121,8 @@ Add this to your `claude_desktop_config.json` or Claude Code MCP server configur
         "RADARR_API_KEY": "your-radarr-api-key",
         "PROWLARR_URL": "http://localhost:9696",
         "PROWLARR_API_KEY": "your-prowlarr-api-key",
-        "OVERSEERR_URL": "http://localhost:5055",
-        "OVERSEERR_API_KEY": "your-overseerr-api-key"
+        "SEERR_URL": "http://localhost:5055",
+        "SEERR_API_KEY": "your-seerr-api-key"
       }
     }
   }
@@ -157,9 +158,9 @@ Replace `/path/to/servarr-mcp/dist/index.js` with the absolute path to the built
         "--env",
         "PROWLARR_API_KEY=your-prowlarr-api-key",
         "--env",
-        "OVERSEERR_URL=http://host.docker.internal:5055",
+        "SEERR_URL=http://host.docker.internal:5055",
         "--env",
-        "OVERSEERR_API_KEY=your-overseerr-api-key",
+        "SEERR_API_KEY=your-seerr-api-key",
         "ghcr.io/jfms7s/servarr-mcp:latest"
       ]
     }
@@ -314,6 +315,8 @@ This server exposes 106 tools across the four products.
 | `prowlarr_get_health` | Get health check results for Prowlarr |
 
 ### Overseerr (28 tools)
+
+Overseerr and Jellyseerr merged into [Seerr](https://github.com/seerr-team/seerr), which keeps the Overseerr `/api/v1`. These tools work against either; they keep the `overseerr_` prefix so existing prompts and client registrations don't break. New Overseerr-only tools are on hold until the move to Seerr.
 
 | Tool | Purpose |
 |------|---------|

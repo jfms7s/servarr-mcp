@@ -10,12 +10,23 @@ export type TransportMode = 'stdio' | 'http' | 'both';
  * tools/list). Adding a product is one entry here plus its factory in src/products.ts.
  * Kept free of product imports: the product modules import InstanceConfig from here.
  */
+export interface ProductSettings {
+  readonly id: string;
+  readonly label: string;
+  /** Read first: `<envPrefix>_URL` / `<envPrefix>_API_KEY`. */
+  readonly envPrefix: string;
+  /** An older prefix still accepted when envPrefix is unset; both set and different is an error. */
+  readonly legacyEnvPrefix?: string;
+}
+
 export const PRODUCT_SETTINGS = [
   { id: 'sonarr', label: 'Sonarr', envPrefix: 'SONARR' },
   { id: 'radarr', label: 'Radarr', envPrefix: 'RADARR' },
   { id: 'prowlarr', label: 'Prowlarr', envPrefix: 'PROWLARR' },
-  { id: 'overseerr', label: 'Overseerr', envPrefix: 'OVERSEERR' },
-] as const;
+  // Overseerr and Jellyseerr merged into Seerr, which serves the same /api/v1. The module,
+  // its tools and its label keep the Overseerr name; the env accepts both spellings.
+  { id: 'overseerr', label: 'Overseerr', envPrefix: 'SEERR', legacyEnvPrefix: 'OVERSEERR' },
+] as const satisfies readonly ProductSettings[];
 
 export type ProductId = (typeof PRODUCT_SETTINGS)[number]['id'];
 
@@ -85,6 +96,29 @@ function readInstance(
   return { baseUrl: rawUrl.replace(/\/+$/, ''), apiKey };
 }
 
+/** The product's instance from envPrefix, else legacyEnvPrefix; both set must agree. */
+function readProductInstance(
+  env: NodeJS.ProcessEnv,
+  { label, envPrefix, legacyEnvPrefix }: ProductSettings,
+): InstanceConfig | undefined {
+  const current = readInstance(env, label, envPrefix);
+  if (!legacyEnvPrefix) return current;
+  const legacy = readInstance(env, label, legacyEnvPrefix);
+  if (
+    current &&
+    legacy &&
+    (current.baseUrl !== legacy.baseUrl || current.apiKey !== legacy.apiKey)
+  ) {
+    // Neither value is echoed: the URL may carry a hostname worth keeping out of logs, the key is secret.
+    throw new ConfigError(
+      `${label}: ${envPrefix}_URL/${envPrefix}_API_KEY and ` +
+        `${legacyEnvPrefix}_URL/${legacyEnvPrefix}_API_KEY are both set and differ; ` +
+        `keep one pair (${envPrefix}_* is preferred)`,
+    );
+  }
+  return current ?? legacy;
+}
+
 function readTransport(env: NodeJS.ProcessEnv): TransportMode {
   const raw = env.SERVARR_MCP_TRANSPORT?.trim();
   if (!raw) return 'stdio';
@@ -130,12 +164,16 @@ export function weakTokenWarning(token: string | undefined): string | undefined 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServarrConfig {
   const instances: ProductInstances = {};
   for (const product of PRODUCT_SETTINGS) {
-    const instance = readInstance(env, product.label, product.envPrefix);
+    const instance = readProductInstance(env, product);
     if (instance) instances[product.id] = instance;
   }
 
   if (Object.keys(instances).length === 0) {
-    const pairs = PRODUCT_SETTINGS.map(({ envPrefix }) => `${envPrefix}_URL/${envPrefix}_API_KEY`);
+    const pairs = PRODUCT_SETTINGS.map((product: ProductSettings) => {
+      const pair = `${product.envPrefix}_URL/${product.envPrefix}_API_KEY`;
+      const legacy = product.legacyEnvPrefix;
+      return legacy ? `${pair} (or ${legacy}_URL/${legacy}_API_KEY)` : pair;
+    });
     throw new ConfigError(`No products configured. Set at least one of ${pairs.join(', ')}.`);
   }
 

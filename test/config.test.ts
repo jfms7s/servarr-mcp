@@ -34,7 +34,8 @@ describe('loadConfig', () => {
   it('keeps the exact no-products message', () => {
     expect(() => loadConfig({})).toThrow(
       'No products configured. Set at least one of SONARR_URL/SONARR_API_KEY, ' +
-        'RADARR_URL/RADARR_API_KEY, PROWLARR_URL/PROWLARR_API_KEY, OVERSEERR_URL/OVERSEERR_API_KEY.',
+        'RADARR_URL/RADARR_API_KEY, PROWLARR_URL/PROWLARR_API_KEY, ' +
+        'SEERR_URL/SEERR_API_KEY (or OVERSEERR_URL/OVERSEERR_API_KEY).',
     );
   });
 
@@ -48,6 +49,84 @@ describe('loadConfig', () => {
       baseUrl: 'http://localhost:5055',
       apiKey: 'overseerr-key',
     });
+  });
+
+  it('loads the Overseerr module from SEERR_URL/SEERR_API_KEY', () => {
+    const config = loadConfig({
+      SEERR_URL: 'http://localhost:5055/',
+      SEERR_API_KEY: 'seerr-key',
+    });
+    expect(config.overseerr).toEqual({ baseUrl: 'http://localhost:5055', apiKey: 'seerr-key' });
+  });
+
+  it('prefers SEERR_* and accepts an identical OVERSEERR_* pair alongside it', () => {
+    const config = loadConfig({
+      SEERR_URL: 'http://localhost:5055',
+      SEERR_API_KEY: 'same-key',
+      OVERSEERR_URL: 'http://localhost:5055/',
+      OVERSEERR_API_KEY: 'same-key',
+    });
+    expect(config.overseerr).toEqual({ baseUrl: 'http://localhost:5055', apiKey: 'same-key' });
+  });
+
+  it('rejects SEERR_* and OVERSEERR_* pairs that differ, without echoing either', () => {
+    const load = () =>
+      loadConfig({
+        SEERR_URL: 'http://seerr:5055',
+        SEERR_API_KEY: 'seerr-secret',
+        OVERSEERR_URL: 'http://overseerr:5055',
+        OVERSEERR_API_KEY: 'overseerr-secret',
+      });
+    expect(load).toThrow(ConfigError);
+    expect(load).toThrow(/SEERR_URL\/SEERR_API_KEY and OVERSEERR_URL\/OVERSEERR_API_KEY/);
+    try {
+      load();
+    } catch (error) {
+      const message = (error as Error).message;
+      for (const value of ['seerr-secret', 'overseerr-secret', 'http://seerr', 'http://overseerr'])
+        expect(message).not.toContain(value);
+    }
+  });
+
+  it('rejects differing keys under the same Seerr URL', () => {
+    expect(() =>
+      loadConfig({
+        SEERR_URL: 'http://localhost:5055',
+        SEERR_API_KEY: 'a',
+        OVERSEERR_URL: 'http://localhost:5055',
+        OVERSEERR_API_KEY: 'b',
+      }),
+    ).toThrow(ConfigError);
+  });
+
+  it('ignores empty SEERR_* values and uses the OVERSEERR_* pair', () => {
+    const config = loadConfig({
+      SEERR_URL: '  ',
+      SEERR_API_KEY: '',
+      OVERSEERR_URL: 'http://localhost:5055',
+      OVERSEERR_API_KEY: 'k',
+    });
+    expect(config.overseerr).toEqual({ baseUrl: 'http://localhost:5055', apiKey: 'k' });
+  });
+
+  it('still validates a stale OVERSEERR_URL set alongside a valid SEERR_* pair', () => {
+    expect(() =>
+      loadConfig({
+        SEERR_URL: 'http://localhost:5055',
+        SEERR_API_KEY: 'k',
+        OVERSEERR_URL: 'localhost:5055',
+        OVERSEERR_API_KEY: 'k',
+      }),
+    ).toThrow('Overseerr: OVERSEERR_URL must start with http:// or https://');
+  });
+
+  it('validates SEERR_* with its own variable names', () => {
+    expect(() => loadConfig({ SEERR_URL: 'http://localhost:5055' })).toThrow(
+      'Overseerr: SEERR_URL is set but SEERR_API_KEY is not',
+    );
+    expect(() =>
+      loadConfig({ SEERR_URL: 'http://localhost:5055', OVERSEERR_API_KEY: 'k' }),
+    ).toThrow(ConfigError);
   });
 
   it('counts Overseerr toward "at least one product configured"', () => {
