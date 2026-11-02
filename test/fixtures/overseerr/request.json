@@ -1,0 +1,131 @@
+{
+  "source": "Seerr v3.5.1 (seerr-api.yml), schema MediaRequest, for GET /api/v1/request; synthetic values",
+  "records": [
+    {
+      "id": 1.5,
+      "status": 1.5,
+      "media": {
+        "id": 1.5,
+        "tmdbId": 1.5,
+        "tvdbId": 1.5,
+        "status": 1.5,
+        "requests": [
+          {
+            "id": 1.5,
+            "status": 1.5,
+            "media": {},
+            "createdAt": "createdAt-1",
+            "updatedAt": "updatedAt-1",
+            "requestedBy": {},
+            "modifiedBy": {},
+            "is4k": true,
+            "serverId": 1.5,
+            "profileId": 1.5,
+            "rootFolder": "rootFolder-1",
+            "ignoreQuota": true
+          }
+        ],
+        "createdAt": "createdAt-1",
+        "updatedAt": "updatedAt-1"
+      },
+      "createdAt": "createdAt-1",
+      "updatedAt": "updatedAt-1",
+      "requestedBy": {
+        "id": 1,
+        "email": "email-1",
+        "username": "username-1",
+        "plexUsername": "plexUsername-1",
+        "plexToken": "plexToken-1",
+        "jellyfinAuthToken": "jellyfinAuthToken-1",
+        "userType": 1,
+        "permissions": 1.5,
+        "avatar": "avatar-1",
+        "createdAt": "createdAt-1",
+        "updatedAt": "updatedAt-1",
+        "requestCount": 1.5
+      },
+      "modifiedBy": {
+        "id": 1,
+        "email": "email-1",
+        "username": "username-1",
+        "plexUsername": "plexUsername-1",
+        "plexToken": "plexToken-1",
+        "jellyfinAuthToken": "jellyfinAuthToken-1",
+        "userType": 1,
+        "permissions": 1.5,
+        "avatar": "avatar-1",
+        "createdAt": "createdAt-1",
+        "updatedAt": "updatedAt-1",
+        "requestCount": 1.5
+      },
+      "is4k": true,
+      "serverId": 1.5,
+      "profileId": 1.5,
+      "rootFolder": "rootFolder-1",
+      "ignoreQuota": true
+    },
+    {
+      "id": 2.5,
+      "status": 2.5,
+      "media": {
+        "id": 2.5,
+        "tmdbId": 2.5,
+        "tvdbId": 2.5,
+        "status": 2.5,
+        "requests": [
+          {
+            "id": 2.5,
+            "status": 2.5,
+            "media": {},
+            "createdAt": "createdAt-2",
+            "updatedAt": "updatedAt-2",
+            "requestedBy": {},
+            "modifiedBy": {},
+            "is4k": false,
+            "serverId": 2.5,
+            "profileId": 2.5,
+            "rootFolder": "rootFolder-2",
+            "ignoreQuota": false
+          }
+        ],
+        "createdAt": "createdAt-2",
+        "updatedAt": "updatedAt-2"
+      },
+      "createdAt": "createdAt-2",
+      "updatedAt": "updatedAt-2",
+      "requestedBy": {
+        "id": 2,
+        "email": "email-2",
+        "username": "username-2",
+        "plexUsername": "plexUsername-2",
+        "plexToken": "plexToken-2",
+        "jellyfinAuthToken": "jellyfinAuthToken-2",
+        "userType": 2,
+        "permissions": 2.5,
+        "avatar": "avatar-2",
+        "createdAt": "createdAt-2",
+        "updatedAt": "updatedAt-2",
+        "requestCount": 2.5
+      },
+      "modifiedBy": {
+        "id": 2,
+        "email": "email-2",
+        "username": "username-2",
+        "plexUsername": "plexUsername-2",
+        "plexToken": "plexToken-2",
+        "jellyfinAuthToken": "jellyfinAuthToken-2",
+        "userType": 2,
+        "permissions": 2.5,
+        "avatar": "avatar-2",
+        "createdAt": "createdAt-2",
+        "updatedAt": "updatedAt-2",
+        "requestCount": 2.5
+      },
+      "is4k": false,
+      "serverId": 2.5,
+      "profileId": 2.5,
+      "rootFolder": "rootFolder-2",
+      "ignoreQuota": false
+    }
+  ]
+}

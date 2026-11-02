@@ -393,6 +393,8 @@ This is a sensitive credential — treat it like a password. Do not commit it to
 npm test
 ```
 
+All HTTP is mocked. `test/fixtures/<product>/` holds records generated from the upstream OpenAPI schemas (every declared field set, synthetic values); `test/fixtures/shapes.test.ts` fails when a summariser reads a field upstream doesn't declare. To refresh them after an upstream release, see the header of `scripts/fixtures/generate.mjs`.
+
 ### Linting, Formatting and Type Checking
 
 ```bash
