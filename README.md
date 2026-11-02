@@ -219,9 +219,9 @@ A compromised bearer token gives an attacker complete control to delete your lib
 
 ## Tools
 
-This server exposes 106 tools across the four products.
+This server exposes 108 tools across the four products.
 
-### Sonarr (33 tools)
+### Sonarr (34 tools)
 
 | Tool | Purpose |
 |------|---------|
@@ -236,13 +236,14 @@ This server exposes 106 tools across the four products.
 | `sonarr_monitor_episodes` | Set monitored state for one or more episodes |
 | `sonarr_list_episode_files` | List downloaded episode files for a series; paginated (`limit` default 100, `offset`) |
 | `sonarr_delete_episode_file` | **Destructive:** Permanently delete an episode file (needs `confirm: true`; otherwise previews the file) |
-| `sonarr_get_queue` | List items currently downloading or awaiting import |
+| `sonarr_get_queue` | List items downloading or awaiting import, with the import status and download id |
 | `sonarr_delete_queue_item` | **Destructive:** Remove an item from the download queue |
 | `sonarr_search_releases` | Interactive search for an episode or season pack, with Sonarr's rank and rejection reasons |
 | `sonarr_grab_release` | Download a specific release from a search; Sonarr tracks and imports it |
 | `sonarr_get_calendar` | List episodes airing in a date range; paginated (`limit` default 100, `offset`) |
 | `sonarr_get_history` | List download, import, and grab event history |
 | `sonarr_get_wanted_missing` | List wanted but missing episodes |
+| `sonarr_get_wanted_cutoff` | List episodes below the quality cutoff (upgrades), with the current quality |
 | `sonarr_get_blocklist` | List releases on the blocklist |
 | `sonarr_delete_blocklist_item` | **Destructive:** Remove a release from the blocklist |
 | `sonarr_run_command` | Trigger a background command (search, rescan, refresh); the library-wide missing search needs `confirm: true` |
@@ -259,7 +260,7 @@ This server exposes 106 tools across the four products.
 | `sonarr_get_health` | Check Sonarr health status and warnings |
 | `sonarr_get_disk_space` | List disk space on drives containing series |
 
-### Radarr (31 tools)
+### Radarr (32 tools)
 
 | Tool | Purpose |
 |------|---------|
@@ -272,12 +273,13 @@ This server exposes 106 tools across the four products.
 | `radarr_list_movie_files` | List downloaded movie files for a movie |
 | `radarr_delete_movie_file` | **Destructive:** Permanently delete a movie file (needs `confirm: true`; otherwise previews the file) |
 | `radarr_get_calendar` | List movies with releases in a date range; paginated (`limit` default 100, `offset`) |
-| `radarr_get_queue` | List items currently downloading or awaiting import |
+| `radarr_get_queue` | List items downloading or awaiting import, with the import status and download id |
 | `radarr_delete_queue_item` | **Destructive:** Remove an item from the download queue |
 | `radarr_search_releases` | Interactive search for a movie, with Radarr's rank and rejection reasons |
 | `radarr_grab_release` | Download a specific release from a search; Radarr tracks and imports it |
 | `radarr_get_history` | List download, import, and grab event history |
 | `radarr_get_wanted_missing` | List wanted but missing movies |
+| `radarr_get_wanted_cutoff` | List movies below the quality cutoff (upgrades), with the current quality |
 | `radarr_get_blocklist` | List releases on the blocklist |
 | `radarr_delete_blocklist_item` | **Destructive:** Remove a release from the blocklist |
 | `radarr_list_collections` | List all movie collections |

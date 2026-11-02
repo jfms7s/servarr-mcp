@@ -562,6 +562,30 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
     }),
 
     defineTool({
+      name: 'sonarr_get_wanted_cutoff',
+      effect: 'read',
+      description:
+        "List episodes whose file is below the quality profile's cutoff (upgrades Sonarr still looks for). " +
+        'Each row adds currentQuality, the quality of the file on disk. Rows omit the plot overview.',
+      inputSchema: { ...page },
+      handler: async ({ page: pageNum, pageSize }) => {
+        const response = await client.getWantedCutoff({
+          page: pageNum,
+          pageSize,
+          includeSeries: true,
+          includeEpisodeFile: true,
+        });
+        return {
+          ...response,
+          records: response.records.map((e) => ({
+            ...summarizeEpisode(e, { overview: false }),
+            currentQuality: e.episodeFile?.quality?.quality.name,
+          })),
+        };
+      },
+    }),
+
+    defineTool({
       name: 'sonarr_get_blocklist',
       effect: 'read',
       description: 'List releases on the blocklist (failed imports or manually blocked).',

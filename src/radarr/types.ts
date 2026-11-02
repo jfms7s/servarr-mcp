@@ -72,6 +72,8 @@ export interface QueueRecord {
   status: string;
   trackedDownloadStatus?: string;
   trackedDownloadState?: string;
+  /** The download client's id for the item (the torrent hash for Transmission). */
+  downloadId?: string;
   size: number;
   sizeleft: number;
   timeleft?: string;

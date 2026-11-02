@@ -512,6 +512,30 @@ exports[`arr tool surface > keeps every Radarr tool as it is 1`] = `
     "name": "radarr_get_wanted_missing",
   },
   {
+    "description": "List movies whose file is below the quality profile's cutoff (upgrades Radarr still looks for). Each row adds currentQuality, the quality of the file on disk. Rows omit the plot overview.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "description": "Page number, starting at 1",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "pageSize": {
+          "description": "Records per page (default 20)",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "radarr_get_wanted_cutoff",
+  },
+  {
     "description": "List releases on the blocklist (failed imports or manually blocked).",
     "effect": "read",
     "input": {
@@ -1446,6 +1470,30 @@ exports[`arr tool surface > keeps every Sonarr tool as it is 1`] = `
       "type": "object",
     },
     "name": "sonarr_get_wanted_missing",
+  },
+  {
+    "description": "List episodes whose file is below the quality profile's cutoff (upgrades Sonarr still looks for). Each row adds currentQuality, the quality of the file on disk. Rows omit the plot overview.",
+    "effect": "read",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "description": "Page number, starting at 1",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "pageSize": {
+          "description": "Records per page (default 20)",
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "sonarr_get_wanted_cutoff",
   },
   {
     "description": "List releases on the blocklist (failed imports or manually blocked).",

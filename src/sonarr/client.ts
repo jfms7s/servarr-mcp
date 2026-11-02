@@ -53,6 +53,7 @@ export interface HistoryOptions extends PageParams {
 
 export interface WantedOptions extends PageParams {
   includeSeries?: boolean;
+  includeEpisodeFile?: boolean;
 }
 
 export interface ListSeriesOptions {
@@ -92,6 +93,8 @@ export interface SonarrClient {
   deleteQueueItem(id: number, options?: DeleteQueueItemOptions): Promise<void>;
   getHistory(options?: HistoryOptions): Promise<PagedResponse<HistoryRecord>>;
   getWantedMissing(options?: WantedOptions): Promise<PagedResponse<Episode>>;
+  /** Episodes with a file below the quality profile's cutoff: the upgrade list. */
+  getWantedCutoff(options?: WantedOptions): Promise<PagedResponse<Episode>>;
   getBlocklist(options?: PageParams): Promise<PagedResponse<BlocklistRecord>>;
   deleteBlocklistItem(id: number): Promise<void>;
   getRenamePreview(seriesId: number, seasonNumber?: number): Promise<RenameEpisodeResource[]>;
@@ -149,6 +152,7 @@ export function createSonarrClient(config: InstanceConfig): SonarrClient {
     deleteQueueItem: (id, options) => http.del(`/queue/${id}`, { ...options }),
     getHistory: (options) => http.get('/history', { ...options }),
     getWantedMissing: (options) => http.get('/wanted/missing', { ...options }),
+    getWantedCutoff: (options) => http.get('/wanted/cutoff', { ...options }),
     getBlocklist: (options) => http.get('/blocklist', { ...options }),
     deleteBlocklistItem: (id) => http.del(`/blocklist/${id}`),
     getRenamePreview: (seriesId, seasonNumber) => http.get('/rename', { seriesId, seasonNumber }),
