@@ -116,7 +116,8 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       name: 'overseerr_list_requests',
       effect: 'read',
       description:
-        "List media requests. Only the API key owner's own requests are returned unless the key has admin/manage-requests permissions in Overseerr.",
+        "List media requests. Only the API key owner's own requests are returned unless the key has admin/manage-requests permissions in Overseerr. " +
+        'Pass includeCounts: true to add counts, the number of requests by status (total, movie, tv, pending, approved, declined, processing, available), at the cost of one more upstream call.',
       inputSchema: {
         take: z.number().int().min(1).max(100).optional().describe('Max results (default 20)'),
         skip: z.number().int().min(0).optional().describe('Results to skip, for pagination'),
@@ -136,12 +137,20 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
           .describe('Only items with this status (default all)'),
         sort: z.enum(['added', 'modified']).optional().describe('Sort order'),
         requestedBy: z.number().int().optional().describe('Filter to one user id'),
+        includeCounts: z
+          .boolean()
+          .optional()
+          .describe('Also return counts of all requests by status (default false)'),
       },
-      handler: async (args) => {
-        const result = await client.listRequests(args);
+      handler: async ({ includeCounts, ...query }) => {
+        const [result, counts] = await Promise.all([
+          client.listRequests(query),
+          includeCounts ? client.getRequestCount() : undefined,
+        ]);
         return {
           pageInfo: result.pageInfo,
           results: result.results.map(summarizeMediaRequest),
+          ...(counts ? { counts } : {}),
         };
       },
     }),
@@ -154,14 +163,6 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
         requestId: z.number().int().describe('Media request id, from overseerr_list_requests'),
       },
       handler: async (args) => summarizeMediaRequest(await client.getRequest(args.requestId)),
-    }),
-
-    defineTool({
-      name: 'overseerr_get_request_count',
-      effect: 'read',
-      description: 'Get counts of requests by status (pending, approved, declined, etc).',
-      inputSchema: {},
-      handler: async () => client.getRequestCount(),
     }),
 
     defineTool({

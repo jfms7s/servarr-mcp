@@ -27,7 +27,7 @@ describe('buildTools', () => {
     expect(names.filter((n) => n.startsWith('sonarr_'))).toHaveLength(34);
     expect(names.filter((n) => n.startsWith('radarr_'))).toHaveLength(32);
     expect(names.filter((n) => n.startsWith('prowlarr_'))).toHaveLength(14);
-    expect(names.filter((n) => n.startsWith('overseerr_'))).toHaveLength(28);
+    expect(names.filter((n) => n.startsWith('overseerr_'))).toHaveLength(27);
   });
 
   it('produces globally unique tool names', () => {
@@ -51,7 +51,7 @@ describe('buildTools', () => {
   it('registers overseerr when configured', () => {
     const names = buildTools({ ...base, overseerr: instance }).map((t) => t.name);
     expect(names.every((n) => n.startsWith('overseerr_'))).toBe(true);
-    expect(names).toHaveLength(28);
+    expect(names).toHaveLength(27);
   });
 
   describe('effects and annotations', () => {

@@ -21,11 +21,11 @@ const request = {
 };
 
 describe('createOverseerrTools', () => {
-  it('registers all 28 tools with unique overseerr_ prefixed names', () => {
+  it('registers all 27 tools with unique overseerr_ prefixed names', () => {
     const names = createOverseerrTools({} as OverseerrClient).map((t) => t.name);
-    expect(names).toHaveLength(28);
+    expect(names).toHaveLength(27);
     expect(names.every((n) => n.startsWith('overseerr_'))).toBe(true);
-    expect(new Set(names).size).toBe(28);
+    expect(new Set(names).size).toBe(27);
   });
 
   it('searches for media', async () => {
@@ -99,12 +99,30 @@ describe('createOverseerrTools', () => {
     expect(getRequest).toHaveBeenCalledWith(1);
   });
 
-  it('gets request counts', async () => {
+  it('lists requests without counts by default (no extra upstream call)', async () => {
+    const listRequests = vi
+      .fn()
+      .mockResolvedValue({ pageInfo: { page: 1, pages: 1, results: 1 }, results: [request] });
+    const getRequestCount = vi.fn();
+    const get = toolsFor({ listRequests, getRequestCount });
+    const result = (await get('overseerr_list_requests').handler({ take: 5 })) as object;
+    expect(getRequestCount).not.toHaveBeenCalled();
+    expect(result).not.toHaveProperty('counts');
+  });
+
+  it('adds request counts with includeCounts: true', async () => {
+    const listRequests = vi
+      .fn()
+      .mockResolvedValue({ pageInfo: { page: 1, pages: 1, results: 1 }, results: [request] });
     const getRequestCount = vi.fn().mockResolvedValue({ total: 10, pending: 3, approved: 5 });
-    const get = toolsFor({ getRequestCount });
-    const result = await get('overseerr_get_request_count').handler({});
-    expect(getRequestCount).toHaveBeenCalled();
-    expect(result).toHaveProperty('total');
+    const get = toolsFor({ listRequests, getRequestCount });
+    const result = await get('overseerr_list_requests').handler({
+      take: 5,
+      includeCounts: true,
+    });
+    expect(listRequests).toHaveBeenCalledWith({ take: 5 });
+    expect(getRequestCount).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ counts: { total: 10, pending: 3, approved: 5 } });
   });
 
   it('creates a request with full payload', async () => {
