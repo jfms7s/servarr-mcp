@@ -295,8 +295,15 @@ export interface RadarrManualImportCandidateSummary {
   languages?: string[];
   releaseGroup?: string;
   movie?: { id: number; title: string; year?: number };
+  /** True when the movie already has a file, which importing would replace. */
+  replacesExistingFile: boolean;
   /** The arr's reasons for refusing the file; empty when it would import it. */
   rejections: string[];
+}
+
+/** Whether importing the candidate would replace the movie's file already in the library. */
+export function candidateReplacesFile(candidate: RadarrManualImportCandidate): boolean {
+  return candidate.movie?.hasFile === true || (candidate.movie?.movieFileId ?? 0) > 0;
 }
 
 export function summarizeManualImportCandidate(
@@ -313,6 +320,7 @@ export function summarizeManualImportCandidate(
       title: candidate.movie.title,
       year: candidate.movie.year,
     },
+    replacesExistingFile: candidateReplacesFile(candidate),
     rejections: rejectionReasons(candidate.rejections),
   };
 }

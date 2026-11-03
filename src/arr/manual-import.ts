@@ -42,6 +42,12 @@ export function manualImportInput() {
       .boolean()
       .optional()
       .describe('With confirm: also import listed files the arr rejected (default false)'),
+    replaceExisting: z
+      .boolean()
+      .optional()
+      .describe(
+        'With confirm: also import files whose episode or movie already has a file in the library, replacing it (default false)',
+      ),
     importMode: z
       .enum(manualImportModes)
       .optional()
@@ -55,6 +61,12 @@ export interface ManualImportSource {
   downloadId?: string;
   folder?: string;
 }
+
+/** At most this many candidates are listed in stage one; total gives the full count. */
+export const MAX_CANDIDATES = 100;
+
+export const EXISTING_FILE =
+  'already has a file in the library, which the import would replace; pass replaceExisting: true to replace it';
 
 /** Exactly one of downloadId or folder; a raw-shape input schema cannot express this. */
 export function checkSource({ downloadId, folder }: ManualImportSource): void {

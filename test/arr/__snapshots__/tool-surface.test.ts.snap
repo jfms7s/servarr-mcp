@@ -819,7 +819,7 @@ exports[`arr tool surface > keeps every Radarr tool as it is 1`] = `
     "name": "radarr_import_folder",
   },
   {
-    "description": "Import files the arr will not import on its own: a completed download stuck in the queue (downloadId from radarr_get_queue) or a folder of files. Two stages. Without confirm it lists the candidate files with the Radarr movie they map to and its rejections (why it refuses each one) and changes nothing. With confirm: true and files (paths from that list) it re-reads the candidates and queues one ManualImport command for those files, using the arr's own mapping, quality and languages; a path not in the list, or one the arr could not map to a movie, is an error, and a rejected file needs overrideRejections: true. Pass movieId when the arr could not match the files. importMode auto (default) lets the arr decide: it moves the files, but copies (or hard-links) a download its client is still seeding; move and copy force one. The import runs in the background: poll the returned commandId with radarr_get_command.",
+    "description": "Import files the arr will not import on its own: a completed download stuck in the queue (downloadId from radarr_get_queue) or a folder of files. Two stages. Without confirm it lists the candidate files with the Radarr movie they map to and its rejections (why it refuses each one) and changes nothing. With confirm: true and files (paths from that list) it re-reads the candidates and queues one ManualImport command for those files, using the arr's own mapping, quality and languages; a path not in the list, or one the arr could not map to a movie, is an error, and a rejected file needs overrideRejections: true, and a file whose movie already has one in the library (replacesExistingFile) needs replaceExisting: true. Pass movieId when the arr could not match the files. importMode auto (default) lets the arr decide: it moves the files, but copies (or hard-links) a download its client is still seeding; move and copy force one. The import runs in the background: poll the returned commandId with radarr_get_command.",
     "effect": "destructive",
     "input": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -865,6 +865,10 @@ exports[`arr tool surface > keeps every Radarr tool as it is 1`] = `
         },
         "overrideRejections": {
           "description": "With confirm: also import listed files the arr rejected (default false)",
+          "type": "boolean",
+        },
+        "replaceExisting": {
+          "description": "With confirm: also import files whose episode or movie already has a file in the library, replacing it (default false)",
           "type": "boolean",
         },
       },
@@ -1822,7 +1826,7 @@ exports[`arr tool surface > keeps every Sonarr tool as it is 1`] = `
     "name": "sonarr_import_folder",
   },
   {
-    "description": "Import files the arr will not import on its own: a completed download stuck in the queue (downloadId from sonarr_get_queue) or a folder of files. Two stages. Without confirm it lists the candidate files with the Sonarr series and episodes they map to and its rejections (why it refuses each one) and changes nothing. With confirm: true and files (paths from that list) it re-reads the candidates and queues one ManualImport command for those files, using the arr's own mapping, quality and languages; a path not in the list, or one the arr could not map to a series and episodes, is an error, and a rejected file needs overrideRejections: true. Pass seriesId when the arr could not match the files. importMode auto (default) lets the arr decide: it moves the files, but copies (or hard-links) a download its client is still seeding; move and copy force one. The import runs in the background: poll the returned commandId with sonarr_get_command.",
+    "description": "Import files the arr will not import on its own: a completed download stuck in the queue (downloadId from sonarr_get_queue) or a folder of files. Two stages. Without confirm it lists the candidate files with the Sonarr series and episodes they map to and its rejections (why it refuses each one) and changes nothing. With confirm: true and files (paths from that list) it re-reads the candidates and queues one ManualImport command for those files, using the arr's own mapping, quality and languages; a path not in the list, or one the arr could not map to a series and episodes, is an error, and a rejected file needs overrideRejections: true, and a file whose episode already has one in the library (replacesExistingFile) needs replaceExisting: true. Pass seriesId when the arr could not match the files. importMode auto (default) lets the arr decide: it moves the files, but copies (or hard-links) a download its client is still seeding; move and copy force one. The import runs in the background: poll the returned commandId with sonarr_get_command.",
     "effect": "destructive",
     "input": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1862,6 +1866,10 @@ exports[`arr tool surface > keeps every Sonarr tool as it is 1`] = `
         },
         "overrideRejections": {
           "description": "With confirm: also import listed files the arr rejected (default false)",
+          "type": "boolean",
+        },
+        "replaceExisting": {
+          "description": "With confirm: also import files whose episode or movie already has a file in the library, replacing it (default false)",
           "type": "boolean",
         },
         "seriesId": {

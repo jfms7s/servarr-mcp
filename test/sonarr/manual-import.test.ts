@@ -100,6 +100,7 @@ describe('sonarr_manual_import', () => {
         series: { id: 1, title: 'Show' },
         seasonNumber: 1,
         episodes: [{ id: 19, seasonNumber: 1, episodeNumber: 1, title: 'Pilot' }],
+        replacesExistingFile: false,
         rejections: [],
       },
       expect.objectContaining({
@@ -216,5 +217,51 @@ describe('sonarr_manual_import', () => {
       }),
     ).rejects.toThrow(/matched no series; pass seriesId/);
     expect(capture.posts).toEqual([]);
+  });
+
+  it('refuses to replace an episode file already in the library unless replaceExisting is set', async () => {
+    const owned = {
+      ...mapped,
+      episodes: [{ id: 19, seasonNumber: 1, episodeNumber: 1, hasFile: true, episodeFileId: 5 }],
+    };
+    const posts: unknown[] = [];
+    server.use(
+      http.get(url('/manualimport'), () => HttpResponse.json([owned])),
+      http.post(url('/command'), async ({ request }) => {
+        posts.push(await request.json());
+        return HttpResponse.json({ id: 78, name: 'ManualImport', status: 'queued' });
+      }),
+    );
+    const listed = (await tool().handler({ folder: '/downloads' })) as {
+      candidates: Array<{ replacesExistingFile: boolean }>;
+    };
+    expect(listed.candidates[0]?.replacesExistingFile).toBe(true);
+    await expect(
+      tool().handler({
+        folder: '/downloads',
+        confirm: true,
+        files: [owned.path],
+        overrideRejections: true,
+      }),
+    ).rejects.toThrow(/already has a file in the library.*replaceExisting/);
+    expect(posts).toEqual([]);
+    await tool().handler({
+      folder: '/downloads',
+      confirm: true,
+      files: [owned.path],
+      replaceExisting: true,
+    });
+    expect(posts).toHaveLength(1);
+  });
+
+  it('lists at most 100 candidates with the total', async () => {
+    const many = Array.from({ length: 130 }, (_, i) => ({ ...mapped, path: `/d/${i}.mkv` }));
+    server.use(http.get(url('/manualimport'), () => HttpResponse.json(many)));
+    const result = (await tool().handler({ folder: '/d' })) as {
+      total: number;
+      candidates: unknown[];
+    };
+    expect(result.total).toBe(130);
+    expect(result.candidates).toHaveLength(100);
   });
 });

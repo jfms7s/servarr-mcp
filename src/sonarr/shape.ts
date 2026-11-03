@@ -341,8 +341,17 @@ export interface SonarrManualImportCandidateSummary {
   series?: { id: number; title: string };
   seasonNumber?: number;
   episodes?: Array<{ id: number; seasonNumber: number; episodeNumber: number; title?: string }>;
+  /** True when one of the episodes already has a file, which importing would replace. */
+  replacesExistingFile: boolean;
   /** The arr's reasons for refusing the file; empty when it would import it. */
   rejections: string[];
+}
+
+/** Whether importing the candidate would replace a file already in the library. */
+export function candidateReplacesFile(candidate: SonarrManualImportCandidate): boolean {
+  return (candidate.episodes ?? []).some(
+    (episode) => episode.hasFile === true || (episode.episodeFileId ?? 0) > 0,
+  );
 }
 
 export function summarizeManualImportCandidate(
@@ -362,6 +371,7 @@ export function summarizeManualImportCandidate(
       episodeNumber,
       title,
     })),
+    replacesExistingFile: candidateReplacesFile(candidate),
     rejections: rejectionReasons(candidate.rejections),
   };
 }

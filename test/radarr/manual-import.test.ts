@@ -80,6 +80,7 @@ describe('radarr_manual_import', () => {
         languages: ['English'],
         releaseGroup: 'GRP',
         movie: { id: 1, title: 'Movie', year: 1999 },
+        replacesExistingFile: false,
         rejections: ['Unable to determine if file is a sample'],
       },
       expect.objectContaining({ path: unknown.path, rejections: ['Unknown Movie'] }),
@@ -137,5 +138,36 @@ describe('radarr_manual_import', () => {
       }),
     ).rejects.toThrow(/passwd: not among the candidates[\s\S]*Other\.mkv: Radarr matched no movie/);
     expect(capture.posts).toEqual([]);
+  });
+
+  it('refuses to re-import over the movie file already in the library unless replaceExisting is set', async () => {
+    // What a second confirm after a copy import looks like: the source is still there and the
+    // movie now has a file.
+    const owned = { ...mapped, movie: { ...mapped.movie, movieFileId: 3 } };
+    const posts: unknown[] = [];
+    server.use(
+      http.get(url('/manualimport'), () => HttpResponse.json([owned])),
+      http.post(url('/command'), async ({ request }) => {
+        posts.push(await request.json());
+        return HttpResponse.json({ id: 89, name: 'ManualImport', status: 'queued' });
+      }),
+    );
+    await expect(
+      tool().handler({
+        folder: '/downloads',
+        confirm: true,
+        files: [owned.path],
+        overrideRejections: true,
+      }),
+    ).rejects.toThrow(/already has a file in the library/);
+    expect(posts).toEqual([]);
+    await tool().handler({
+      folder: '/downloads',
+      confirm: true,
+      files: [owned.path],
+      overrideRejections: true,
+      replaceExisting: true,
+    });
+    expect(posts).toHaveLength(1);
   });
 });

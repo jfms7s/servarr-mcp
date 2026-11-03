@@ -130,7 +130,7 @@ export interface RadarrManualImportCandidate {
   folderName?: string;
   name?: string;
   size: number;
-  movie?: { id: number; title: string; year?: number };
+  movie?: { id: number; title: string; year?: number; movieFileId?: number; hasFile?: boolean };
   releaseGroup?: string;
   quality?: { quality: { id: number; name: string } };
   languages?: Array<{ id: number; name: string }>;

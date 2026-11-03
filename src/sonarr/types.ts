@@ -143,7 +143,14 @@ export interface SonarrManualImportCandidate {
   size: number;
   series?: { id: number; title: string };
   seasonNumber?: number;
-  episodes?: Array<{ id: number; seasonNumber: number; episodeNumber: number; title?: string }>;
+  episodes?: Array<{
+    id: number;
+    seasonNumber: number;
+    episodeNumber: number;
+    title?: string;
+    hasFile?: boolean;
+    episodeFileId?: number;
+  }>;
   releaseGroup?: string;
   quality?: { quality: { id: number; name: string } };
   languages?: Array<{ id: number; name: string }>;
