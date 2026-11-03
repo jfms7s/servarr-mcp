@@ -11,7 +11,7 @@ import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import net from 'node:net';
 
-const EXPECTED_TOOLS = 104;
+const EXPECTED_TOOLS = 100;
 const [mode, image] = process.argv.slice(2);
 if (mode !== 'dist' && !(mode === 'docker' && image)) {
   console.error('usage: smoke.mjs dist | smoke.mjs docker <image>');
