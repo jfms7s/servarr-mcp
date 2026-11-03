@@ -221,7 +221,7 @@ A compromised bearer token gives an attacker complete control to delete your lib
 
 ## Tools
 
-This server exposes 108 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (109).
+This server exposes 107 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (108).
 
 ### Sonarr (34 tools)
 
@@ -318,7 +318,7 @@ This server exposes 108 tools across the four products, plus `servarr_media_clea
 | `prowlarr_get_system_status` | Get Prowlarr version and system information |
 | `prowlarr_get_health` | Get health check results for Prowlarr |
 
-### Overseerr (28 tools)
+### Overseerr (27 tools)
 
 Overseerr and Jellyseerr merged into [Seerr](https://github.com/seerr-team/seerr), which keeps the Overseerr `/api/v1`. These tools work against either; they keep the `overseerr_` prefix so existing prompts and client registrations don't break. New Overseerr-only tools are on hold until the move to Seerr.
 
@@ -338,9 +338,8 @@ Overseerr and Jellyseerr merged into [Seerr](https://github.com/seerr-team/seerr
 | `overseerr_get_tv_ratings` | Get Rotten Tomatoes ratings for a TV show |
 | `overseerr_get_person` | Get biography and details for a person |
 | `overseerr_get_person_credits` | Get a person's combined movie and TV credits, newest first; at most `limit` (default 50) cast and crew rows each, with totals |
-| `overseerr_list_requests` | List media requests with optional filtering and sorting |
+| `overseerr_list_requests` | List media requests with optional filtering and sorting; `includeCounts: true` adds counts by status |
 | `overseerr_get_request` | Get one media request by id |
-| `overseerr_get_request_count` | Get counts of requests by status |
 | `overseerr_create_request` | Request that a movie or TV show be added |
 | `overseerr_update_request_status` | Approve or decline a pending media request |
 | `overseerr_retry_request` | Retry a failed request to Sonarr or Radarr |
