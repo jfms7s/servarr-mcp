@@ -163,7 +163,8 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       effect: 'write',
       description:
         'Add a new movie to Radarr. Get tmdbId from radarr_lookup_movie, qualityProfileId ' +
-        'and rootFolderPath from radarr_list_options.',
+        'and rootFolderPath from radarr_list_options. ' +
+        "Household requests go through Overseerr (overseerr_create_request) so they're tracked and approved; use radarr_add_movie / sonarr_add_series for direct adds by the owner.",
       inputSchema: {
         title: z.string().describe('Movie title'),
         tmdbId: z.number().int().describe('TMDB id, from radarr_lookup_movie'),

@@ -161,7 +161,8 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       effect: 'write',
       description:
         'Add a new series to Sonarr. Get tvdbId from sonarr_lookup_series, qualityProfileId ' +
-        'and rootFolderPath from sonarr_list_options.',
+        'and rootFolderPath from sonarr_list_options. ' +
+        "Household requests go through Overseerr (overseerr_create_request) so they're tracked and approved; use radarr_add_movie / sonarr_add_series for direct adds by the owner.",
       inputSchema: {
         title: z.string().describe('Series title'),
         tvdbId: z.number().int().describe('TheTVDB id, from sonarr_lookup_series'),

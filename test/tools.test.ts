@@ -88,4 +88,15 @@ describe('buildTools', () => {
       }
     });
   });
+
+  it('tells the request and add tools apart in their descriptions', () => {
+    const all = buildTools({ ...base, sonarr: instance, radarr: instance, overseerr: instance });
+    for (const name of ['overseerr_create_request', 'radarr_add_movie', 'sonarr_add_series']) {
+      const tool = all.find((t) => t.name === name);
+      expect(tool?.description, name).toContain(
+        "Household requests go through Overseerr (overseerr_create_request) so they're tracked and approved; " +
+          'use radarr_add_movie / sonarr_add_series for direct adds by the owner.',
+      );
+    }
+  });
 });

@@ -232,7 +232,8 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       name: 'overseerr_create_request',
       effect: 'write',
       description:
-        'Request that a movie or TV show be added. Get mediaId from overseerr_search, overseerr_discover_movies, overseerr_discover_tv, or overseerr_get_trending (their result id is the TMDB id Overseerr expects here). For TV requests, pass seasons as an array of season numbers or the string "all"; omit seasons for movies.',
+        'Request that a movie or TV show be added. Get mediaId from overseerr_search, overseerr_discover_movies, overseerr_discover_tv, or overseerr_get_trending (their result id is the TMDB id Overseerr expects here). For TV requests, pass seasons as an array of season numbers or the string "all"; omit seasons for movies. ' +
+        "Household requests go through Overseerr (overseerr_create_request) so they're tracked and approved; use radarr_add_movie / sonarr_add_series for direct adds by the owner.",
       inputSchema: {
         mediaType: z.enum(['movie', 'tv']).describe('movie or tv'),
         mediaId: z.number().int().describe('TMDB id'),
