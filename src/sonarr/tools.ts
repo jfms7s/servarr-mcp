@@ -9,12 +9,19 @@ import { CACHED_LIBRARY_NOTE, refreshInput } from '../arr/library.js';
 import { listWindow, page, pageOf } from '../arr/paging.js';
 import { isWithinRoot, relocatePath } from '../arr/paths.js';
 import { findDuplicates } from '../arr/duplicates.js';
+import {
+  EXISTING_FILE,
+  MAX_CANDIDATES,
+  buildImportFiles,
+  checkSource,
+  manualImportInput,
+} from '../arr/manual-import.js';
 import { pickDefined } from '../arr/payload.js';
 import { capPreviews, rankAndFilterReleases } from '../arr/releases.js';
 import { createArrCommonTools, createUnmappedFoldersTool } from '../arr/tools.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { SonarrClient } from './client.js';
-import type { SeriesBulkEditPayload } from './types.js';
+import type { SeriesBulkEditPayload, SonarrManualImportFile } from './types.js';
 import {
   summarizeBlocklistRecord,
   summarizeEpisode,
@@ -26,6 +33,8 @@ import {
   summarizeRenamePreview,
   summarizeSeries,
   summarizeSeriesDetail,
+  candidateReplacesFile,
+  summarizeManualImportCandidate,
 } from './shape.js';
 
 const COMMAND_NAMES = [
@@ -898,6 +907,77 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
           commandId: command.id,
           status: command.status,
           message: `Scanning ${path} for episodes to import`,
+        };
+      },
+    }),
+
+    defineTool({
+      name: 'sonarr_manual_import',
+      effect: 'destructive',
+      description:
+        'Import files the arr will not import on its own: a completed download stuck in the queue (downloadId from ' +
+        'sonarr_get_queue) or a folder of files. Two stages. Without confirm it lists the candidate files with the Sonarr ' +
+        'series and episodes they map to and its rejections (why it refuses each one) and changes nothing. With confirm: true and ' +
+        'files (paths from that list) it re-reads the candidates and queues one ManualImport command for those files, ' +
+        "using the arr's own mapping, quality and languages; a path not in the list, or one the arr could not map to a " +
+        'series and episodes, is an error, and a rejected file needs overrideRejections: true, and a file whose ' +
+        'episode already has one in the library (replacesExistingFile) needs replaceExisting: true. Pass seriesId when the arr could not match ' +
+        'the files. importMode auto (default) lets the arr decide: it moves the files, but copies (or hard-links) a ' +
+        'download its client is still seeding; move and copy force one. The import runs in the background: poll the ' +
+        'returned commandId with sonarr_get_command.',
+      inputSchema: {
+        ...manualImportInput(),
+        seriesId: z
+          .number()
+          .int()
+          .optional()
+          .describe('Only consider files for this series id; maps files Sonarr could not match'),
+      },
+      handler: async (args) => {
+        checkSource(args);
+        const candidates = await client.getManualImport(
+          pickDefined(args, ['downloadId', 'folder', 'seriesId']),
+        );
+        if (!args.confirm) {
+          return {
+            total: candidates.length,
+            candidates: candidates.slice(0, MAX_CANDIDATES).map(summarizeManualImportCandidate),
+            confirmRequired: true,
+            note: 'Nothing imported. Call again with confirm: true and files (paths from candidates) to import.',
+          };
+        }
+        if (!args.files)
+          throw new Error('confirm: true needs files, the candidate paths to import');
+        const { paths, files } = buildImportFiles(candidates, args.files, {
+          overrideRejections: args.overrideRejections,
+          toFile: (candidate): SonarrManualImportFile | string => {
+            if (!candidate.series) return 'Sonarr matched no series; pass seriesId to map it';
+            if (!candidate.episodes?.length) return 'Sonarr matched no episode';
+            if (candidateReplacesFile(candidate) && !args.replaceExisting) return EXISTING_FILE;
+            return {
+              path: candidate.path,
+              folderName: candidate.folderName,
+              seriesId: candidate.series.id,
+              episodeIds: candidate.episodes.map((episode) => episode.id),
+              quality: candidate.quality,
+              languages: candidate.languages,
+              releaseGroup: candidate.releaseGroup,
+              indexerFlags: candidate.indexerFlags,
+              releaseType: candidate.releaseType,
+              downloadId: candidate.downloadId ?? args.downloadId,
+            };
+          },
+        });
+        const command = await client.runCommand({
+          name: 'ManualImport',
+          importMode: args.importMode ?? 'auto',
+          files,
+        });
+        return {
+          commandId: command.id,
+          status: command.status,
+          files: paths,
+          message: `Importing ${paths.length} file(s); poll commandId with sonarr_get_command`,
         };
       },
     }),

@@ -7,7 +7,9 @@ import type {
   Release,
   RenameEpisodeResource,
   Series,
+  SonarrManualImportCandidate,
 } from './types.js';
+import { rejectionReasons } from '../arr/manual-import.js';
 import { redactHistoryData } from '../arr/redact.js';
 import { summarizeMediaFileRef, type MediaFileRef } from '../arr/shape.js';
 
@@ -329,3 +331,47 @@ export function summarizeRenamePreview(resource: RenameEpisodeResource): RenameP
 }
 
 export { summarizeUnmappedFolder, type UnmappedFolderSummary } from '../arr/shape.js';
+
+export interface SonarrManualImportCandidateSummary {
+  path: string;
+  size: number;
+  quality?: string;
+  languages?: string[];
+  releaseGroup?: string;
+  series?: { id: number; title: string };
+  seasonNumber?: number;
+  episodes?: Array<{ id: number; seasonNumber: number; episodeNumber: number; title?: string }>;
+  /** True when one of the episodes already has a file, which importing would replace. */
+  replacesExistingFile: boolean;
+  /** The arr's reasons for refusing the file; empty when it would import it. */
+  rejections: string[];
+}
+
+/** Whether importing the candidate would replace a file already in the library. */
+export function candidateReplacesFile(candidate: SonarrManualImportCandidate): boolean {
+  return (candidate.episodes ?? []).some(
+    (episode) => episode.hasFile === true || (episode.episodeFileId ?? 0) > 0,
+  );
+}
+
+export function summarizeManualImportCandidate(
+  candidate: SonarrManualImportCandidate,
+): SonarrManualImportCandidateSummary {
+  return {
+    path: candidate.path,
+    size: candidate.size,
+    quality: candidate.quality?.quality.name,
+    languages: candidate.languages?.map((language) => language.name),
+    releaseGroup: candidate.releaseGroup,
+    series: candidate.series && { id: candidate.series.id, title: candidate.series.title },
+    seasonNumber: candidate.seasonNumber,
+    episodes: candidate.episodes?.map(({ id, seasonNumber, episodeNumber, title }) => ({
+      id,
+      seasonNumber,
+      episodeNumber,
+      title,
+    })),
+    replacesExistingFile: candidateReplacesFile(candidate),
+    rejections: rejectionReasons(candidate.rejections),
+  };
+}

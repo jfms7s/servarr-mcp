@@ -11,6 +11,7 @@ import type {
   EpisodeFile,
   GrabReleasePayload,
   HealthCheck,
+  SonarrManualImportCandidate,
   HistoryRecord,
   PageParams,
   PagedResponse,
@@ -63,12 +64,18 @@ export interface ListSeriesOptions {
 
 /** Commands that change what GET /series returns once they run. */
 const LIBRARY_COMMANDS = new Set(
-  ['RefreshSeries', 'RescanSeries', 'RenameFiles', 'DownloadedEpisodesScan'].map((n) =>
-    n.toLowerCase(),
+  ['RefreshSeries', 'RescanSeries', 'RenameFiles', 'DownloadedEpisodesScan', 'ManualImport'].map(
+    (n) => n.toLowerCase(),
   ),
 );
 const changesLibrary = (name: string | undefined) =>
   name !== undefined && LIBRARY_COMMANDS.has(name.toLowerCase());
+
+export interface ManualImportQuery {
+  downloadId?: string;
+  folder?: string;
+  seriesId?: number;
+}
 
 export interface SonarrClient {
   /**
@@ -98,6 +105,8 @@ export interface SonarrClient {
   getBlocklist(options?: PageParams): Promise<PagedResponse<BlocklistRecord>>;
   deleteBlocklistItem(id: number): Promise<void>;
   getRenamePreview(seriesId: number, seasonNumber?: number): Promise<RenameEpisodeResource[]>;
+  /** GET /manualimport: the files the arr would import from a download or folder, with rejections. */
+  getManualImport(query: ManualImportQuery): Promise<SonarrManualImportCandidate[]>;
   runCommand(payload: CommandPayload): Promise<CommandResource>;
   getCommand(id: number): Promise<CommandResource>;
   /** Commands the arr still holds: queued, running and recently finished. */
@@ -156,6 +165,13 @@ export function createSonarrClient(config: InstanceConfig): SonarrClient {
     getBlocklist: (options) => http.get('/blocklist', { ...options }),
     deleteBlocklistItem: (id) => http.del(`/blocklist/${id}`),
     getRenamePreview: (seriesId, seasonNumber) => http.get('/rename', { seriesId, seasonNumber }),
+    // The arr probes every file it finds, so a large folder takes a while.
+    getManualImport: (query) =>
+      http.get(
+        '/manualimport',
+        { ...query, filterExistingFiles: true },
+        { timeoutMs: SEARCH_TIMEOUT_MS },
+      ),
     runCommand: (payload) => {
       const run = () => http.post<CommandResource>('/command', payload);
       return changesLibrary(payload.name) ? write(run) : run();

@@ -10,6 +10,7 @@ import type {
   DiskSpace,
   GrabReleasePayload,
   HealthCheck,
+  RadarrManualImportCandidate,
   HistoryRecord,
   Movie,
   MovieEditorPayload,
@@ -57,12 +58,23 @@ export interface ListMoviesOptions {
 
 /** Commands that change what GET /movie returns once they run. */
 const LIBRARY_COMMANDS = new Set(
-  ['RefreshMovie', 'RescanMovie', 'RenameFiles', 'RenameMovie', 'DownloadedMoviesScan'].map((n) =>
-    n.toLowerCase(),
-  ),
+  [
+    'RefreshMovie',
+    'RescanMovie',
+    'RenameFiles',
+    'RenameMovie',
+    'DownloadedMoviesScan',
+    'ManualImport',
+  ].map((n) => n.toLowerCase()),
 );
 const changesLibrary = (name: string | undefined) =>
   name !== undefined && LIBRARY_COMMANDS.has(name.toLowerCase());
+
+export interface ManualImportQuery {
+  downloadId?: string;
+  folder?: string;
+  movieId?: number;
+}
 
 export interface RadarrClient {
   /**
@@ -91,6 +103,8 @@ export interface RadarrClient {
   getBlocklist(options?: PageParams): Promise<PagedResponse<BlocklistRecord>>;
   deleteBlocklistItem(id: number): Promise<void>;
   listCollections(): Promise<Collection[]>;
+  /** GET /manualimport: the files the arr would import from a download or folder, with rejections. */
+  getManualImport(query: ManualImportQuery): Promise<RadarrManualImportCandidate[]>;
   runCommand(payload: CommandPayload): Promise<CommandResource>;
   getCommand(id: number): Promise<CommandResource>;
   /** Commands the arr still holds: queued, running and recently finished. */
@@ -142,6 +156,13 @@ export function createRadarrClient(config: InstanceConfig): RadarrClient {
     getBlocklist: (options) => http.get('/blocklist', { ...options }),
     deleteBlocklistItem: (id) => http.del(`/blocklist/${id}`),
     listCollections: () => http.get('/collection'),
+    // The arr probes every file it finds, so a large folder takes a while.
+    getManualImport: (query) =>
+      http.get(
+        '/manualimport',
+        { ...query, filterExistingFiles: true },
+        { timeoutMs: SEARCH_TIMEOUT_MS },
+      ),
     runCommand: (payload) => {
       const run = () => http.post<CommandResource>('/command', payload);
       return changesLibrary(payload.name) ? write(run) : run();

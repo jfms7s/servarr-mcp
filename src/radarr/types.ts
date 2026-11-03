@@ -1,3 +1,4 @@
+import type { ManualImportRejection } from '../arr/manual-import.js';
 export type {
   DiskSpace,
   HealthCheck,
@@ -118,6 +119,36 @@ export interface CommandPayload {
   movieIds?: number[];
   path?: string;
   importMode?: string;
+  /** ManualImport only. */
+  files?: RadarrManualImportFile[];
+}
+
+/** One row of GET /manualimport: a file the arr found, its mapping, and why it would refuse it. */
+export interface RadarrManualImportCandidate {
+  path: string;
+  relativePath?: string;
+  folderName?: string;
+  name?: string;
+  size: number;
+  movie?: { id: number; title: string; year?: number; movieFileId?: number; hasFile?: boolean };
+  releaseGroup?: string;
+  quality?: { quality: { id: number; name: string } };
+  languages?: Array<{ id: number; name: string }>;
+  indexerFlags?: number;
+  downloadId?: string;
+  rejections?: ManualImportRejection[];
+}
+
+/** One file of the ManualImport command, built from a candidate. */
+export interface RadarrManualImportFile {
+  path: string;
+  folderName?: string;
+  movieId: number;
+  quality?: { quality: { id: number; name: string } };
+  languages?: Array<{ id: number; name: string }>;
+  releaseGroup?: string;
+  indexerFlags?: number;
+  downloadId?: string;
 }
 
 export interface CommandResource {
