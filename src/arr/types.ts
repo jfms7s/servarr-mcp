@@ -52,3 +52,14 @@ export interface PagedResponse<T> {
   totalRecords: number;
   records: T[];
 }
+
+export interface SystemStatus {
+  appName: string;
+  version: string;
+  buildTime?: string;
+  branch?: string;
+  osName?: string;
+  osVersion?: string;
+  isDocker?: boolean;
+  startTime?: string;
+}

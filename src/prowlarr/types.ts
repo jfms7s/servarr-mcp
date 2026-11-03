@@ -1,4 +1,4 @@
-export type { HealthCheck, PagedResponse } from '../arr/types.js';
+export type { HealthCheck, PagedResponse, SystemStatus } from '../arr/types.js';
 
 export interface Release {
   guid: string;
@@ -86,12 +86,4 @@ export interface CommandResource {
   name: string;
   status: string;
   message?: string;
-}
-
-export interface SystemStatus {
-  appName: string;
-  version: string;
-  osName?: string;
-  isDocker?: boolean;
-  startTime?: string;
 }

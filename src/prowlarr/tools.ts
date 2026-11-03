@@ -1,12 +1,14 @@
 import { z } from 'zod';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { ProwlarrClient } from './client.js';
+import { summarizeHealthCheck, summarizeSystemStatus } from '../arr/shape.js';
 import {
   summarizeApplication,
   summarizeDownloadClient,
   summarizeHistoryRecord,
   summarizeIndexer,
   summarizeIndexerDetail,
+  summarizeIndexerHealth,
   summarizeRelease,
 } from './shape.js';
 
@@ -85,22 +87,27 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
     }),
 
     defineTool({
-      name: 'prowlarr_get_indexer_stats',
+      name: 'prowlarr_get_status',
       effect: 'read',
       description:
-        'Get query and grab statistics for each indexer, including failure counts and response times.',
+        'Get Prowlarr status in one call: system (version, branch, OS, Docker, start time), health ' +
+        '(the health check warnings and errors) and indexers (per indexer: query, grab and failure ' +
+        'counts, average response time, and disabledTill/mostRecentFailure while Prowlarr has it ' +
+        'in backoff after failures).',
       inputSchema: {},
-      handler: () => client.getIndexerStats(),
-    }),
-
-    defineTool({
-      name: 'prowlarr_get_indexer_status',
-      effect: 'read',
-      description:
-        'Get the health/backoff status of configured indexers. Reports which indexers are ' +
-        'temporarily disabled due to failures.',
-      inputSchema: {},
-      handler: () => client.getIndexerStatus(),
+      handler: async () => {
+        const [system, health, stats, statuses] = await Promise.all([
+          client.getSystemStatus(),
+          client.getHealth(),
+          client.getIndexerStats(),
+          client.getIndexerStatus(),
+        ]);
+        return {
+          system: summarizeSystemStatus(system),
+          health: health.map(summarizeHealthCheck),
+          indexers: summarizeIndexerHealth(stats, statuses),
+        };
+      },
     }),
 
     defineTool({
@@ -157,22 +164,6 @@ export function createProwlarrTools(client: ProwlarrClient): ToolDefinition[] {
         name: z.enum(['ApplicationIndexerSync', 'IndexerHealthCheck']).describe('Command name'),
       },
       handler: ({ name }) => client.runCommand({ name }),
-    }),
-
-    defineTool({
-      name: 'prowlarr_get_system_status',
-      effect: 'read',
-      description: 'Get the Prowlarr application version, name, and host information.',
-      inputSchema: {},
-      handler: () => client.getSystemStatus(),
-    }),
-
-    defineTool({
-      name: 'prowlarr_get_health',
-      effect: 'read',
-      description: 'Get health check results for Prowlarr and any detected issues.',
-      inputSchema: {},
-      handler: () => client.getHealth(),
     }),
   ];
 }

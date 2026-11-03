@@ -26,7 +26,7 @@ describe('buildTools', () => {
 
     expect(names.filter((n) => n.startsWith('sonarr_'))).toHaveLength(34);
     expect(names.filter((n) => n.startsWith('radarr_'))).toHaveLength(32);
-    expect(names.filter((n) => n.startsWith('prowlarr_'))).toHaveLength(14);
+    expect(names.filter((n) => n.startsWith('prowlarr_'))).toHaveLength(11);
     expect(names.filter((n) => n.startsWith('overseerr_'))).toHaveLength(27);
   });
 

@@ -1,4 +1,12 @@
-import type { Application, DownloadClient, HistoryRecord, Indexer, Release } from './types.js';
+import type {
+  Application,
+  DownloadClient,
+  HistoryRecord,
+  Indexer,
+  IndexerStats,
+  IndexerStatus,
+  Release,
+} from './types.js';
 import { redactHistoryData } from '../arr/redact.js';
 
 export interface ReleaseSummary {
@@ -136,4 +144,51 @@ export function summarizeDownloadClient(client: DownloadClient): DownloadClientS
     priority: client.priority,
     implementation: client.implementation,
   };
+}
+
+export interface IndexerHealthSummary {
+  indexerId: number;
+  name?: string;
+  queries?: number;
+  grabs?: number;
+  failedQueries?: number;
+  failedGrabs?: number;
+  averageResponseTimeMs?: number;
+  /** Set while Prowlarr has the indexer in backoff after failures. */
+  disabledTill?: string;
+  mostRecentFailure?: string;
+  initialFailure?: string;
+}
+
+/**
+ * One row per indexer, joining /indexerstats (activity) with /indexerstatus (backoff). An
+ * indexer appears when either endpoint reports it; the backoff fields are absent when it is
+ * healthy.
+ */
+export function summarizeIndexerHealth(
+  stats: IndexerStats,
+  statuses: IndexerStatus[],
+): IndexerHealthSummary[] {
+  const rows = new Map<number, IndexerHealthSummary>();
+  for (const stat of stats.indexers ?? []) {
+    rows.set(stat.indexerId, {
+      indexerId: stat.indexerId,
+      name: stat.indexerName,
+      queries: stat.numberOfQueries,
+      grabs: stat.numberOfGrabs,
+      failedQueries: stat.numberOfFailedQueries,
+      failedGrabs: stat.numberOfFailedGrabs,
+      averageResponseTimeMs: stat.averageResponseTime,
+    });
+  }
+  for (const status of statuses) {
+    const row = rows.get(status.indexerId) ?? { indexerId: status.indexerId };
+    rows.set(status.indexerId, {
+      ...row,
+      disabledTill: status.disabledTill,
+      mostRecentFailure: status.mostRecentFailure,
+      initialFailure: status.initialFailure,
+    });
+  }
+  return [...rows.values()];
 }
