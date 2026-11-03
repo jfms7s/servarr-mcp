@@ -1,4 +1,5 @@
 import type {
+  CombinedRatings,
   CreditRole,
   MediaInfo,
   MediaRequest,
@@ -6,6 +7,7 @@ import type {
   OverseerrUser,
   PersonDetails,
   RadarrSettings,
+  RtRating,
   SearchResponse,
   SearchResult,
   TvDetails,
@@ -301,4 +303,38 @@ export function summarizeRadarrSettings(server: RadarrSettings): RadarrServerSum
     syncEnabled: server.syncEnabled,
     preventSearch: server.preventSearch,
   };
+}
+
+export interface RatingsSummary {
+  rottenTomatoes?: {
+    criticsScore?: number;
+    criticsRating?: string;
+    audienceScore?: number;
+    audienceRating?: string;
+    url?: string;
+  };
+  imdb?: { score?: number; url?: string };
+}
+
+function summarizeRt(rt: RtRating): RatingsSummary['rottenTomatoes'] {
+  return {
+    criticsScore: rt.criticsScore,
+    criticsRating: rt.criticsRating,
+    audienceScore: rt.audienceScore,
+    audienceRating: rt.audienceRating,
+    url: rt.url,
+  };
+}
+
+/** Movie ratings (/movie/{id}/ratingscombined): Rotten Tomatoes and IMDb. */
+export function summarizeMovieRatings(ratings: CombinedRatings): RatingsSummary {
+  return {
+    rottenTomatoes: ratings.rt ? summarizeRt(ratings.rt) : undefined,
+    imdb: ratings.imdb ? { score: ratings.imdb.criticsScore, url: ratings.imdb.url } : undefined,
+  };
+}
+
+/** TV ratings (/tv/{id}/ratings): Rotten Tomatoes only. */
+export function summarizeTvRatings(rt: RtRating): RatingsSummary {
+  return { rottenTomatoes: summarizeRt(rt) };
 }

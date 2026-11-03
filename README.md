@@ -221,7 +221,7 @@ A compromised bearer token gives an attacker complete control to delete your lib
 
 ## Tools
 
-This server exposes 96 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (97).
+This server exposes 90 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (91).
 
 ### Sonarr (30 tools)
 
@@ -307,7 +307,7 @@ This server exposes 96 tools across the four products, plus `servarr_media_clean
 | `prowlarr_list_download_clients` | List download clients configured in Prowlarr |
 | `prowlarr_run_command` | Run administrative commands (sync, health check) |
 
-### Overseerr (27 tools)
+### Overseerr (21 tools)
 
 Overseerr and Jellyseerr merged into [Seerr](https://github.com/seerr-team/seerr), which keeps the Overseerr `/api/v1`. These tools work against either; they keep the `overseerr_` prefix so existing prompts and client registrations don't break. New Overseerr-only tools are on hold until the move to Seerr.
 
@@ -317,16 +317,10 @@ Overseerr and Jellyseerr merged into [Seerr](https://github.com/seerr-team/seerr
 | `overseerr_discover_movies` | Discover popular and upcoming movies from TMDB |
 | `overseerr_discover_tv` | Discover popular and upcoming TV shows from TMDB |
 | `overseerr_get_trending` | List currently trending movies and TV shows |
-| `overseerr_get_movie` | Get a summary of Overseerr/TMDB details for one movie (titles, truncated overview, dates, runtime, votes, genres, request/availability status) |
-| `overseerr_get_tv` | Get a summary of Overseerr/TMDB details for one TV series (names, truncated overview, air dates, season/episode counts, votes, genres, request/availability status) |
-| `overseerr_get_movie_recommendations` | Get movies recommended based on a given movie |
-| `overseerr_get_similar_movies` | Get movies similar to a given movie |
-| `overseerr_get_tv_recommendations` | Get TV shows recommended based on a given show |
-| `overseerr_get_similar_tv` | Get TV shows similar to a given show |
-| `overseerr_get_movie_ratings` | Get Rotten Tomatoes and IMDB ratings for a movie |
-| `overseerr_get_tv_ratings` | Get Rotten Tomatoes ratings for a TV show |
-| `overseerr_get_person` | Get biography and details for a person |
-| `overseerr_get_person_credits` | Get a person's combined movie and TV credits, newest first; at most `limit` (default 50) cast and crew rows each, with totals |
+| `overseerr_get_movie` | Get a summary of Overseerr/TMDB details for one movie (titles, truncated overview, dates, runtime, votes, genres, request/availability status, Rotten Tomatoes and IMDb ratings) |
+| `overseerr_get_tv` | Get a summary of Overseerr/TMDB details for one TV series (names, truncated overview, air dates, season/episode counts, votes, genres, request/availability status, Rotten Tomatoes ratings) |
+| `overseerr_get_related` | Get TMDB `recommendations` or `similar` titles for a movie or TV series |
+| `overseerr_get_person` | Get a person's biography and details with their combined movie and TV credits, newest first; at most `limit` (default 50) cast and crew rows each, with totals |
 | `overseerr_list_requests` | List media requests with optional filtering and sorting; `includeCounts: true` adds counts by status |
 | `overseerr_get_request` | Get one media request by id |
 | `overseerr_create_request` | Request that a movie or TV show be added |
