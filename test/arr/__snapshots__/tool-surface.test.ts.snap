@@ -100,7 +100,7 @@ exports[`arr tool surface > keeps every Radarr tool as it is 1`] = `
     "name": "radarr_lookup_movie",
   },
   {
-    "description": "Add a new movie to Radarr. Get tmdbId from radarr_lookup_movie, qualityProfileId and rootFolderPath from radarr_list_options.",
+    "description": "Add a new movie to Radarr. Get tmdbId from radarr_lookup_movie, qualityProfileId and rootFolderPath from radarr_list_options. Household requests go through Overseerr (overseerr_create_request) so they're tracked and approved; use radarr_add_movie / sonarr_add_series for direct adds by the owner.",
     "effect": "write",
     "input": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -926,7 +926,7 @@ exports[`arr tool surface > keeps every Sonarr tool as it is 1`] = `
     "name": "sonarr_lookup_series",
   },
   {
-    "description": "Add a new series to Sonarr. Get tvdbId from sonarr_lookup_series, qualityProfileId and rootFolderPath from sonarr_list_options.",
+    "description": "Add a new series to Sonarr. Get tvdbId from sonarr_lookup_series, qualityProfileId and rootFolderPath from sonarr_list_options. Household requests go through Overseerr (overseerr_create_request) so they're tracked and approved; use radarr_add_movie / sonarr_add_series for direct adds by the owner.",
     "effect": "write",
     "input": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
