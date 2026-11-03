@@ -1,13 +1,27 @@
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
-import { summarizeQualityProfile, summarizeRootFolder, summarizeUnmappedFolder } from './shape.js';
-import type { DiskSpace, HealthCheck, QualityProfile, RootFolder, Tag } from './types.js';
+import {
+  summarizeDiskSpace,
+  summarizeHealthCheck,
+  summarizeQualityProfile,
+  summarizeRootFolder,
+  summarizeSystemStatus,
+  summarizeUnmappedFolder,
+} from './shape.js';
+import type {
+  DiskSpace,
+  HealthCheck,
+  QualityProfile,
+  RootFolder,
+  SystemStatus,
+  Tag,
+} from './types.js';
 
 /** The calls Sonarr's and Radarr's clients share with the same signature. */
 export interface ArrCommonClient {
   listQualityProfiles(): Promise<QualityProfile[]>;
   listRootFolders(): Promise<RootFolder[]>;
   listTags(): Promise<Tag[]>;
-  getSystemStatus(): Promise<unknown>;
+  getSystemStatus(): Promise<SystemStatus>;
   getHealth(): Promise<HealthCheck[]>;
   getDiskSpace(): Promise<DiskSpace[]>;
 }
@@ -27,8 +41,8 @@ export interface ArrCommonLabels {
 }
 
 /**
- * The six read tools Sonarr and Radarr expose identically: quality profiles, root folders,
- * tags, system status, health and disk space, in that order.
+ * The read tools Sonarr and Radarr expose identically: quality profiles, root folders, tags,
+ * and status (system, health and disk space in one call), in that order.
  */
 export function createArrCommonTools(
   client: ArrCommonClient,
@@ -64,27 +78,25 @@ export function createArrCommonTools(
     }),
 
     defineTool({
-      name: `${prefix}_get_system_status`,
+      name: `${prefix}_get_status`,
       effect: 'read',
-      description: `Get ${product} version, OS, Docker status and other system information.`,
+      description:
+        `Get ${product} status in one call: system (version, branch, OS, Docker, start time), ` +
+        `health (the health check warnings and errors about the installation) and disks (free and ` +
+        `total bytes on each drive containing ${items} or root folders).`,
       inputSchema: {},
-      handler: () => client.getSystemStatus(),
-    }),
-
-    defineTool({
-      name: `${prefix}_get_health`,
-      effect: 'read',
-      description: `Check ${product} health status. Returns warnings or errors about the installation.`,
-      inputSchema: {},
-      handler: () => client.getHealth(),
-    }),
-
-    defineTool({
-      name: `${prefix}_get_disk_space`,
-      effect: 'read',
-      description: `List disk space on each drive containing ${items} or root folders.`,
-      inputSchema: {},
-      handler: () => client.getDiskSpace(),
+      handler: async () => {
+        const [system, health, disks] = await Promise.all([
+          client.getSystemStatus(),
+          client.getHealth(),
+          client.getDiskSpace(),
+        ]);
+        return {
+          system: summarizeSystemStatus(system),
+          health: health.map(summarizeHealthCheck),
+          disks: disks.map(summarizeDiskSpace),
+        };
+      },
     }),
   ];
 }

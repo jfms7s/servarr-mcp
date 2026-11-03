@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { createArrCommonTools, type ArrCommonClient } from '../../src/arr/tools.js';
 import { findDuplicates } from '../../src/arr/duplicates.js';
 import { pickDefined } from '../../src/arr/payload.js';
 import { capPreviews, MAX_PREVIEW, rankAndFilterReleases } from '../../src/arr/releases.js';
@@ -92,5 +93,72 @@ describe('findDuplicates', () => {
   it('skips titles that normalise to nothing', () => {
     const items = [item(1, 1, '!!!', '/a'), item(2, 2, '???', '/b')];
     expect(findDuplicates(items, keys).misplaced).toEqual([]);
+  });
+});
+
+describe('<prefix>_get_status', () => {
+  const labels = {
+    product: 'Sonarr',
+    item: 'series',
+    items: 'series',
+    addTool: 'sonarr_add_series',
+    updateTool: 'sonarr_update_series',
+  };
+
+  it('returns shaped system, health and disks from three parallel calls', async () => {
+    const client = {
+      getSystemStatus: vi.fn().mockResolvedValue({
+        appName: 'Sonarr',
+        version: '4.0.16',
+        branch: 'main',
+        osName: 'alpine',
+        osVersion: '3.22',
+        isDocker: true,
+        startTime: '2026-11-01T00:00:00Z',
+        appData: '/config',
+        startupPath: '/app/sonarr/bin',
+        authentication: 'forms',
+        databaseType: 'sqLite',
+      }),
+      getHealth: vi
+        .fn()
+        .mockResolvedValue([
+          { source: 'RootFolderCheck', type: 'error', message: 'Missing root folder', id: 4 },
+        ]),
+      getDiskSpace: vi
+        .fn()
+        .mockResolvedValue([{ path: '/media', label: 'media', freeSpace: 10, totalSpace: 100 }]),
+    } as unknown as ArrCommonClient;
+    const tool = createArrCommonTools(client, 'sonarr', labels).find(
+      (t) => t.name === 'sonarr_get_status',
+    );
+    if (!tool) throw new Error('sonarr_get_status is not registered');
+
+    const result = await tool.handler({});
+
+    expect(result).toEqual({
+      system: {
+        appName: 'Sonarr',
+        version: '4.0.16',
+        branch: 'main',
+        osName: 'alpine',
+        osVersion: '3.22',
+        isDocker: true,
+        startTime: '2026-11-01T00:00:00Z',
+      },
+      health: [{ source: 'RootFolderCheck', type: 'error', message: 'Missing root folder' }],
+      disks: [{ path: '/media', label: 'media', freeSpace: 10, totalSpace: 100 }],
+    });
+    expect(JSON.stringify(result)).not.toMatch(/appData|startupPath|authentication|"id":/);
+    expect(client.getSystemStatus).toHaveBeenCalledTimes(1);
+    expect(client.getHealth).toHaveBeenCalledTimes(1);
+    expect(client.getDiskSpace).toHaveBeenCalledTimes(1);
+  });
+
+  it('replaces the three single-part tools', () => {
+    const names = createArrCommonTools({} as ArrCommonClient, 'radarr', labels).map((t) => t.name);
+    expect(names).toContain('radarr_get_status');
+    for (const old of ['radarr_get_system_status', 'radarr_get_health', 'radarr_get_disk_space'])
+      expect(names).not.toContain(old);
   });
 });

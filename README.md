@@ -221,9 +221,9 @@ A compromised bearer token gives an attacker complete control to delete your lib
 
 ## Tools
 
-This server exposes 104 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (105).
+This server exposes 100 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (101).
 
-### Sonarr (34 tools)
+### Sonarr (32 tools)
 
 | Tool | Purpose |
 |------|---------|
@@ -258,11 +258,9 @@ This server exposes 104 tools across the four products, plus `servarr_media_clea
 | `sonarr_find_duplicate_series` | Report series present under more than one root folder |
 | `sonarr_list_root_folders` | List configured root folders with free space and an unmapped folder count |
 | `sonarr_list_tags` | List all tags available for series organization |
-| `sonarr_get_system_status` | Get Sonarr version and system information |
-| `sonarr_get_health` | Check Sonarr health status and warnings |
-| `sonarr_get_disk_space` | List disk space on drives containing series |
+| `sonarr_get_status` | Get Sonarr version, health warnings and disk space on drives containing series, in one call |
 
-### Radarr (32 tools)
+### Radarr (30 tools)
 
 | Tool | Purpose |
 |------|---------|
@@ -295,9 +293,7 @@ This server exposes 104 tools across the four products, plus `servarr_media_clea
 | `radarr_find_duplicate_movies` | Report films present under more than one root folder |
 | `radarr_list_root_folders` | List configured root folders with free space and an unmapped folder count |
 | `radarr_list_tags` | List all tags available for movie organization |
-| `radarr_get_system_status` | Get Radarr version and system information |
-| `radarr_get_health` | Check Radarr health status and warnings |
-| `radarr_get_disk_space` | List disk space on drives containing movies |
+| `radarr_get_status` | Get Radarr version, health warnings and disk space on drives containing movies, in one call |
 
 ### Prowlarr (11 tools)
 

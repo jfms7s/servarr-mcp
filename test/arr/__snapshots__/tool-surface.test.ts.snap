@@ -802,7 +802,7 @@ exports[`arr tool surface > keeps every Radarr tool as it is 1`] = `
     "name": "radarr_list_tags",
   },
   {
-    "description": "Get Radarr version, OS, Docker status and other system information.",
+    "description": "Get Radarr status in one call: system (version, branch, OS, Docker, start time), health (the health check warnings and errors about the installation) and disks (free and total bytes on each drive containing movies or root folders).",
     "effect": "read",
     "input": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -810,29 +810,7 @@ exports[`arr tool surface > keeps every Radarr tool as it is 1`] = `
       "properties": {},
       "type": "object",
     },
-    "name": "radarr_get_system_status",
-  },
-  {
-    "description": "Check Radarr health status. Returns warnings or errors about the installation.",
-    "effect": "read",
-    "input": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object",
-    },
-    "name": "radarr_get_health",
-  },
-  {
-    "description": "List disk space on each drive containing movies or root folders.",
-    "effect": "read",
-    "input": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object",
-    },
-    "name": "radarr_get_disk_space",
+    "name": "radarr_get_status",
   },
   {
     "description": "Scan a folder and import any movie file found into an existing movie entry in Radarr. This is asynchronous — it returns a command id that can be polled with radarr_get_command. Important: the movie must already exist in Radarr for the file to attach to it; otherwise the scan will not import it. Use folderPath from radarr_list_unmapped_folders.",
@@ -1595,7 +1573,7 @@ exports[`arr tool surface > keeps every Sonarr tool as it is 1`] = `
     "name": "sonarr_list_tags",
   },
   {
-    "description": "Get Sonarr version, OS, Docker status and other system information.",
+    "description": "Get Sonarr status in one call: system (version, branch, OS, Docker, start time), health (the health check warnings and errors about the installation) and disks (free and total bytes on each drive containing series or root folders).",
     "effect": "read",
     "input": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1603,29 +1581,7 @@ exports[`arr tool surface > keeps every Sonarr tool as it is 1`] = `
       "properties": {},
       "type": "object",
     },
-    "name": "sonarr_get_system_status",
-  },
-  {
-    "description": "Check Sonarr health status. Returns warnings or errors about the installation.",
-    "effect": "read",
-    "input": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object",
-    },
-    "name": "sonarr_get_health",
-  },
-  {
-    "description": "List disk space on each drive containing series or root folders.",
-    "effect": "read",
-    "input": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object",
-    },
-    "name": "sonarr_get_disk_space",
+    "name": "sonarr_get_status",
   },
   {
     "description": "Run a live interactive search across indexers for episode or season releases (can take several seconds). Results are in Sonarr's preference order with rank. Rejections are Sonarr's verbatim reasons for not choosing a release automatically. Use guid + indexerId with sonarr_grab_release.",
