@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ArrApiError } from '../http/errors.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { OverseerrClient } from './client.js';
 import type { UpdateRequestPayload } from './types.js';
@@ -12,7 +13,10 @@ import {
   summarizePersonDetails,
   summarizeCreditRole,
   summarizeRadarrSettings,
+  summarizeMovieRatings,
+  summarizeTvRatings,
   type CreditRoleSummary,
+  type RatingsSummary,
 } from './shape.js';
 
 const DEFAULT_CREDITS_LIMIT = 50;
@@ -23,6 +27,24 @@ function byNewest(a: CreditRoleSummary, b: CreditRoleSummary): number {
   const aDate = a.releaseDate ?? a.firstAirDate ?? '';
   const bDate = b.releaseDate ?? b.firstAirDate ?? '';
   return bDate.localeCompare(aDate);
+}
+
+/**
+ * Ratings are an extra on the details tools: Overseerr answers 404 when it has none and 500
+ * when Rotten Tomatoes or IMDb fails, and neither should fail the details call. Only an
+ * answered request is tolerated; an unreachable Overseerr still throws.
+ */
+async function optionalRatings<T>(
+  fetchRatings: () => Promise<T>,
+  summarize: (ratings: T) => RatingsSummary,
+): Promise<{ ratings: RatingsSummary } | { ratingsUnavailable: string }> {
+  try {
+    return { ratings: summarize(await fetchRatings()) };
+  } catch (error) {
+    if (error instanceof ArrApiError && error.status !== undefined)
+      return { ratingsUnavailable: error.message };
+    throw error;
+  }
 }
 
 export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] {
@@ -92,11 +114,19 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       effect: 'read',
       description:
         'Get a summary of Overseerr/TMDB details for one movie: ids, titles, overview (truncated), tagline, release date, ' +
-        'runtime, status, poster/backdrop paths, vote average and count, genres, and its request/availability status (mediaInfo).',
+        'runtime, status, poster/backdrop paths, vote average and count, genres, its request/availability status (mediaInfo), ' +
+        'and ratings (Rotten Tomatoes critics/audience scores and IMDb score, when Overseerr has them; otherwise ' +
+        'ratingsUnavailable says why). Use overseerr_get_related for recommendations and similar movies.',
       inputSchema: {
         movieId: z.number().int().describe('TMDB movie id'),
       },
-      handler: async (args) => summarizeMovieDetails(await client.getMovie(args.movieId)),
+      handler: async (args) => {
+        const [movie, ratings] = await Promise.all([
+          client.getMovie(args.movieId),
+          optionalRatings(() => client.getMovieRatings(args.movieId), summarizeMovieRatings),
+        ]);
+        return { ...summarizeMovieDetails(movie), ...ratings };
+      },
     }),
 
     defineTool({
@@ -104,12 +134,45 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
       effect: 'read',
       description:
         'Get a summary of Overseerr/TMDB details for one TV series: ids, names, overview (truncated), tagline, first/last air ' +
-        'dates, status, episode and season counts, seasons, poster/backdrop paths, vote average and count, genres, and its ' +
-        'request/availability status (mediaInfo).',
+        'dates, status, episode and season counts, seasons, poster/backdrop paths, vote average and count, genres, its ' +
+        'request/availability status (mediaInfo), and ratings (Rotten Tomatoes critics/audience scores, when Overseerr has ' +
+        'them; otherwise ratingsUnavailable says why). Use overseerr_get_related for recommendations and similar shows.',
       inputSchema: {
         tvId: z.number().int().describe('TMDB TV series id'),
       },
-      handler: async (args) => summarizeTvDetails(await client.getTv(args.tvId)),
+      handler: async (args) => {
+        const [tv, ratings] = await Promise.all([
+          client.getTv(args.tvId),
+          optionalRatings(() => client.getTvRatings(args.tvId), summarizeTvRatings),
+        ]);
+        return { ...summarizeTvDetails(tv), ...ratings };
+      },
+    }),
+
+    defineTool({
+      name: 'overseerr_get_related',
+      effect: 'read',
+      description:
+        'Get movies or TV shows related to one title: relation "recommendations" (TMDB recommendations based on it) or ' +
+        '"similar" (TMDB titles similar to it). Results are shaped like overseerr_search results, so their ids work with ' +
+        'overseerr_get_movie, overseerr_get_tv and overseerr_create_request.',
+      inputSchema: {
+        mediaType: z.enum(['movie', 'tv']).describe('movie or tv'),
+        id: z.number().int().describe('TMDB id of the movie or TV series'),
+        relation: z.enum(['recommendations', 'similar']).describe('recommendations or similar'),
+        page: z.number().int().min(1).optional().describe('Page number, starting at 1 (default 1)'),
+        language: z.string().optional().describe('ISO 639-1 language code, e.g. "en"'),
+      },
+      handler: async ({ mediaType, id, relation, page, language }) => {
+        const fetchRelated = {
+          movie: {
+            recommendations: client.getMovieRecommendations,
+            similar: client.getSimilarMovies,
+          },
+          tv: { recommendations: client.getTvRecommendations, similar: client.getSimilarTv },
+        }[mediaType][relation];
+        return summarizeSearchResponse(await fetchRelated(id, page, language));
+      },
     }),
 
     defineTool({
@@ -309,103 +372,12 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
     }),
 
     defineTool({
-      name: 'overseerr_get_movie_recommendations',
-      effect: 'read',
-      description:
-        'Get movies recommended based on a given movie. Use the movieId from overseerr_get_movie or overseerr_search.',
-      inputSchema: {
-        movieId: z.number().int().describe('TMDB movie id'),
-        page: z.number().int().min(1).optional().describe('Page number, starting at 1 (default 1)'),
-        language: z.string().optional().describe('ISO 639-1 language code, e.g. "en"'),
-      },
-      handler: async (args) => {
-        const result = await client.getMovieRecommendations(args.movieId, args.page, args.language);
-        return summarizeSearchResponse(result);
-      },
-    }),
-
-    defineTool({
-      name: 'overseerr_get_similar_movies',
-      effect: 'read',
-      description: 'Get movies similar to a given movie.',
-      inputSchema: {
-        movieId: z.number().int().describe('TMDB movie id'),
-        page: z.number().int().min(1).optional().describe('Page number, starting at 1 (default 1)'),
-        language: z.string().optional().describe('ISO 639-1 language code, e.g. "en"'),
-      },
-      handler: async (args) => {
-        const result = await client.getSimilarMovies(args.movieId, args.page, args.language);
-        return summarizeSearchResponse(result);
-      },
-    }),
-
-    defineTool({
-      name: 'overseerr_get_tv_recommendations',
-      effect: 'read',
-      description: 'Get TV shows recommended based on a given show.',
-      inputSchema: {
-        tvId: z.number().int().describe('TMDB TV series id'),
-        page: z.number().int().min(1).optional().describe('Page number, starting at 1 (default 1)'),
-        language: z.string().optional().describe('ISO 639-1 language code, e.g. "en"'),
-      },
-      handler: async (args) => {
-        const result = await client.getTvRecommendations(args.tvId, args.page, args.language);
-        return summarizeSearchResponse(result);
-      },
-    }),
-
-    defineTool({
-      name: 'overseerr_get_similar_tv',
-      effect: 'read',
-      description: 'Get TV shows similar to a given show.',
-      inputSchema: {
-        tvId: z.number().int().describe('TMDB TV series id'),
-        page: z.number().int().min(1).optional().describe('Page number, starting at 1 (default 1)'),
-        language: z.string().optional().describe('ISO 639-1 language code, e.g. "en"'),
-      },
-      handler: async (args) => {
-        const result = await client.getSimilarTv(args.tvId, args.page, args.language);
-        return summarizeSearchResponse(result);
-      },
-    }),
-
-    defineTool({
-      name: 'overseerr_get_movie_ratings',
-      effect: 'read',
-      description: 'Get Rotten Tomatoes and IMDB ratings for a movie, when available.',
-      inputSchema: {
-        movieId: z.number().int().describe('TMDB movie id'),
-      },
-      handler: async (args) => client.getMovieRatings(args.movieId),
-    }),
-
-    defineTool({
-      name: 'overseerr_get_tv_ratings',
-      effect: 'read',
-      description: 'Get Rotten Tomatoes ratings for a TV show, when available.',
-      inputSchema: {
-        tvId: z.number().int().describe('TMDB TV series id'),
-      },
-      handler: async (args) => client.getTvRatings(args.tvId),
-    }),
-
-    defineTool({
       name: 'overseerr_get_person',
       effect: 'read',
-      description: 'Get biography and details for a person (actor, director, etc).',
-      inputSchema: {
-        personId: z.number().int().describe('TMDB person id'),
-      },
-      handler: async (args) => summarizePersonDetails(await client.getPerson(args.personId)),
-    }),
-
-    defineTool({
-      name: 'overseerr_get_person_credits',
-      effect: 'read',
       description:
-        "Get a person's combined movie and TV credits (cast and crew roles), newest first. " +
-        `Returns at most limit (default ${DEFAULT_CREDITS_LIMIT}) cast and limit crew rows, with castTotal and crewTotal ` +
-        'giving the full counts.',
+        'Get a person (actor, director, etc.): biography (truncated) and details, plus credits, their combined movie ' +
+        `and TV cast and crew roles, newest first. Returns at most limit (default ${DEFAULT_CREDITS_LIMIT}) cast and ` +
+        'limit crew rows, with castTotal and crewTotal giving the full counts.',
       inputSchema: {
         personId: z.number().int().describe('TMDB person id'),
         limit: z
@@ -418,16 +390,21 @@ export function createOverseerrTools(client: OverseerrClient): ToolDefinition[] 
           ),
       },
       handler: async (args) => {
-        const credits = await client.getPersonCredits(args.personId);
+        const [person, credits] = await Promise.all([
+          client.getPerson(args.personId),
+          client.getPersonCredits(args.personId),
+        ]);
         const limit = args.limit ?? DEFAULT_CREDITS_LIMIT;
         const newest = (roles: typeof credits.cast) =>
           roles.map(summarizeCreditRole).sort(byNewest).slice(0, limit);
         return {
-          id: credits.id,
-          castTotal: credits.cast.length,
-          crewTotal: credits.crew.length,
-          cast: newest(credits.cast),
-          crew: newest(credits.crew),
+          ...summarizePersonDetails(person),
+          credits: {
+            castTotal: credits.cast.length,
+            crewTotal: credits.crew.length,
+            cast: newest(credits.cast),
+            crew: newest(credits.crew),
+          },
         };
       },
     }),

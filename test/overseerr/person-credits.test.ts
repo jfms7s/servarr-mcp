@@ -4,12 +4,17 @@ import { createOverseerrTools } from '../../src/overseerr/tools.js';
 
 function creditsTool(credits: unknown) {
   const getPersonCredits = vi.fn().mockResolvedValue(credits);
+  const getPerson = vi.fn().mockResolvedValue({ id: 7, name: 'Someone' });
   const tools = createOverseerrTools({
+    getPerson,
     getPersonCredits,
   } as Partial<OverseerrClient> as OverseerrClient);
-  const tool = tools.find((t) => t.name === 'overseerr_get_person_credits');
-  if (!tool) throw new Error('no overseerr_get_person_credits tool');
-  return tool;
+  const tool = tools.find((t) => t.name === 'overseerr_get_person');
+  if (!tool) throw new Error('no overseerr_get_person tool');
+  return {
+    handler: async (args: Record<string, unknown>) =>
+      ((await tool.handler(args)) as { credits: unknown }).credits,
+  };
 }
 
 // Ids 1..n with dates that are not already in order, half movies (releaseDate)
@@ -28,17 +33,16 @@ function roles(n: number, kind: 'cast' | 'crew') {
 const dateOf = (r: { releaseDate?: string; firstAirDate?: string }) =>
   r.releaseDate ?? r.firstAirDate ?? '';
 
-describe('overseerr_get_person_credits', () => {
+describe('overseerr_get_person credits', () => {
   it('returns at most 50 cast and 50 crew rows by default, newest first, with totals', async () => {
     const tool = creditsTool({ id: 7, cast: roles(170, 'cast'), crew: roles(80, 'crew') });
     const result = (await tool.handler({ personId: 7 })) as {
-      id: number;
       castTotal: number;
       crewTotal: number;
       cast: Array<{ releaseDate?: string; firstAirDate?: string }>;
       crew: Array<{ releaseDate?: string; firstAirDate?: string }>;
     };
-    expect(result).toMatchObject({ id: 7, castTotal: 170, crewTotal: 80 });
+    expect(result).toMatchObject({ castTotal: 170, crewTotal: 80 });
     expect(result.cast).toHaveLength(50);
     expect(result.crew).toHaveLength(50);
     const castDates = result.cast.map(dateOf);
