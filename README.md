@@ -221,7 +221,7 @@ A compromised bearer token gives an attacker complete control to delete your lib
 
 ## Tools
 
-This server exposes 107 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (108).
+This server exposes 104 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (105).
 
 ### Sonarr (34 tools)
 
@@ -299,7 +299,7 @@ This server exposes 107 tools across the four products, plus `servarr_media_clea
 | `radarr_get_health` | Check Radarr health status and warnings |
 | `radarr_get_disk_space` | List disk space on drives containing movies |
 
-### Prowlarr (14 tools)
+### Prowlarr (11 tools)
 
 | Tool | Purpose |
 |------|---------|
@@ -308,15 +308,12 @@ This server exposes 107 tools across the four products, plus `servarr_media_clea
 | `prowlarr_list_indexers` | List configured indexers with protocol and status |
 | `prowlarr_get_indexer` | Get one indexer: summary, app profile, tags and its settings as name/value pairs |
 | `prowlarr_test_indexer` | Test connectivity of an indexer |
-| `prowlarr_get_indexer_stats` | Get query and grab statistics for each indexer |
-| `prowlarr_get_indexer_status` | Get health and backoff status of indexers |
+| `prowlarr_get_status` | Get version, health checks and per-indexer query/grab/failure counts and backoff, in one call |
 | `prowlarr_list_categories` | List newznab categories supported by indexers |
 | `prowlarr_get_history` | Get history of indexer queries and grabs |
 | `prowlarr_list_applications` | List *arr applications synced by Prowlarr |
 | `prowlarr_list_download_clients` | List download clients configured in Prowlarr |
 | `prowlarr_run_command` | Run administrative commands (sync, health check) |
-| `prowlarr_get_system_status` | Get Prowlarr version and system information |
-| `prowlarr_get_health` | Get health check results for Prowlarr |
 
 ### Overseerr (27 tools)
 

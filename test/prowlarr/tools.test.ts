@@ -13,11 +13,11 @@ function toolsFor(overrides: Partial<ProwlarrClient>) {
 }
 
 describe('createProwlarrTools', () => {
-  it('registers all 14 tools with unique prowlarr_ prefixed names', () => {
+  it('registers all 11 tools with unique prowlarr_ prefixed names', () => {
     const names = createProwlarrTools({} as ProwlarrClient).map((t) => t.name);
-    expect(names).toHaveLength(14);
+    expect(names).toHaveLength(11);
     expect(names.every((n) => n.startsWith('prowlarr_'))).toBe(true);
-    expect(new Set(names).size).toBe(14);
+    expect(new Set(names).size).toBe(11);
   });
 
   it('summarises search results with size in gigabytes', async () => {
@@ -128,5 +128,116 @@ describe('createProwlarrTools', () => {
       fields: [{ name: 'baseUrl', value: 'https://nyaa.si' }],
     });
     expect(JSON.stringify(result)).not.toMatch(/label|helpText|selectOptions/);
+  });
+
+  it('returns shaped system, health and per-indexer status from one call', async () => {
+    const getSystemStatus = vi.fn().mockResolvedValue({
+      appName: 'Prowlarr',
+      version: '1.30.0',
+      osName: 'alpine',
+      isDocker: true,
+      startTime: '2026-11-01T00:00:00Z',
+      authentication: 'forms',
+      appData: '/config',
+      startupPath: '/app/prowlarr/bin',
+    });
+    const getHealth = vi.fn().mockResolvedValue([
+      {
+        source: 'IndexerStatusCheck',
+        type: 'warning',
+        message: 'Indexers unavailable due to failures: nzbgeek',
+        wikiUrl: 'https://wiki.servarr.com/prowlarr/system#indexers-are-unavailable',
+        id: 9,
+      },
+    ]);
+    const getIndexerStats = vi.fn().mockResolvedValue({
+      id: 1,
+      indexers: [
+        {
+          indexerId: 1,
+          indexerName: 'nzbgeek',
+          averageResponseTime: 420,
+          numberOfQueries: 100,
+          numberOfGrabs: 7,
+          numberOfRssQueries: 50,
+          numberOfAuthQueries: 3,
+          numberOfFailedQueries: 12,
+          numberOfFailedGrabs: 1,
+          numberOfFailedRssQueries: 0,
+          numberOfFailedAuthQueries: 0,
+        },
+        {
+          indexerId: 2,
+          indexerName: 'tracker',
+          averageResponseTime: 100,
+          numberOfQueries: 10,
+          numberOfGrabs: 2,
+          numberOfFailedQueries: 0,
+          numberOfFailedGrabs: 0,
+        },
+      ],
+      userAgents: [{ userAgent: 'Sonarr', numberOfQueries: 1 }],
+      hosts: [{ host: '10.0.0.1', numberOfQueries: 1 }],
+    });
+    const getIndexerStatus = vi.fn().mockResolvedValue([
+      {
+        id: 5,
+        indexerId: 1,
+        disabledTill: '2026-11-03T12:00:00Z',
+        mostRecentFailure: '2026-11-03T11:00:00Z',
+        initialFailure: '2026-11-03T10:00:00Z',
+        cookies: { session: 'secret' },
+      },
+      { id: 6, indexerId: 3, disabledTill: '2026-11-03T13:00:00Z' },
+    ]);
+    const get = toolsFor({ getSystemStatus, getHealth, getIndexerStats, getIndexerStatus });
+
+    const result = await get('prowlarr_get_status').handler({});
+
+    expect(result).toEqual({
+      system: {
+        appName: 'Prowlarr',
+        version: '1.30.0',
+        osName: 'alpine',
+        isDocker: true,
+        startTime: '2026-11-01T00:00:00Z',
+      },
+      health: [
+        {
+          source: 'IndexerStatusCheck',
+          type: 'warning',
+          message: 'Indexers unavailable due to failures: nzbgeek',
+          wikiUrl: 'https://wiki.servarr.com/prowlarr/system#indexers-are-unavailable',
+        },
+      ],
+      indexers: [
+        {
+          indexerId: 1,
+          name: 'nzbgeek',
+          queries: 100,
+          grabs: 7,
+          failedQueries: 12,
+          failedGrabs: 1,
+          averageResponseTimeMs: 420,
+          disabledTill: '2026-11-03T12:00:00Z',
+          mostRecentFailure: '2026-11-03T11:00:00Z',
+          initialFailure: '2026-11-03T10:00:00Z',
+        },
+        {
+          indexerId: 2,
+          name: 'tracker',
+          queries: 10,
+          grabs: 2,
+          failedQueries: 0,
+          failedGrabs: 0,
+          averageResponseTimeMs: 100,
+        },
+        { indexerId: 3, disabledTill: '2026-11-03T13:00:00Z' },
+      ],
+    });
+    // No raw upstream record leaks through.
+    const text = JSON.stringify(result);
+    for (const raw of ['authentication', 'appData', 'userAgents', 'hosts', 'cookies', '"id":'])
+      expect(text).not.toContain(raw);
   });
 });

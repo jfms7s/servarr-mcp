@@ -1,12 +1,13 @@
 export type {
+  DiskSpace,
+  HealthCheck,
+  PageParams,
+  PagedResponse,
   QualityProfile,
   RootFolder,
-  UnmappedFolder,
+  SystemStatus,
   Tag,
-  DiskSpace,
-  PageParams,
-  HealthCheck,
-  PagedResponse,
+  UnmappedFolder,
 } from '../arr/types.js';
 
 export interface Season {
@@ -138,15 +139,6 @@ export interface CommandResource {
   started?: string;
   ended?: string;
   message?: string;
-}
-
-export interface SystemStatus {
-  appName: string;
-  version: string;
-  buildTime?: string;
-  osName?: string;
-  isDocker?: boolean;
-  startTime?: string;
 }
 
 export interface Release {

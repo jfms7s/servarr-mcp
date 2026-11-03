@@ -1,4 +1,11 @@
-import type { QualityProfile, RootFolder, UnmappedFolder } from './types.js';
+import type {
+  DiskSpace,
+  HealthCheck,
+  QualityProfile,
+  RootFolder,
+  SystemStatus,
+  UnmappedFolder,
+} from './types.js';
 
 export interface QualityProfileSummary {
   id: number;
@@ -76,5 +83,55 @@ export function summarizeUnmappedFolder(
     folderName: folder.name,
     folderPath: folder.path,
     relativePath: folder.relativePath,
+  };
+}
+
+export interface SystemStatusSummary {
+  appName: string;
+  version: string;
+  branch?: string;
+  osName?: string;
+  osVersion?: string;
+  isDocker?: boolean;
+  startTime?: string;
+}
+
+/** The version and host facts of /system/status, without paths, auth or build internals. */
+export function summarizeSystemStatus(status: SystemStatus): SystemStatusSummary {
+  return {
+    appName: status.appName,
+    version: status.version,
+    branch: status.branch,
+    osName: status.osName,
+    osVersion: status.osVersion,
+    isDocker: status.isDocker,
+    startTime: status.startTime,
+  };
+}
+
+export interface HealthCheckSummary {
+  source: string;
+  type: string;
+  message: string;
+  wikiUrl?: string;
+}
+
+export function summarizeHealthCheck(check: HealthCheck): HealthCheckSummary {
+  return { source: check.source, type: check.type, message: check.message, wikiUrl: check.wikiUrl };
+}
+
+export interface DiskSpaceSummary {
+  path: string;
+  label: string;
+  freeSpace: number;
+  totalSpace: number;
+}
+
+export function summarizeDiskSpace(disk: DiskSpace): DiskSpaceSummary {
+  return {
+    path: disk.path,
+    label: disk.label,
+    freeSpace: disk.freeSpace,
+    totalSpace: disk.totalSpace,
   };
 }
