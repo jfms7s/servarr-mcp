@@ -23,11 +23,11 @@ const anime = {
 };
 
 describe('createSonarrTools', () => {
-  it('registers all 30 tools with unique sonarr_ prefixed names', () => {
+  it('registers all 31 tools with unique sonarr_ prefixed names', () => {
     const names = createSonarrTools({} as SonarrClient).map((t) => t.name);
-    expect(names).toHaveLength(30);
+    expect(names).toHaveLength(31);
     expect(names.every((n) => n.startsWith('sonarr_'))).toBe(true);
-    expect(new Set(names).size).toBe(30);
+    expect(new Set(names).size).toBe(31);
   });
 
   it('gives every tool a non-empty description', () => {

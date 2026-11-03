@@ -1,3 +1,4 @@
+import type { ManualImportRejection } from '../arr/manual-import.js';
 export type {
   DiskSpace,
   HealthCheck,
@@ -129,6 +130,41 @@ export interface CommandPayload {
   seasonNumber?: number;
   path?: string;
   importMode?: string;
+  /** ManualImport only. */
+  files?: SonarrManualImportFile[];
+}
+
+/** One row of GET /manualimport: a file the arr found, its mapping, and why it would refuse it. */
+export interface SonarrManualImportCandidate {
+  path: string;
+  relativePath?: string;
+  folderName?: string;
+  name?: string;
+  size: number;
+  series?: { id: number; title: string };
+  seasonNumber?: number;
+  episodes?: Array<{ id: number; seasonNumber: number; episodeNumber: number; title?: string }>;
+  releaseGroup?: string;
+  quality?: { quality: { id: number; name: string } };
+  languages?: Array<{ id: number; name: string }>;
+  releaseType?: string;
+  indexerFlags?: number;
+  downloadId?: string;
+  rejections?: ManualImportRejection[];
+}
+
+/** One file of the ManualImport command, built from a candidate. */
+export interface SonarrManualImportFile {
+  path: string;
+  folderName?: string;
+  seriesId: number;
+  episodeIds: number[];
+  quality?: { quality: { id: number; name: string } };
+  languages?: Array<{ id: number; name: string }>;
+  releaseGroup?: string;
+  indexerFlags?: number;
+  releaseType?: string;
+  downloadId?: string;
 }
 
 export interface CommandResource {

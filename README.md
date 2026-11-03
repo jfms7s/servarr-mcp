@@ -221,9 +221,9 @@ A compromised bearer token gives an attacker complete control to delete your lib
 
 ## Tools
 
-This server exposes 90 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (91).
+This server exposes 92 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (93).
 
-### Sonarr (30 tools)
+### Sonarr (31 tools)
 
 | Tool | Purpose |
 |------|---------|
@@ -254,11 +254,12 @@ This server exposes 90 tools across the four products, plus `servarr_media_clean
 | `sonarr_bulk_edit_series` | Change root folder, quality profile, series type, monitored state or tags on many series at once |
 | `sonarr_list_unmapped_folders` | List folders on disk under each root folder that Sonarr has no series for |
 | `sonarr_import_folder` | Scan a folder and import any episode files found into an existing series |
+| `sonarr_manual_import` | **Destructive:** List the files of a stuck download or folder with Sonarr's mapping and rejection reasons; with `confirm: true` and `files`, import them (rejected ones need `overrideRejections: true`) |
 | `sonarr_get_rename_preview` | Preview the folder and file names a rename would produce, without renaming |
 | `sonarr_find_duplicate_series` | Report series present under more than one root folder |
 | `sonarr_get_status` | Get Sonarr version, health warnings and disk space on drives containing series, in one call |
 
-### Radarr (28 tools)
+### Radarr (29 tools)
 
 | Tool | Purpose |
 |------|---------|
@@ -287,6 +288,7 @@ This server exposes 90 tools across the four products, plus `servarr_media_clean
 | `radarr_bulk_edit_movies` | Change root folder, quality profile, monitored state or tags on many movies at once |
 | `radarr_list_unmapped_folders` | List folders on disk under each root folder that Radarr has no movie for |
 | `radarr_import_folder` | Scan a folder and import any movie file found into an existing movie |
+| `radarr_manual_import` | **Destructive:** List the files of a stuck download or folder with Radarr's mapping and rejection reasons; with `confirm: true` and `files`, import them (rejected ones need `overrideRejections: true`) |
 | `radarr_get_rename_preview` | Preview the folder and file names a rename would produce, without renaming |
 | `radarr_find_duplicate_movies` | Report films present under more than one root folder |
 | `radarr_get_status` | Get Radarr version, health warnings and disk space on drives containing movies, in one call |
@@ -358,6 +360,8 @@ Radarr and Sonarr don't move the files inside the call: the bulk editor (and `*_
 `radarr_list_unmapped_folders` and `sonarr_list_unmapped_folders` show folders present on disk that the application has no entry for; `radarr_import_folder` and `sonarr_import_folder` scan such a folder and import what they find. `radarr_get_rename_preview` and `sonarr_get_rename_preview` show the names a rename would produce before you run one, and the `find_duplicate_*` tools report titles present under more than one root folder.
 
 Routing is decided upstream: `overseerr_list_radarr_servers` reports the `activeDirectory` each Radarr server defaults to, which is usually what determines where new requests land. Note that `overseerr_update_request` changes where a request will be sent — it does not move media that has already been downloaded. Use the Radarr or Sonarr tools for that.
+
+**Stuck imports.** A grab can download and then sit in the queue because Sonarr or Radarr refuses to import it (`trackedDownloadStatus` `warning`, with the reason in `statusMessages`). `sonarr_manual_import` / `radarr_manual_import` with the row's `downloadId` (or a `folder`) list the files the arr found, what it matched each one to, and its rejection reasons, and change nothing. Called again with `confirm: true` and `files` (paths from that list), they queue one `ManualImport` command built from the arr's own candidates: a path not in the list or a file matched to no series/movie is refused, and a rejected file is imported only with `overrideRejections: true` (what ticking it in the web UI's manual import does). Pass `seriesId` / `movieId` when the arr could not match the files. `importMode` `auto` (default) lets the arr decide, `move` or `copy` force one. Poll the returned `commandId` with `*_get_command`.
 
 **Safety note:** deleting files through `radarr_delete_movie` or `sonarr_delete_series` requires `confirmDeleteFiles: true`. Called without it, these tools return a description of what would be lost and delete nothing. `radarr_delete_movie_file` and `sonarr_delete_episode_file` likewise delete nothing without `confirm: true`; called without it, they return `{ wouldDelete: { id, relativePath, path, size, quality, … }, confirmRequired: true }`. The bulk editors deliberately do not expose file deletion at all. The library-wide searches `radarr_run_command` with `MissingMoviesSearch` and `sonarr_run_command` with `MissingEpisodeSearch` search, and may download, every missing monitored item at once, so they need `confirm: true`. Called without it, they return `{ wouldRun: { command, missingCount }, confirmRequired: true }` and start nothing. Searches for specific ids are not gated.
 

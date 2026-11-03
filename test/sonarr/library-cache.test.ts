@@ -163,6 +163,23 @@ describe('Sonarr library cache', () => {
       expect(seriesGets).toBe(1);
     });
 
+    it('a ManualImport command invalidates when queued and when polled complete', async () => {
+      server.use(
+        http.post(url('/command'), () =>
+          HttpResponse.json({ id: 8, name: 'ManualImport', status: 'queued' }),
+        ),
+        http.get(url('/command/8'), () =>
+          HttpResponse.json({ id: 8, name: 'ManualImport', status: 'completed' }),
+        ),
+      );
+      await client.listSeries();
+      await client.runCommand({ name: 'ManualImport', files: [] });
+      await client.listSeries();
+      await client.getCommand(8);
+      await client.listSeries();
+      expect(seriesGets).toBe(3);
+    });
+
     it('polling a library command that has completed invalidates', async () => {
       server.use(
         http.get(url('/command/7'), () =>

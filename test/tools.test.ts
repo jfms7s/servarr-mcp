@@ -24,8 +24,8 @@ describe('buildTools', () => {
       overseerr: instance,
     }).map((t) => t.name);
 
-    expect(names.filter((n) => n.startsWith('sonarr_'))).toHaveLength(30);
-    expect(names.filter((n) => n.startsWith('radarr_'))).toHaveLength(28);
+    expect(names.filter((n) => n.startsWith('sonarr_'))).toHaveLength(31);
+    expect(names.filter((n) => n.startsWith('radarr_'))).toHaveLength(29);
     expect(names.filter((n) => n.startsWith('prowlarr_'))).toHaveLength(11);
     expect(names.filter((n) => n.startsWith('overseerr_'))).toHaveLength(21);
   });
@@ -72,7 +72,7 @@ describe('buildTools', () => {
 
     it('marks every delete, update, bulk edit, grab and import tool destructive', () => {
       const destructive = all.filter((t) =>
-        /_(delete_|update_|bulk_edit_|grab_release$|import_folder$)/.test(t.name),
+        /_(delete_|update_|bulk_edit_|grab_release$|import_folder$|manual_import$)/.test(t.name),
       );
       expect(destructive.length).toBeGreaterThan(0);
       for (const tool of destructive)

@@ -6,8 +6,10 @@ import type {
   MovieFile,
   QueueRecord,
   Release,
+  RadarrManualImportCandidate,
   RenameMovieResource,
 } from './types.js';
+import { rejectionReasons } from '../arr/manual-import.js';
 import { redactHistoryData } from '../arr/redact.js';
 import { summarizeMediaFileRef, type MediaFileRef } from '../arr/shape.js';
 
@@ -285,3 +287,32 @@ export function summarizeRenamePreview(resource: RenameMovieResource): RenamePre
 }
 
 export { summarizeUnmappedFolder, type UnmappedFolderSummary } from '../arr/shape.js';
+
+export interface RadarrManualImportCandidateSummary {
+  path: string;
+  size: number;
+  quality?: string;
+  languages?: string[];
+  releaseGroup?: string;
+  movie?: { id: number; title: string; year?: number };
+  /** The arr's reasons for refusing the file; empty when it would import it. */
+  rejections: string[];
+}
+
+export function summarizeManualImportCandidate(
+  candidate: RadarrManualImportCandidate,
+): RadarrManualImportCandidateSummary {
+  return {
+    path: candidate.path,
+    size: candidate.size,
+    quality: candidate.quality?.quality.name,
+    languages: candidate.languages?.map((language) => language.name),
+    releaseGroup: candidate.releaseGroup,
+    movie: candidate.movie && {
+      id: candidate.movie.id,
+      title: candidate.movie.title,
+      year: candidate.movie.year,
+    },
+    rejections: rejectionReasons(candidate.rejections),
+  };
+}

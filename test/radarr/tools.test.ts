@@ -33,11 +33,11 @@ function roots(...paths: string[]) {
 }
 
 describe('createRadarrTools', () => {
-  it('registers all 28 tools with unique radarr_ prefixed names', () => {
+  it('registers all 29 tools with unique radarr_ prefixed names', () => {
     const names = createRadarrTools({} as RadarrClient).map((t) => t.name);
-    expect(names).toHaveLength(28);
+    expect(names).toHaveLength(29);
     expect(names.every((n) => n.startsWith('radarr_'))).toBe(true);
-    expect(new Set(names).size).toBe(28);
+    expect(new Set(names).size).toBe(29);
   });
 
   it('summarises the movie list', async () => {

@@ -818,6 +818,60 @@ exports[`arr tool surface > keeps every Radarr tool as it is 1`] = `
     },
     "name": "radarr_import_folder",
   },
+  {
+    "description": "Import files the arr will not import on its own: a completed download stuck in the queue (downloadId from radarr_get_queue) or a folder of files. Two stages. Without confirm it lists the candidate files with the Radarr movie they map to and its rejections (why it refuses each one) and changes nothing. With confirm: true and files (paths from that list) it re-reads the candidates and queues one ManualImport command for those files, using the arr's own mapping, quality and languages; a path not in the list, or one the arr could not map to a movie, is an error, and a rejected file needs overrideRejections: true. Pass movieId when the arr could not match the files. importMode auto (default) lets the arr decide: it moves the files, but copies (or hard-links) a download its client is still seeding; move and copy force one. The import runs in the background: poll the returned commandId with radarr_get_command.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "confirm": {
+          "description": "true imports the listed files; without it the tool only lists candidates",
+          "type": "boolean",
+        },
+        "downloadId": {
+          "description": "Download id of a queue row (from the get_queue tool); give this or folder",
+          "minLength": 1,
+          "type": "string",
+        },
+        "files": {
+          "description": "With confirm: the candidate paths to import, exactly as stage one listed them",
+          "items": {
+            "minLength": 1,
+            "type": "string",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "folder": {
+          "description": "Absolute folder path to scan for files; give this or downloadId",
+          "minLength": 1,
+          "type": "string",
+        },
+        "importMode": {
+          "description": "auto (default: move from a download client, as the arr would), move, or copy (keep the original)",
+          "enum": [
+            "auto",
+            "move",
+            "copy",
+          ],
+          "type": "string",
+        },
+        "movieId": {
+          "description": "Only consider files for this movie id; maps files Radarr could not match",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "overrideRejections": {
+          "description": "With confirm: also import listed files the arr rejected (default false)",
+          "type": "boolean",
+        },
+      },
+      "type": "object",
+    },
+    "name": "radarr_manual_import",
+  },
 ]
 `;
 
@@ -1766,6 +1820,60 @@ exports[`arr tool surface > keeps every Sonarr tool as it is 1`] = `
       "type": "object",
     },
     "name": "sonarr_import_folder",
+  },
+  {
+    "description": "Import files the arr will not import on its own: a completed download stuck in the queue (downloadId from sonarr_get_queue) or a folder of files. Two stages. Without confirm it lists the candidate files with the Sonarr series and episodes they map to and its rejections (why it refuses each one) and changes nothing. With confirm: true and files (paths from that list) it re-reads the candidates and queues one ManualImport command for those files, using the arr's own mapping, quality and languages; a path not in the list, or one the arr could not map to a series and episodes, is an error, and a rejected file needs overrideRejections: true. Pass seriesId when the arr could not match the files. importMode auto (default) lets the arr decide: it moves the files, but copies (or hard-links) a download its client is still seeding; move and copy force one. The import runs in the background: poll the returned commandId with sonarr_get_command.",
+    "effect": "destructive",
+    "input": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "confirm": {
+          "description": "true imports the listed files; without it the tool only lists candidates",
+          "type": "boolean",
+        },
+        "downloadId": {
+          "description": "Download id of a queue row (from the get_queue tool); give this or folder",
+          "minLength": 1,
+          "type": "string",
+        },
+        "files": {
+          "description": "With confirm: the candidate paths to import, exactly as stage one listed them",
+          "items": {
+            "minLength": 1,
+            "type": "string",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "folder": {
+          "description": "Absolute folder path to scan for files; give this or downloadId",
+          "minLength": 1,
+          "type": "string",
+        },
+        "importMode": {
+          "description": "auto (default: move from a download client, as the arr would), move, or copy (keep the original)",
+          "enum": [
+            "auto",
+            "move",
+            "copy",
+          ],
+          "type": "string",
+        },
+        "overrideRejections": {
+          "description": "With confirm: also import listed files the arr rejected (default false)",
+          "type": "boolean",
+        },
+        "seriesId": {
+          "description": "Only consider files for this series id; maps files Sonarr could not match",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "sonarr_manual_import",
   },
 ]
 `;

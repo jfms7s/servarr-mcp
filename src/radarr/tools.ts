@@ -9,12 +9,13 @@ import { CACHED_LIBRARY_NOTE, refreshInput } from '../arr/library.js';
 import { listWindow, page, pageOf } from '../arr/paging.js';
 import { isWithinRoot, rootFolderOf, relocatePath } from '../arr/paths.js';
 import { findDuplicates } from '../arr/duplicates.js';
+import { checkSource, manualImportInput, buildImportFiles } from '../arr/manual-import.js';
 import { pickDefined } from '../arr/payload.js';
 import { capPreviews, rankAndFilterReleases } from '../arr/releases.js';
 import { createArrCommonTools, createUnmappedFoldersTool } from '../arr/tools.js';
 import { defineTool, type ToolDefinition } from '../mcp/types.js';
 import type { RadarrClient } from './client.js';
-import type { MovieEditorPayload } from './types.js';
+import type { MovieEditorPayload, RadarrManualImportFile } from './types.js';
 import {
   summarizeBlocklistRecord,
   summarizeCollection,
@@ -25,6 +26,7 @@ import {
   summarizeQueueRecord,
   summarizeRelease,
   summarizeRenamePreview,
+  summarizeManualImportCandidate,
 } from './shape.js';
 
 const COMMAND_NAMES = [
@@ -800,6 +802,71 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           commandId: command.id,
           status: command.status,
           message: `Scanning ${path} for movies to import`,
+        };
+      },
+    }),
+
+    defineTool({
+      name: 'radarr_manual_import',
+      effect: 'destructive',
+      description:
+        'Import files the arr will not import on its own: a completed download stuck in the queue (downloadId from ' +
+        'radarr_get_queue) or a folder of files. Two stages. Without confirm it lists the candidate files with the Radarr ' +
+        'movie they map to and its rejections (why it refuses each one) and changes nothing. With confirm: true and ' +
+        'files (paths from that list) it re-reads the candidates and queues one ManualImport command for those files, ' +
+        "using the arr's own mapping, quality and languages; a path not in the list, or one the arr could not map to a " +
+        'movie, is an error, and a rejected file needs overrideRejections: true. Pass movieId when the arr could not match ' +
+        'the files. importMode auto (default) lets the arr decide: it moves the files, but copies (or hard-links) a ' +
+        'download its client is still seeding; move and copy force one. The import runs in the background: poll the ' +
+        'returned commandId with radarr_get_command.',
+      inputSchema: {
+        ...manualImportInput(),
+        movieId: z
+          .number()
+          .int()
+          .optional()
+          .describe('Only consider files for this movie id; maps files Radarr could not match'),
+      },
+      handler: async (args) => {
+        checkSource(args);
+        const candidates = await client.getManualImport(
+          pickDefined(args, ['downloadId', 'folder', 'movieId']),
+        );
+        if (!args.confirm) {
+          return {
+            candidates: candidates.map(summarizeManualImportCandidate),
+            confirmRequired: true,
+            note: 'Nothing imported. Call again with confirm: true and files (paths from candidates) to import.',
+          };
+        }
+        if (!args.files)
+          throw new Error('confirm: true needs files, the candidate paths to import');
+        const { paths, files } = buildImportFiles(candidates, args.files, {
+          overrideRejections: args.overrideRejections,
+          toFile: (candidate): RadarrManualImportFile | string => {
+            if (!candidate.movie) return 'Radarr matched no movie; pass movieId to map it';
+            return {
+              path: candidate.path,
+              folderName: candidate.folderName,
+              movieId: candidate.movie.id,
+              quality: candidate.quality,
+              languages: candidate.languages,
+              releaseGroup: candidate.releaseGroup,
+              indexerFlags: candidate.indexerFlags,
+              downloadId: candidate.downloadId ?? args.downloadId,
+            };
+          },
+        });
+        const command = await client.runCommand({
+          name: 'ManualImport',
+          importMode: args.importMode ?? 'auto',
+          files,
+        });
+        return {
+          commandId: command.id,
+          status: command.status,
+          files: paths,
+          message: `Importing ${paths.length} file(s); poll commandId with radarr_get_command`,
         };
       },
     }),
