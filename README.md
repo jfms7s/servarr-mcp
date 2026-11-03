@@ -221,9 +221,9 @@ A compromised bearer token gives an attacker complete control to delete your lib
 
 ## Tools
 
-This server exposes 100 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (101).
+This server exposes 96 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (97).
 
-### Sonarr (32 tools)
+### Sonarr (30 tools)
 
 | Tool | Purpose |
 |------|---------|
@@ -250,17 +250,15 @@ This server exposes 100 tools across the four products, plus `servarr_media_clea
 | `sonarr_delete_blocklist_item` | **Destructive:** Remove a release from the blocklist |
 | `sonarr_run_command` | Trigger a background command (search, rescan, refresh); the library-wide missing search needs `confirm: true` |
 | `sonarr_get_command` | Poll the status of a background command |
-| `sonarr_list_quality_profiles` | List available quality profiles |
+| `sonarr_list_options` | List quality profiles, root folders (free space, unmapped folder count) and tags, the ids the add, update and bulk-edit tools take |
 | `sonarr_bulk_edit_series` | Change root folder, quality profile, series type, monitored state or tags on many series at once |
 | `sonarr_list_unmapped_folders` | List folders on disk under each root folder that Sonarr has no series for |
 | `sonarr_import_folder` | Scan a folder and import any episode files found into an existing series |
 | `sonarr_get_rename_preview` | Preview the folder and file names a rename would produce, without renaming |
 | `sonarr_find_duplicate_series` | Report series present under more than one root folder |
-| `sonarr_list_root_folders` | List configured root folders with free space and an unmapped folder count |
-| `sonarr_list_tags` | List all tags available for series organization |
 | `sonarr_get_status` | Get Sonarr version, health warnings and disk space on drives containing series, in one call |
 
-### Radarr (30 tools)
+### Radarr (28 tools)
 
 | Tool | Purpose |
 |------|---------|
@@ -285,14 +283,12 @@ This server exposes 100 tools across the four products, plus `servarr_media_clea
 | `radarr_list_collections` | List all movie collections |
 | `radarr_run_command` | Trigger a background command (search, rescan, refresh); the library-wide missing search needs `confirm: true` |
 | `radarr_get_command` | Poll the status of a background command |
-| `radarr_list_quality_profiles` | List available quality profiles |
+| `radarr_list_options` | List quality profiles, root folders (free space, unmapped folder count) and tags, the ids the add, update and bulk-edit tools take |
 | `radarr_bulk_edit_movies` | Change root folder, quality profile, monitored state or tags on many movies at once |
 | `radarr_list_unmapped_folders` | List folders on disk under each root folder that Radarr has no movie for |
 | `radarr_import_folder` | Scan a folder and import any movie file found into an existing movie |
 | `radarr_get_rename_preview` | Preview the folder and file names a rename would produce, without renaming |
 | `radarr_find_duplicate_movies` | Report films present under more than one root folder |
-| `radarr_list_root_folders` | List configured root folders with free space and an unmapped folder count |
-| `radarr_list_tags` | List all tags available for movie organization |
 | `radarr_get_status` | Get Radarr version, health warnings and disk space on drives containing movies, in one call |
 
 ### Prowlarr (11 tools)

@@ -23,11 +23,11 @@ const anime = {
 };
 
 describe('createSonarrTools', () => {
-  it('registers all 32 tools with unique sonarr_ prefixed names', () => {
+  it('registers all 30 tools with unique sonarr_ prefixed names', () => {
     const names = createSonarrTools({} as SonarrClient).map((t) => t.name);
-    expect(names).toHaveLength(32);
+    expect(names).toHaveLength(30);
     expect(names.every((n) => n.startsWith('sonarr_'))).toBe(true);
-    expect(new Set(names).size).toBe(32);
+    expect(new Set(names).size).toBe(30);
   });
 
   it('gives every tool a non-empty description', () => {
@@ -138,8 +138,11 @@ describe('createSonarrTools', () => {
     );
   });
 
-  it('shapes root folders with an unmapped folder count', async () => {
+  it('lists quality profiles, shaped root folders and tags in one call', async () => {
     const get = toolsFor({
+      listQualityProfiles: vi
+        .fn()
+        .mockResolvedValue([{ id: 4, name: 'HD-1080p', upgradeAllowed: true, cutoff: 9 }]),
       listRootFolders: vi.fn().mockResolvedValue([
         {
           id: 1,
@@ -149,10 +152,13 @@ describe('createSonarrTools', () => {
           unmappedFolders: [{ name: 'a' }, { name: 'b' }, { name: 'c' }],
         },
       ]),
+      listTags: vi.fn().mockResolvedValue([{ id: 2, label: 'anime' }]),
     });
-    await expect(get('sonarr_list_root_folders').handler({})).resolves.toEqual([
-      { id: 1, path: '/tv', accessible: true, freeSpace: 5, unmappedFolderCount: 3 },
-    ]);
+    await expect(get('sonarr_list_options').handler({})).resolves.toEqual({
+      qualityProfiles: [{ id: 4, name: 'HD-1080p', upgradeAllowed: true, cutoff: 9 }],
+      rootFolders: [{ id: 1, path: '/tv', accessible: true, freeSpace: 5, unmappedFolderCount: 3 }],
+      tags: [{ id: 2, label: 'anime' }],
+    });
   });
 
   it('passes the add_series arguments straight through', async () => {

@@ -33,11 +33,11 @@ function roots(...paths: string[]) {
 }
 
 describe('createRadarrTools', () => {
-  it('registers all 30 tools with unique radarr_ prefixed names', () => {
+  it('registers all 28 tools with unique radarr_ prefixed names', () => {
     const names = createRadarrTools({} as RadarrClient).map((t) => t.name);
-    expect(names).toHaveLength(30);
+    expect(names).toHaveLength(28);
     expect(names.every((n) => n.startsWith('radarr_'))).toBe(true);
-    expect(new Set(names).size).toBe(30);
+    expect(new Set(names).size).toBe(28);
   });
 
   it('summarises the movie list', async () => {
@@ -101,8 +101,13 @@ describe('createRadarrTools', () => {
     expect(full).toHaveProperty('alternateTitles');
   });
 
-  it('shapes root folders with an unmapped folder count', async () => {
+  it('lists quality profiles, shaped root folders and tags in one call', async () => {
     const get = toolsFor({
+      listQualityProfiles: vi
+        .fn()
+        .mockResolvedValue([
+          { id: 4, name: 'HD-1080p', upgradeAllowed: true, cutoff: 9, items: [{}, {}] },
+        ]),
       listRootFolders: vi.fn().mockResolvedValue([
         {
           id: 1,
@@ -112,14 +117,19 @@ describe('createRadarrTools', () => {
           unmappedFolders: [{ name: 'a' }, { name: 'b' }, { name: 'c' }],
         },
       ]),
+      listTags: vi.fn().mockResolvedValue([{ id: 2, label: 'kids' }]),
     });
-    const result = (await get('radarr_list_root_folders').handler({})) as Array<
-      Record<string, unknown>
-    >;
-    expect(result).toEqual([
-      { id: 1, path: '/movies', accessible: true, freeSpace: 5, unmappedFolderCount: 3 },
-    ]);
-    expect(result[0]).not.toHaveProperty('unmappedFolders');
+    const result = (await get('radarr_list_options').handler({})) as {
+      rootFolders: Array<Record<string, unknown>>;
+    };
+    expect(result).toEqual({
+      qualityProfiles: [{ id: 4, name: 'HD-1080p', upgradeAllowed: true, cutoff: 9 }],
+      rootFolders: [
+        { id: 1, path: '/movies', accessible: true, freeSpace: 5, unmappedFolderCount: 3 },
+      ],
+      tags: [{ id: 2, label: 'kids' }],
+    });
+    expect(result.rootFolders[0]).not.toHaveProperty('unmappedFolders');
   });
 
   it('maps searchForMovie into addOptions', async () => {
