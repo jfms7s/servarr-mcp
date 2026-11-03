@@ -163,19 +163,22 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       effect: 'write',
       description:
         'Add a new movie to Radarr. Get tmdbId from radarr_lookup_movie, qualityProfileId ' +
-        'from radarr_list_quality_profiles, and rootFolderPath from radarr_list_root_folders.',
+        'and rootFolderPath from radarr_list_options.',
       inputSchema: {
         title: z.string().describe('Movie title'),
         tmdbId: z.number().int().describe('TMDB id, from radarr_lookup_movie'),
-        qualityProfileId: z.number().int().describe('From radarr_list_quality_profiles'),
-        rootFolderPath: z.string().describe('From radarr_list_root_folders'),
+        qualityProfileId: z.number().int().describe('From radarr_list_options (qualityProfiles)'),
+        rootFolderPath: z.string().describe('From radarr_list_options (rootFolders)'),
         monitored: z.boolean().optional().describe('Monitor the movie (default true)'),
         minimumAvailability: z
           .enum(['tba', 'announced', 'inCinemas', 'released'])
           .optional()
           .describe('When Radarr may start searching (default released)'),
         searchForMovie: z.boolean().optional().describe('Search immediately (default false)'),
-        tags: z.array(z.number().int()).optional().describe('Tag ids from radarr_list_tags'),
+        tags: z
+          .array(z.number().int())
+          .optional()
+          .describe('Tag ids from radarr_list_options (tags)'),
       },
       handler: async (args) => {
         const added = await client.addMovie({
@@ -206,7 +209,11 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       inputSchema: {
         movieId: z.number().int().describe('Radarr movie id'),
         monitored: z.boolean().optional().describe('Monitor the movie'),
-        qualityProfileId: z.number().int().optional().describe('From radarr_list_quality_profiles'),
+        qualityProfileId: z
+          .number()
+          .int()
+          .optional()
+          .describe('From radarr_list_options (qualityProfiles)'),
         minimumAvailability: z
           .enum(['tba', 'announced', 'inCinemas', 'released'])
           .optional()
@@ -214,14 +221,17 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
         rootFolderPath: z
           .string()
           .optional()
-          .describe('New root folder path from radarr_list_root_folders'),
+          .describe('New root folder path from radarr_list_options (rootFolders)'),
         moveFiles: z
           .boolean()
           .optional()
           .describe(
             'Required with rootFolderPath: true moves the files, false repoints the record only',
           ),
-        tags: z.array(z.number().int()).optional().describe('Tag ids from radarr_list_tags'),
+        tags: z
+          .array(z.number().int())
+          .optional()
+          .describe('Tag ids from radarr_list_options (tags)'),
       },
       handler: async ({
         movieId,
@@ -277,7 +287,11 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
       inputSchema: {
         movieIds: z.array(z.number().int()).min(1).describe('Radarr movie ids to edit (minimum 1)'),
         monitored: z.boolean().optional().describe('Set monitored state'),
-        qualityProfileId: z.number().int().optional().describe('From radarr_list_quality_profiles'),
+        qualityProfileId: z
+          .number()
+          .int()
+          .optional()
+          .describe('From radarr_list_options (qualityProfiles)'),
         minimumAvailability: z
           .enum(['tba', 'announced', 'inCinemas', 'released'])
           .optional()
@@ -289,7 +303,10 @@ export function createRadarrTools(client: RadarrClient): ToolDefinition[] {
           .describe(
             'Required with rootFolderPath: true moves the files, false repoints the records only',
           ),
-        tags: z.array(z.number().int()).optional().describe('Tag ids from radarr_list_tags'),
+        tags: z
+          .array(z.number().int())
+          .optional()
+          .describe('Tag ids from radarr_list_options (tags)'),
         applyTags: z
           .enum(['add', 'remove', 'replace'])
           .optional()

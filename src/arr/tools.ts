@@ -41,8 +41,8 @@ export interface ArrCommonLabels {
 }
 
 /**
- * The read tools Sonarr and Radarr expose identically: quality profiles, root folders, tags,
- * and status (system, health and disk space in one call), in that order.
+ * The two read tools Sonarr and Radarr expose identically: options (quality profiles, root
+ * folders and tags in one call) and status (system, health and disk space in one call).
  */
 export function createArrCommonTools(
   client: ArrCommonClient,
@@ -52,29 +52,26 @@ export function createArrCommonTools(
   const { product, item, items, addTool, updateTool } = labels;
   return [
     defineTool({
-      name: `${prefix}_list_quality_profiles`,
-      effect: 'read',
-      description: `List available quality profiles. Use these ids in ${addTool} and ${updateTool}.`,
-      inputSchema: {},
-      handler: async () => (await client.listQualityProfiles()).map(summarizeQualityProfile),
-    }),
-
-    defineTool({
-      name: `${prefix}_list_root_folders`,
+      name: `${prefix}_list_options`,
       effect: 'read',
       description:
-        `List configured root folders where ${items} are stored (id, path, accessible, free space, ` +
-        `unmapped folder count). Use these paths in ${addTool}; use ${prefix}_list_unmapped_folders for the folders themselves.`,
+        `List the ids and paths that ${addTool}, ${updateTool} and the bulk editor take, in one call: ` +
+        `qualityProfiles (id, name, upgradeAllowed, cutoff), rootFolders where ${items} are stored ` +
+        `(id, path, accessible, free space, unmapped folder count; use ${prefix}_list_unmapped_folders ` +
+        `for the folders themselves) and tags (id, label) for ${item} organization.`,
       inputSchema: {},
-      handler: async () => (await client.listRootFolders()).map(summarizeRootFolder),
-    }),
-
-    defineTool({
-      name: `${prefix}_list_tags`,
-      effect: 'read',
-      description: `List all tags available for ${item} organization.`,
-      inputSchema: {},
-      handler: () => client.listTags(),
+      handler: async () => {
+        const [qualityProfiles, rootFolders, tags] = await Promise.all([
+          client.listQualityProfiles(),
+          client.listRootFolders(),
+          client.listTags(),
+        ]);
+        return {
+          qualityProfiles: qualityProfiles.map(summarizeQualityProfile),
+          rootFolders: rootFolders.map(summarizeRootFolder),
+          tags: tags.map(({ id, label }) => ({ id, label })),
+        };
+      },
     }),
 
     defineTool({

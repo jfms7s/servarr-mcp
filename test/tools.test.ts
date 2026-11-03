@@ -24,8 +24,8 @@ describe('buildTools', () => {
       overseerr: instance,
     }).map((t) => t.name);
 
-    expect(names.filter((n) => n.startsWith('sonarr_'))).toHaveLength(32);
-    expect(names.filter((n) => n.startsWith('radarr_'))).toHaveLength(30);
+    expect(names.filter((n) => n.startsWith('sonarr_'))).toHaveLength(30);
+    expect(names.filter((n) => n.startsWith('radarr_'))).toHaveLength(28);
     expect(names.filter((n) => n.startsWith('prowlarr_'))).toHaveLength(11);
     expect(names.filter((n) => n.startsWith('overseerr_'))).toHaveLength(27);
   });

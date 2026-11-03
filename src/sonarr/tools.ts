@@ -161,19 +161,22 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       effect: 'write',
       description:
         'Add a new series to Sonarr. Get tvdbId from sonarr_lookup_series, qualityProfileId ' +
-        'from sonarr_list_quality_profiles, and rootFolderPath from sonarr_list_root_folders.',
+        'and rootFolderPath from sonarr_list_options.',
       inputSchema: {
         title: z.string().describe('Series title'),
         tvdbId: z.number().int().describe('TheTVDB id, from sonarr_lookup_series'),
-        qualityProfileId: z.number().int().describe('From sonarr_list_quality_profiles'),
-        rootFolderPath: z.string().describe('From sonarr_list_root_folders'),
+        qualityProfileId: z.number().int().describe('From sonarr_list_options (qualityProfiles)'),
+        rootFolderPath: z.string().describe('From sonarr_list_options (rootFolders)'),
         monitored: z.boolean().optional().describe('Monitor the series (default true)'),
         seasonFolder: z.boolean().optional().describe('Use season folders (default true)'),
         searchForMissingEpisodes: z
           .boolean()
           .optional()
           .describe('Start searching for episodes immediately (default false)'),
-        tags: z.array(z.number().int()).optional().describe('Tag ids from sonarr_list_tags'),
+        tags: z
+          .array(z.number().int())
+          .optional()
+          .describe('Tag ids from sonarr_list_options (tags)'),
       },
       handler: async (args) => {
         const series = await client.addSeries({
@@ -319,14 +322,21 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       inputSchema: {
         seriesId: z.number().int().describe('Sonarr series id'),
         monitored: z.boolean().optional().describe('Monitor the series'),
-        qualityProfileId: z.number().int().optional().describe('From sonarr_list_quality_profiles'),
+        qualityProfileId: z
+          .number()
+          .int()
+          .optional()
+          .describe('From sonarr_list_options (qualityProfiles)'),
         seasonFolder: z.boolean().optional().describe('Use season folders'),
-        tags: z.array(z.number().int()).optional().describe('Tag ids from sonarr_list_tags'),
+        tags: z
+          .array(z.number().int())
+          .optional()
+          .describe('Tag ids from sonarr_list_options (tags)'),
         rootFolderPath: z
           .string()
           .optional()
           .describe(
-            'Root folder path from sonarr_list_root_folders. Updates the series path automatically.',
+            'Root folder path from sonarr_list_options (rootFolders). Updates the series path automatically.',
           ),
         seriesType: z
           .enum(['standard', 'daily', 'anime'])
@@ -723,14 +733,21 @@ export function createSonarrTools(client: SonarrClient): ToolDefinition[] {
       inputSchema: {
         seriesIds: z.array(z.number().int()).min(1).describe('Series ids to update'),
         monitored: z.boolean().optional().describe('Set monitored state'),
-        qualityProfileId: z.number().int().optional().describe('From sonarr_list_quality_profiles'),
+        qualityProfileId: z
+          .number()
+          .int()
+          .optional()
+          .describe('From sonarr_list_options (qualityProfiles)'),
         seriesType: z.enum(['standard', 'daily', 'anime']).optional().describe('Series type'),
         seasonFolder: z.boolean().optional().describe('Use season folders'),
         rootFolderPath: z
           .string()
           .optional()
-          .describe('Root folder path from sonarr_list_root_folders'),
-        tags: z.array(z.number().int()).optional().describe('Tag ids from sonarr_list_tags'),
+          .describe('Root folder path from sonarr_list_options (rootFolders)'),
+        tags: z
+          .array(z.number().int())
+          .optional()
+          .describe('Tag ids from sonarr_list_options (tags)'),
         applyTags: z
           .enum(['add', 'remove', 'replace'])
           .optional()
