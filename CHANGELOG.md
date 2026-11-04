@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.0 (2026-11-04)
+
+Adds Transmission: four tools, enabled by `TRANSMISSION_URL` alone (96 tools with the four arrs, 97 with Tautulli). Nothing is removed or renamed.
+
+### Added
+
+- `transmission_list_torrents`: status, progress, peers, tracker or local errors (such as a full disk) and ratio, with filters `hash` (an arr queue item's `downloadId`), `nameContains`, `stalled`, `errored`, `seeding` and `ratioAbove`; paginated.
+- `transmission_get_torrent`: one torrent by hash, with download directory, labels and each tracker's last announce result.
+- `transmission_control_torrents`: start, start_now, stop, verify or reannounce up to 50 torrents; fails before acting if a hash is unknown.
+- `transmission_remove_torrent` (destructive): previews and removes nothing without `confirm: true`; the files stay unless `deleteData: true`.
+- Config: `TRANSMISSION_URL` (no API key), and optional `TRANSMISSION_USERNAME` / `TRANSMISSION_PASSWORD` for HTTP Basic auth (both or neither). Anyone who can reach the server can start, stop and remove torrents once it is set.
+
 ## v1.0.0 (2026-11-03)
 
 A major release: 18 overlapping tools are merged into 6, with no capability lost, and two manual-import tools are added. 108 tools become 92 (93 with Tautulli). Saved client allowlists, prompts and notes that name a removed tool need the new name.
