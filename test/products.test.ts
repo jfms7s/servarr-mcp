@@ -14,12 +14,14 @@ describe('PRODUCTS', () => {
       'prowlarr',
       'overseerr',
       'tautulli',
+      'transmission',
     ]);
   });
 
   const standalone = PRODUCTS.filter((product) => !product.companionOf);
+  const keyed = standalone.filter((product) => !product.auth);
 
-  it.each(standalone.map((product) => [product.id, product] as const))(
+  it.each(keyed.map((product) => [product.id, product] as const))(
     '%s produces its own tools when configured, and loadConfig reads its env pair',
     (id, product) => {
       const names = buildTools({ ...base, [id]: instance }).map((tool) => tool.name);
@@ -50,8 +52,9 @@ describe('PRODUCTS', () => {
       expect(error).toBeInstanceOf(ConfigError);
       message = (error as Error).message;
     }
-    for (const { envPrefix } of standalone)
+    for (const { envPrefix } of keyed)
       expect(message).toContain(`${envPrefix}_URL/${envPrefix}_API_KEY`);
+    expect(message).toContain('TRANSMISSION_URL.');
     expect(message).not.toContain('TAUTULLI');
     expect(message).toContain('OVERSEERR_URL/OVERSEERR_API_KEY');
   });

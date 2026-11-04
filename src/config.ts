@@ -1,6 +1,10 @@
 export interface InstanceConfig {
   baseUrl: string;
+  /** Empty for a product with no API key (see ProductSettings.auth). */
   apiKey: string;
+  /** HTTP Basic credentials of a product with `auth: 'basic'`; both or neither. */
+  username?: string;
+  password?: string;
 }
 
 export type TransportMode = 'stdio' | 'http';
@@ -22,6 +26,11 @@ export interface ProductSettings {
    * one of these products configured too, and on its own it does not count as configured.
    */
   readonly companionOf?: readonly string[];
+  /**
+   * Set for a product that has no API key: `<envPrefix>_URL` alone configures it, and
+   * `<envPrefix>_USERNAME` / `<envPrefix>_PASSWORD` add HTTP Basic auth when it has any.
+   */
+  readonly auth?: 'basic';
 }
 
 export const PRODUCT_SETTINGS = [
@@ -33,6 +42,8 @@ export const PRODUCT_SETTINGS = [
   { id: 'overseerr', label: 'Overseerr', envPrefix: 'SEERR', legacyEnvPrefix: 'OVERSEERR' },
   // Plays from Tautulli feed servarr_media_cleanup_report only; there are no tautulli_* tools.
   { id: 'tautulli', label: 'Tautulli', envPrefix: 'TAUTULLI', companionOf: ['radarr', 'sonarr'] },
+  // Transmission's RPC has no API key; in a cluster it is usually open, otherwise Basic auth.
+  { id: 'transmission', label: 'Transmission', envPrefix: 'TRANSMISSION', auth: 'basic' },
 ] as const satisfies readonly ProductSettings[];
 
 export type ProductId = (typeof PRODUCT_SETTINGS)[number]['id'];
@@ -66,15 +77,32 @@ function readInstance(
   env: NodeJS.ProcessEnv,
   product: string,
   prefix: string,
+  auth?: 'basic',
 ): InstanceConfig | undefined {
   const rawUrl = env[`${prefix}_URL`]?.trim();
-  const apiKey = env[`${prefix}_API_KEY`]?.trim();
+  const apiKey = auth ? '' : env[`${prefix}_API_KEY`]?.trim();
+  const username = auth ? env[`${prefix}_USERNAME`]?.trim() : undefined;
+  const password = auth ? env[`${prefix}_PASSWORD`]?.trim() || undefined : undefined;
 
-  if (!rawUrl && !apiKey) return undefined;
-  if (!rawUrl)
-    throw new ConfigError(`${product}: ${prefix}_API_KEY is set but ${prefix}_URL is not`);
-  if (!apiKey)
-    throw new ConfigError(`${product}: ${prefix}_URL is set but ${prefix}_API_KEY is not`);
+  if (!rawUrl && !apiKey && !username && !password) return undefined;
+  if (auth) {
+    if (!rawUrl)
+      throw new ConfigError(
+        `${product}: ${prefix}_USERNAME/${prefix}_PASSWORD is set but ${prefix}_URL is not`,
+      );
+    if (!username !== !password)
+      throw new ConfigError(
+        `${product}: set both ${prefix}_USERNAME and ${prefix}_PASSWORD, or neither`,
+      );
+    // RFC 7617 splits Basic credentials at the first colon.
+    if (username?.includes(':'))
+      throw new ConfigError(`${product}: ${prefix}_USERNAME must not contain a colon`);
+  } else {
+    if (!rawUrl)
+      throw new ConfigError(`${product}: ${prefix}_API_KEY is set but ${prefix}_URL is not`);
+    if (!apiKey)
+      throw new ConfigError(`${product}: ${prefix}_URL is set but ${prefix}_API_KEY is not`);
+  }
 
   // Neither message echoes the value: it may carry credentials.
   let url: URL;
@@ -86,7 +114,8 @@ function readInstance(
   // fetch refuses a URL with userinfo on every request, so such a URL can never work.
   if (url.username || url.password) {
     throw new ConfigError(
-      `${product}: ${prefix}_URL must not contain credentials (user:password@); use the API key only`,
+      `${product}: ${prefix}_URL must not contain credentials (user:password@); use ` +
+        (auth ? `${prefix}_USERNAME and ${prefix}_PASSWORD` : 'the API key only'),
     );
   }
   // `localhost:8989` parses with the scheme "localhost:" and only fails on the first call.
@@ -100,15 +129,25 @@ function readInstance(
     throw new ConfigError(`${product}: ${prefix}_URL must not contain a query string or fragment`);
   }
 
-  return { baseUrl: rawUrl.replace(/\/+$/, ''), apiKey };
+  // The Transmission client appends /transmission/rpc itself.
+  if (auth && /\/transmission(\/rpc)?\/?$/i.test(url.pathname)) {
+    throw new ConfigError(
+      `${product}: ${prefix}_URL is the daemon's base URL (for example http://host:9091); the server adds /transmission/rpc`,
+    );
+  }
+
+  const baseUrl = rawUrl.replace(/\/+$/, '');
+  return username && password
+    ? { baseUrl, apiKey: apiKey ?? '', username, password }
+    : { baseUrl, apiKey: apiKey ?? '' };
 }
 
 /** The product's instance from envPrefix, else legacyEnvPrefix; both set must agree. */
 function readProductInstance(
   env: NodeJS.ProcessEnv,
-  { label, envPrefix, legacyEnvPrefix }: ProductSettings,
+  { label, envPrefix, legacyEnvPrefix, auth }: ProductSettings,
 ): InstanceConfig | undefined {
-  const current = readInstance(env, label, envPrefix);
+  const current = readInstance(env, label, envPrefix, auth);
   if (!legacyEnvPrefix) return current;
   const legacy = readInstance(env, label, legacyEnvPrefix);
   if (
@@ -192,7 +231,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServarrConfig 
   }
   if (!standalone.some((product) => instances[product.id as ProductId])) {
     const pairs = standalone.map((product) => {
-      const pair = `${product.envPrefix}_URL/${product.envPrefix}_API_KEY`;
+      const pair = product.auth
+        ? `${product.envPrefix}_URL`
+        : `${product.envPrefix}_URL/${product.envPrefix}_API_KEY`;
       const legacy = product.legacyEnvPrefix;
       return legacy ? `${pair} (or ${legacy}_URL/${legacy}_API_KEY)` : pair;
     });

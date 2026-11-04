@@ -5,26 +5,30 @@
 //   node scripts/smoke.mjs dist             # node dist/index.js (after npm run build)
 //   node scripts/smoke.mjs docker <image>   # docker run <image>
 //
-// The arr URLs point at 127.0.0.1:9 (discard), so no real Sonarr/Radarr/Prowlarr/Overseerr is
+// The arr URLs point at 127.0.0.1:9 (discard), so no real Sonarr/Radarr/Prowlarr/Overseerr/Transmission is
 // ever contacted: tools/list never calls them.
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import net from 'node:net';
 
-const EXPECTED_TOOLS = 92;
+const EXPECTED_TOOLS = 96;
 const [mode, image] = process.argv.slice(2);
 if (mode !== 'dist' && !(mode === 'docker' && image)) {
   console.error('usage: smoke.mjs dist | smoke.mjs docker <image>');
   process.exit(64);
 }
 
-const products = Object.fromEntries(
-  // SEERR is the Overseerr module's preferred prefix; OVERSEERR_* is covered by test/config.test.ts.
-  ['SONARR', 'RADARR', 'PROWLARR', 'SEERR'].flatMap((p) => [
-    [`${p}_URL`, 'http://127.0.0.1:9'],
-    [`${p}_API_KEY`, 'x'],
-  ]),
-);
+const products = {
+  ...Object.fromEntries(
+    // SEERR is the Overseerr module's preferred prefix; OVERSEERR_* is covered by test/config.test.ts.
+    ['SONARR', 'RADARR', 'PROWLARR', 'SEERR'].flatMap((p) => [
+      [`${p}_URL`, 'http://127.0.0.1:9'],
+      [`${p}_API_KEY`, 'x'],
+    ]),
+  ),
+  // Transmission has no API key.
+  TRANSMISSION_URL: 'http://127.0.0.1:9',
+};
 
 function freePort() {
   return new Promise((resolve, reject) => {
