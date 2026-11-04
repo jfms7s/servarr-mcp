@@ -9,6 +9,8 @@ import { createRadarrTools } from './radarr/tools.js';
 import { createSonarrClient, type SonarrClient } from './sonarr/client.js';
 import { createSonarrTools } from './sonarr/tools.js';
 import { createTautulliClient, type TautulliClient } from './tautulli/client.js';
+import { createTransmissionClient, type TransmissionClient } from './transmission/client.js';
+import { createTransmissionTools } from './transmission/tools.js';
 
 /** The configured products' clients, each built once and shared with the cross-product tools. */
 export interface ProductClients {
@@ -17,6 +19,7 @@ export interface ProductClients {
   prowlarr?: ProwlarrClient;
   overseerr?: OverseerrClient;
   tautulli?: TautulliClient;
+  transmission?: TransmissionClient;
 }
 
 type Factory = (instance: InstanceConfig, clients: ProductClients) => ToolDefinition[];
@@ -33,6 +36,8 @@ const FACTORIES: Record<ProductId, Factory> = {
     clients.tautulli = createTautulliClient(instance);
     return [];
   },
+  transmission: (instance, clients) =>
+    createTransmissionTools((clients.transmission = createTransmissionClient(instance))),
 };
 
 export interface Product {
@@ -42,10 +47,12 @@ export interface Product {
   legacyEnvPrefix?: string;
   /** Set for a product with no tools of its own (see ProductSettings.companionOf). */
   companionOf?: readonly string[];
+  /** Set for a product with no API key (see ProductSettings.auth). */
+  auth?: 'basic';
   createTools: (instance: InstanceConfig, clients?: ProductClients) => ToolDefinition[];
 }
 
-/** The product registry, in PRODUCT_SETTINGS order: Sonarr, Radarr, Prowlarr, Overseerr, Tautulli. */
+/** The product registry, in PRODUCT_SETTINGS order: Sonarr, Radarr, Prowlarr, Overseerr, Tautulli, Transmission. */
 export const PRODUCTS: readonly Product[] = PRODUCT_SETTINGS.map((settings) => ({
   ...settings,
   createTools: (instance: InstanceConfig, clients: ProductClients = {}) =>

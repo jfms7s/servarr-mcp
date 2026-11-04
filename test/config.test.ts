@@ -35,7 +35,7 @@ describe('loadConfig', () => {
     expect(() => loadConfig({})).toThrow(
       'No products configured. Set at least one of SONARR_URL/SONARR_API_KEY, ' +
         'RADARR_URL/RADARR_API_KEY, PROWLARR_URL/PROWLARR_API_KEY, ' +
-        'SEERR_URL/SEERR_API_KEY (or OVERSEERR_URL/OVERSEERR_API_KEY).',
+        'SEERR_URL/SEERR_API_KEY (or OVERSEERR_URL/OVERSEERR_API_KEY), TRANSMISSION_URL.',
     );
   });
 
@@ -328,5 +328,73 @@ describe('loadConfig', () => {
 
   it('accepts a plain integer port', () => {
     expect(loadConfig({ ...base, SERVARR_MCP_PORT: '8080' }).port).toBe(8080);
+  });
+
+  describe('Transmission', () => {
+    it('is configured by its URL alone, with no key', () => {
+      expect(loadConfig({ TRANSMISSION_URL: 'http://transmission:9091/' }).transmission).toEqual({
+        baseUrl: 'http://transmission:9091',
+        apiKey: '',
+      });
+    });
+
+    it('is enough on its own, without an arr', () => {
+      expect(() => loadConfig({ TRANSMISSION_URL: 'http://transmission:9091' })).not.toThrow();
+    });
+
+    it('reads Basic credentials when both are set', () => {
+      const config = loadConfig({
+        TRANSMISSION_URL: 'http://transmission:9091',
+        TRANSMISSION_USERNAME: 'u',
+        TRANSMISSION_PASSWORD: 'p w',
+      });
+      expect(config.transmission).toMatchObject({ username: 'u', password: 'p w' });
+    });
+
+    it('rejects a username without a password, and the reverse, without echoing either', () => {
+      for (const extra of [{ TRANSMISSION_USERNAME: 'u' }, { TRANSMISSION_PASSWORD: 'secret' }]) {
+        const run = () => loadConfig({ TRANSMISSION_URL: 'http://transmission:9091', ...extra });
+        expect(run).toThrow('set both TRANSMISSION_USERNAME and TRANSMISSION_PASSWORD, or neither');
+        expect(run).not.toThrow(/secret/);
+      }
+    });
+
+    it('rejects credentials without a URL', () => {
+      expect(() =>
+        loadConfig({ ...base, TRANSMISSION_USERNAME: 'u', TRANSMISSION_PASSWORD: 'p' }),
+      ).toThrow(/TRANSMISSION_USERNAME\/TRANSMISSION_PASSWORD is set but TRANSMISSION_URL is not/);
+    });
+
+    it('rejects userinfo in the URL and points at the username and password variables', () => {
+      expect(() => loadConfig({ TRANSMISSION_URL: 'http://u:secret@transmission:9091' })).toThrow(
+        /use TRANSMISSION_USERNAME and TRANSMISSION_PASSWORD/,
+      );
+    });
+
+    it('trims the password, and treats a blank one as unset', () => {
+      const url = { TRANSMISSION_URL: 'http://transmission:9091', TRANSMISSION_USERNAME: 'u' };
+      expect(loadConfig({ ...url, TRANSMISSION_PASSWORD: 'pw\n' }).transmission?.password).toBe(
+        'pw',
+      );
+      expect(() => loadConfig({ ...url, TRANSMISSION_PASSWORD: '   ' })).toThrow(/set both/);
+    });
+
+    it('rejects a username with a colon', () => {
+      expect(() =>
+        loadConfig({
+          TRANSMISSION_URL: 'http://transmission:9091',
+          TRANSMISSION_USERNAME: 'a:b',
+          TRANSMISSION_PASSWORD: 'p',
+        }),
+      ).toThrow(/must not contain a colon/);
+    });
+
+    it('rejects a URL that already ends in /transmission/rpc, and keeps a reverse-proxy prefix', () => {
+      for (const path of ['/transmission/rpc', '/transmission/', '/transmission'])
+        expect(() => loadConfig({ TRANSMISSION_URL: `http://t:9091${path}` })).toThrow(/base URL/);
+      expect(loadConfig({ TRANSMISSION_URL: 'http://t/proxy' }).transmission?.baseUrl).toBe(
+        'http://t/proxy',
+      );
+    });
   });
 });

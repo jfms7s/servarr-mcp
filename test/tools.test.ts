@@ -30,6 +30,19 @@ describe('buildTools', () => {
     expect(names.filter((n) => n.startsWith('overseerr_'))).toHaveLength(21);
   });
 
+  it('registers the four Transmission tools from a URL alone', () => {
+    const names = buildTools({
+      ...base,
+      transmission: { baseUrl: 'http://localhost', apiKey: '' },
+    }).map((t) => t.name);
+    expect(names).toEqual([
+      'transmission_list_torrents',
+      'transmission_get_torrent',
+      'transmission_control_torrents',
+      'transmission_remove_torrent',
+    ]);
+  });
+
   it('produces globally unique tool names', () => {
     const names = buildTools({
       ...base,

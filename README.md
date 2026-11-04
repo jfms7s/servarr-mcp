@@ -81,6 +81,8 @@ The server reads configuration from environment variables. Each product is **ind
 | `OVERSEERR_URL` / `OVERSEERR_API_KEY` | | No | Older names for `SEERR_URL` / `SEERR_API_KEY`, still accepted. If both pairs are set they must hold the same URL (after trimming a trailing `/`) and key, or the server refuses to start |
 | `TAUTULLI_URL` | `http://localhost:8181` | No | Base URL of your Tautulli instance. Tautulli has no tools of its own: it feeds `servarr_media_cleanup_report`, so it also needs Radarr or Sonarr configured, or the server refuses to start |
 | `TAUTULLI_API_KEY` | `abc123def456` | Only if `TAUTULLI_URL` is set | API key from Tautulli Settings → Web Interface → API. Tautulli takes it as a query parameter; the server redacts it from every Tautulli error |
+| `TRANSMISSION_URL` | `http://localhost:9091` | No | Base URL of your Transmission daemon (the server adds `/transmission/rpc`). Transmission has no API key, so the URL alone enables its four tools. Anyone who can reach this server can then start, stop and remove torrents |
+| `TRANSMISSION_USERNAME` / `TRANSMISSION_PASSWORD` | | Both or neither | Only when the daemon has RPC authentication on (HTTP Basic). Neither is echoed in an error |
 | `SERVARR_MCP_TRANSPORT` | `stdio` or `http` | No | Transport mode (default `stdio`). `both` was removed in v0.8.0 and now fails startup |
 | `SERVARR_MCP_PORT` | `3000` | No | Port for HTTP transport (default `3000`) |
 | `SERVARR_MCP_HOST` | `*` | No | Address the HTTP transport binds to: an IP address, or `*` for every interface, IPv4 and IPv6 (default `127.0.0.1`; the Docker image sets `*`) |
@@ -221,7 +223,7 @@ A compromised bearer token gives an attacker complete control to delete your lib
 
 ## Tools
 
-This server exposes 92 tools across the four products, plus `servarr_media_cleanup_report` when Tautulli is configured (93).
+This server exposes 92 tools across the four arr products, plus 4 for Transmission and `servarr_media_cleanup_report` when Tautulli is configured (97 with everything).
 
 ### Sonarr (31 tools)
 
@@ -336,6 +338,17 @@ Overseerr and Jellyseerr merged into [Seerr](https://github.com/seerr-team/seerr
 | `overseerr_list_radarr_servers` | List the Radarr servers Overseerr routes to, with each one's default root folder |
 | `overseerr_get_radarr_profiles` | List quality profiles available on one of those Radarr servers |
 | `overseerr_update_request` | Change a request's root folder, quality profile or target server |
+
+### Transmission (4 tools)
+
+| Tool | Purpose |
+|------|---------|
+| `transmission_list_torrents` | List torrents with status, progress, peers, errors and ratio; filters `hash`, `nameContains`, `stalled`, `errored`, `seeding`, `ratioAbove`; paginated (`limit` default 100, `offset`) |
+| `transmission_get_torrent` | One torrent by hash (either case), with download directory, labels and each tracker's last announce result |
+| `transmission_control_torrents` | Start, stop, verify or reannounce up to 50 torrents by hash. Deletes nothing |
+| `transmission_remove_torrent` | **Destructive:** Remove one torrent. Previews and removes nothing without `confirm: true`; the files stay unless `deleteData: true` |
+
+A Sonarr or Radarr queue item's `downloadId` is the torrent hash: pass it as `hash` to find out why a download is stalled (no peers, a tracker error, a full disk). `stalled` means unfinished, not paused, with no connected peer.
 
 ### Cross-product (1 tool, with Tautulli)
 
